@@ -31,8 +31,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.time.LocalDateTime;
 import java.time.Month;
-import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -91,7 +91,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 15, 0));
-        final Collection<Trip> trips = rider.getTrips(
+        final Set<RiderStatus> trips = rider.getEntryPoints(
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 45, 0));
         Assert.assertEquals(1, trips.size());
     }
@@ -110,7 +110,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 35, 0));
-        final Collection<Trip> trips = rider.getTrips(
+        final Set<RiderStatus> trips = rider.getEntryPoints(
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 45, 0));
         Assert.assertTrue(trips.isEmpty());
     }
@@ -129,7 +129,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 15, 0));
-        rider.takeTrip(trip);
+        rider.takeTrip(trip, STOP_TIME);
         Assert.assertTrue(!rider.canContinueTrip());
     }
 
@@ -149,7 +149,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 15, 0));
-        rider.takeTrip(trip);
+        rider.takeTrip(trip, STOP_TIME);
         Assert.assertTrue(!rider.canContinueTrip());
     }
 
@@ -169,7 +169,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 0, 0));
-        rider.takeTrip(trip);
+        rider.takeTrip(trip, STOP_TIME);
         Assert.assertTrue(rider.canContinueTrip());
     }
 
@@ -189,7 +189,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 5, 0));
-        rider.takeTrip(trip);
+        rider.takeTrip(trip, STOP_TIME);
         Assert.assertTrue(rider.canContinueTrip());
     }
 
@@ -209,7 +209,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 0, 0));
-        rider.takeTrip(trip);
+        rider.takeTrip(trip, STOP_TIME);
 
         final RiderStatus status = rider.continueTrip();
         Assert.assertEquals(ANOTHER_STOP_TIME, status.getTime());
@@ -234,7 +234,7 @@ public class RetrospectiveRiderTest {
         final RetrospectiveRider rider = new RetrospectiveRider(
                 STOP_ON_TRIP, schedule,
                 LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 0, 0));
-        rider.takeTrip(trip);
+        rider.takeTrip(trip, STOP_TIME);
 
         rider.continueTrip();
         final Movement movement = rider.getRideRecord();

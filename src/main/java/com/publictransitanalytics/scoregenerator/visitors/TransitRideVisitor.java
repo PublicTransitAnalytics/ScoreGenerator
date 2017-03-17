@@ -23,13 +23,11 @@ import com.publictransitanalytics.scoregenerator.rider.Rider;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.schedule.LocalSchedule;
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -68,21 +66,21 @@ public class TransitRideVisitor implements Visitor {
         transitStop.addPath(keyTime, currentPath);
 
         if (currentDepth < maxDepth) {
-            final LocalSchedule schedule = scheduleBook.get(
-                    transitStop);
+            final LocalSchedule schedule = scheduleBook.get(transitStop);
             final Rider rider = riderFactory.getNewRider(
                     transitStop, schedule, cutoffTime);
 
-            final Collection<Trip> trips = rider.getTrips(currentTime);
+            final Set<RiderStatus> entryPoints
+                    = rider.getEntryPoints(currentTime);
             final ImmutableList.Builder<VisitAction> visitActionsBuilder
                     = ImmutableList.builder();
 
-            for (final Trip trip : trips) {
+            for (final RiderStatus entryPoint : entryPoints) {
                 /* Don't get on a trip that we came from. Either we just got off
                 * of it, or we walked around a bit and came to it again.
-                */
-                if (!trip.getTripId().equals(lastTrip)) {
-                    rider.takeTrip(trip);
+                 */
+                if (!entryPoint.getTrip().getTripId().equals(lastTrip)) {
+                    rider.takeTrip(entryPoint.getTrip(), entryPoint.getTime());
                     while (rider.canContinueTrip()) {
 
                         final RiderStatus status = rider.continueTrip();
@@ -102,14 +100,15 @@ public class TransitRideVisitor implements Visitor {
                                 final Visitor visitor
                                         = visitorFactory.getVisitor(
                                                 keyTime, cutoffTime, newTime,
-                                                Mode.TRANSIT, trip.getTripId(),
-                                                newPath, currentDepth + 1,
+                                                Mode.TRANSIT,
+                                                entryPoint.getTrip()
+                                                .getTripId(), newPath,
+                                                currentDepth + 1,
                                                 visitorFactories);
                                 final VisitAction visitAction
                                         = new VisitAction(newStop, visitor);
                                 visitAction.fork();
                                 visitActionsBuilder.add(visitAction);
-                                //newStop.accept(visitor);
                             }
                         }
                     }

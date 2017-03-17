@@ -28,24 +28,20 @@ public interface Trip {
     /**
      * Get the next stop on the trip, or null if it does not exist.
      * @param stop The current stop.
+     * @param time The current time.
      * @return the next stop.
      */
-    ScheduledLocation getNextScheduledLocation(TransitStop stop);
+    ScheduledLocation getNextScheduledLocation(
+            TransitStop stop, LocalDateTime time);
 
     /**
      * Get the previous stop on the trip, or null if it does not exist.
      * @param stop The current stop.
+     * @param time The current time.
      * @return the previous  stop.
      */
-    ScheduledLocation getPreviousScheduledLocation(TransitStop stop);
-
-    /**
-     * Get the time at which the trip is at requested stop, or null if this trip
-     * does not intersect the that stop.
-     * @param stop The stop to test for inclusion.
-     * @return the time at which the trip arrives at this stop.
-     */
-    LocalDateTime getScheduledTime(TransitStop stop);
+    ScheduledLocation getPreviousScheduledLocation(
+            TransitStop stop, LocalDateTime time);
     
     TripId getTripId();
     

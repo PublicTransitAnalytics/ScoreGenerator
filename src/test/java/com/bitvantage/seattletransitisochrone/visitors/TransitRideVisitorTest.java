@@ -36,8 +36,6 @@ import com.google.common.collect.ImmutableMap;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Collections;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -53,8 +51,10 @@ public class TransitRideVisitorTest {
 
     private static final MovementPath PATH
             = new ForwardMovingPath(ImmutableList.of());
-    private static final LocalDateTime START_TIME = LocalDateTime.of(
+    private static final LocalDateTime KEY_TIME = LocalDateTime.of(
             2017, Month.JANUARY, 31, 10, 40, 0);
+    private static final LocalDateTime DUMMY_TIME
+            = LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 20, 0);
 
     @Test
     public void testAddsPathToSector() {
@@ -66,7 +66,7 @@ public class TransitRideVisitorTest {
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
+                KEY_TIME,
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 PATH, null, 0, 5, ImmutableMap.of(),
@@ -77,7 +77,7 @@ public class TransitRideVisitorTest {
         visitor.visit(sector);
 
         Assert.assertEquals(Collections.singleton(PATH), sector.getPaths().get(
-                            START_TIME));
+                            KEY_TIME));
     }
 
     @Test
@@ -94,7 +94,7 @@ public class TransitRideVisitorTest {
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
+                KEY_TIME,
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 PATH, null, 0, 5, ImmutableMap.of(),
@@ -105,7 +105,7 @@ public class TransitRideVisitorTest {
         visitor.visit(stop);
 
         Assert.assertEquals(Collections.singleton(PATH),
-                            sector.getPaths().get(START_TIME));
+                            sector.getPaths().get(KEY_TIME));
     }
 
     @Test
@@ -122,7 +122,7 @@ public class TransitRideVisitorTest {
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
+                KEY_TIME,
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 PATH, null, 0, 5, ImmutableMap.of(),
@@ -133,7 +133,7 @@ public class TransitRideVisitorTest {
         visitor.visit(stop);
 
         Assert.assertEquals(Collections.singleton(PATH),
-                            stop.getPaths().get(START_TIME));
+                            stop.getPaths().get(KEY_TIME));
     }
 
     @Test
@@ -150,7 +150,7 @@ public class TransitRideVisitorTest {
                         new Longitude(-122.355188, Longitude.DEGREES),
                         new Latitude(47.6256076, Latitude.DEGREES)));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
+                KEY_TIME,
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 PATH, null, 0, 5, ImmutableMap.of(),
@@ -175,11 +175,10 @@ public class TransitRideVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
+
         final Movement movement = new TransitRideMovement(
                 "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 20, 0),
-                "stop2", "Stop 2",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 30, 0));
+                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new PreloadedTrip(
                 new TripId("tripId"), "Somewhere via Elsewhere", "-1",
@@ -188,22 +187,25 @@ public class TransitRideVisitorTest {
                 sector, "2", "Elsehere", new Geodetic2DPoint(
                         new Longitude(-122.3087554, Longitude.DEGREES),
                         new Latitude(47.6755263, Latitude.DEGREES)));
-        final PreloadedRider rider = new PreloadedRider(
-                Collections.singleton(trip), Collections.singletonList(
-                new RiderStatus(nextStop, LocalDateTime.of(
-                                2017, Month.FEBRUARY, 12, 22, 10, 0))),
-                movement);
+
+        final PreloadedRider preloadedRider = new PreloadedRider(
+                Collections.singleton(new RiderStatus(stop, DUMMY_TIME, trip)),
+                Collections.singletonList(
+                        new RiderStatus(nextStop, DUMMY_TIME, trip)), movement);
+
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
+        final LocalDateTime cutoffTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 50);
+        final LocalDateTime currentTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 45);
+
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
-                PATH, null, 0, 5, ImmutableMap.of(stop,
-                                            new PreloadedLocalSchedule(
-                                                    Collections.emptyMap())),
-                new PreloadedRiderFactory(rider),
+                KEY_TIME, cutoffTime, currentTime, PATH, null, 0, 5,
+                ImmutableMap.of(stop, new PreloadedLocalSchedule(
+                                Collections.emptyMap())),
+                new PreloadedRiderFactory(preloadedRider),
                 Collections.singleton(visitorFactory));
 
         visitor.visit(stop);
@@ -227,9 +229,7 @@ public class TransitRideVisitorTest {
                         new Latitude(47.63411, Latitude.DEGREES)));
         final Movement movement = new TransitRideMovement(
                 "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 20, 0),
-                "stop2", "Stop 2",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 30, 0));
+                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new PreloadedTrip(
                 new TripId("tripId"), "Somewhere via Elsewhere", "-1",
@@ -238,22 +238,24 @@ public class TransitRideVisitorTest {
                 sector, "2", "Elsehere", new Geodetic2DPoint(
                         new Longitude(-122.3087554, Longitude.DEGREES),
                         new Latitude(47.6755263, Latitude.DEGREES)));
-        final PreloadedRider rider = new PreloadedRider(
-                Collections.singleton(trip), Collections.singletonList(
-                new RiderStatus(nextStop, LocalDateTime.of(
-                                2017, Month.FEBRUARY, 12, 22, 10, 0))),
-                movement);
+
+        final PreloadedRider preloadedRider = new PreloadedRider(
+                Collections.singleton(new RiderStatus(stop, DUMMY_TIME, trip)),
+                Collections.singletonList(new RiderStatus(
+                        nextStop, DUMMY_TIME, trip)), movement);
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
+        final LocalDateTime cutoffTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 50);
+        final LocalDateTime currentTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 45);
+
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
-                PATH, null, 5, 5, ImmutableMap.of(stop,
-                                            new PreloadedLocalSchedule(
-                                                    Collections.emptyMap())),
-                new PreloadedRiderFactory(rider),
+                KEY_TIME, cutoffTime, currentTime, PATH, null, 5, 5,
+                ImmutableMap.of(stop, new PreloadedLocalSchedule(
+                                Collections.emptyMap())),
+                new PreloadedRiderFactory(preloadedRider),
                 Collections.singleton(visitorFactory));
 
         visitor.visit(stop);
@@ -276,26 +278,27 @@ public class TransitRideVisitorTest {
                         new Latitude(47.63411, Latitude.DEGREES)));
         final Movement movement = new TransitRideMovement(
                 "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 20, 0),
-                "stop2", "Stop 2",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 30, 0));
+                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new PreloadedTrip(
                 new TripId("tripId"), "Somewhere via Elsewhere", "-1",
                 Collections.emptyList());
         final PreloadedRider rider = new PreloadedRider(
-                Collections.singleton(trip), Collections.emptyList(),
-                movement);
+                Collections.singleton(new RiderStatus(stop, DUMMY_TIME, trip)),
+                Collections.emptyList(), movement);
+
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
+        final LocalDateTime cutoffTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 50);
+        final LocalDateTime currentTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 45);
+
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
-                PATH, null, 0, 5, ImmutableMap.of(stop,
-                                            new PreloadedLocalSchedule(
-                                                    Collections.emptyMap())),
+                KEY_TIME, cutoffTime, currentTime, PATH, null, 0, 5,
+                ImmutableMap.of(stop, new PreloadedLocalSchedule(
+                                Collections.emptyMap())),
                 new PreloadedRiderFactory(rider),
                 Collections.singleton(visitorFactory));
 
@@ -319,24 +322,23 @@ public class TransitRideVisitorTest {
                         new Latitude(47.63411, Latitude.DEGREES)));
         final Movement movement = new TransitRideMovement(
                 "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 20, 0),
-                "stop2", "Stop 2",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 30, 0));
+                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
-        final PreloadedRider rider = new PreloadedRider(
-                Collections.emptyList(), Collections.emptyList(),
-                movement);
+        final PreloadedRider preloadedRider = new PreloadedRider(
+                Collections.emptySet(), Collections.emptyList(), movement);
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
+        final LocalDateTime cutoffTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 50);
+        final LocalDateTime currentTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 45);
+
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
-                PATH, null, 0, 5, ImmutableMap.of(stop,
-                                            new PreloadedLocalSchedule(
-                                                    Collections.emptyMap())),
-                new PreloadedRiderFactory(rider),
+                KEY_TIME, cutoffTime, currentTime, PATH, null, 0, 5,
+                ImmutableMap.of(stop, new PreloadedLocalSchedule(
+                                Collections.emptyMap())),
+                new PreloadedRiderFactory(preloadedRider),
                 Collections.singleton(visitorFactory));
 
         visitor.visit(stop);
@@ -359,35 +361,34 @@ public class TransitRideVisitorTest {
                         new Latitude(47.63411, Latitude.DEGREES)));
         final Movement movement = new TransitRideMovement(
                 "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 20, 0),
-                "stop2", "Stop 2",
-                LocalDateTime.of(2017, Month.FEBRUARY, 13, 8, 30, 0));
+                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new PreloadedTrip(
                 new TripId("tripId"), "Somewhere via Elsewhere", "-1",
                 Collections.emptyList());
         final TransitStop nextStop = new TransitStop(
-                sector, "2", "Elsehere", new Geodetic2DPoint(
+                sector, "2", "Elsewhere", new Geodetic2DPoint(
                         new Longitude(-122.3087554, Longitude.DEGREES),
                         new Latitude(47.6755263, Latitude.DEGREES)));
-        nextStop.addPath(START_TIME, PATH);
+        nextStop.addPath(KEY_TIME, PATH);
 
-        final PreloadedRider rider = new PreloadedRider(
-                Collections.singleton(trip), Collections.singletonList(
-                new RiderStatus(nextStop, LocalDateTime.of(
-                                2017, Month.FEBRUARY, 12, 22, 10, 0))),
-                movement);
+        final PreloadedRider preloadedRider = new PreloadedRider(
+                Collections.singleton(new RiderStatus(stop, DUMMY_TIME, trip)),
+                Collections.singletonList(
+                        new RiderStatus(nextStop, DUMMY_TIME, trip)), movement);
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
+        final LocalDateTime cutoffTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 50);
+        final LocalDateTime currentTime = LocalDateTime.of(
+                2017, Month.JANUARY, 21, 10, 45);
+
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
-                PATH, null, 0, 5, ImmutableMap.of(stop,
-                                            new PreloadedLocalSchedule(
-                                                    Collections.emptyMap())),
-                new PreloadedRiderFactory(rider),
+                KEY_TIME, cutoffTime, currentTime, PATH, null, 0, 5,
+                ImmutableMap.of(stop, new PreloadedLocalSchedule(
+                                Collections.emptyMap())),
+                new PreloadedRiderFactory(preloadedRider),
                 Collections.singleton(visitorFactory));
 
         visitor.visit(stop);

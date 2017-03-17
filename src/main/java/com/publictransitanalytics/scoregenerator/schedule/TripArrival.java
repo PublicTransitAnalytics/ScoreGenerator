@@ -16,18 +16,17 @@
 package com.publictransitanalytics.scoregenerator.schedule;
 
 import java.time.LocalDateTime;
-import java.util.Set;
+import lombok.Value;
 
 /**
- * A transit schedule as viewed from the context of a transit stop. Imagine a
- * bus schedule posted at a stop: it has the times the times the vehicles
- * arrives, and (perhaps implicitly) the trip that said vehicle is on.
- *
+ * A record of the time when a trip passes through a stop.
+ * 
  * @author Public Transit Analytics
  */
-public interface LocalSchedule {
-
-    Set<TripArrival> getArrivalsInRange(final LocalDateTime startTime,
-                                     final LocalDateTime endTime);
-
+@Value
+public class TripArrival {
+    
+    private final Trip trip;
+    private final LocalDateTime time;
+    
 }

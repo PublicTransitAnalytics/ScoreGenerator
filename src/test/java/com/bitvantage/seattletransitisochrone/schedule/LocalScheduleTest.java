@@ -15,7 +15,6 @@
  */
 package com.bitvantage.seattletransitisochrone.schedule;
 
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingLocalSchedule;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RouteDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.ServiceSet;
@@ -30,11 +29,12 @@ import com.bitvantage.seattletransitisochrone.testhelpers.PreloadedServiceTypeCa
 import com.bitvantage.seattletransitisochrone.testhelpers.PreloadedStopTimesDirectory;
 import com.bitvantage.seattletransitisochrone.testhelpers.PreloadedTripDetailsDirectory;
 import com.google.common.collect.ImmutableMap;
+import com.publictransitanalytics.scoregenerator.schedule.TripArrival;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -93,7 +93,7 @@ public class LocalScheduleTest {
                                         WEEKDAY_SERVICE))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertEquals(1, trips.size());
@@ -123,7 +123,7 @@ public class LocalScheduleTest {
                                         WEEKDAY_SERVICE))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertEquals(1, trips.size());
@@ -153,7 +153,7 @@ public class LocalScheduleTest {
                                         WEEKDAY_SERVICE))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertEquals(1, trips.size());
@@ -183,7 +183,7 @@ public class LocalScheduleTest {
                                         WEEKDAY_SERVICE))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertEquals(1, trips.size());
@@ -213,7 +213,7 @@ public class LocalScheduleTest {
                                         WEEKDAY_SERVICE))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertTrue(trips.isEmpty());
@@ -242,7 +242,7 @@ public class LocalScheduleTest {
                         new TripDetails(TRIP_ID_1, ROUTE_ID_1, "WEEKEND"))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertTrue(trips.isEmpty());
@@ -272,7 +272,7 @@ public class LocalScheduleTest {
                                         WEEKDAY_SERVICE))),
                 ImmutableMap.of(ASSOCIATED_STOP_ID, ASSOCIATED_STOP));
 
-        final Collection<Trip> trips = schedule.getTripsInRange(
+        final Set<TripArrival> trips = schedule.getArrivalsInRange(
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 10, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 26, 9, 20, 0));
         Assert.assertTrue(trips.isEmpty());

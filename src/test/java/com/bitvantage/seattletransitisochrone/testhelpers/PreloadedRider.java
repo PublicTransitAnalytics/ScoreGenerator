@@ -20,8 +20,8 @@ import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -31,19 +31,19 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PreloadedRider implements Rider {
 
-    private final Collection<Trip> trips;
+    private final Set<RiderStatus> entryPoints;
     private final List<RiderStatus> riderStatuses;
     private final Movement movement;
     
     private int calls;
 
     @Override
-    public Collection<Trip> getTrips(LocalDateTime currentTime) {
-        return trips;
+    public Set<RiderStatus> getEntryPoints(final LocalDateTime currentTime) {
+        return entryPoints;
     }
 
     @Override
-    public void takeTrip(Trip trip) {
+    public void takeTrip(final Trip trip, final LocalDateTime entryTime) {
     }
 
     @Override

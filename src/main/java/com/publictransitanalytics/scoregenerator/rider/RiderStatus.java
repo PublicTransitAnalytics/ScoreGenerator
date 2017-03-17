@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.rider;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 import lombok.Value;
 
@@ -29,5 +30,6 @@ public class RiderStatus {
 
     TransitStop stop;
     LocalDateTime time;
+    Trip trip;
 
 }

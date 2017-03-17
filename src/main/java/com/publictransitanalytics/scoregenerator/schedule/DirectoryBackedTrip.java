@@ -23,6 +23,8 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 import lombok.Getter;
 
 /**
@@ -39,7 +41,8 @@ public class DirectoryBackedTrip implements Trip {
     @Getter
     private final String routeNumber;
 
-    private final TreeBidirectionalMap<TransitStop, LocalDateTime> tripSchedule;
+    private final NavigableMap<Integer, TransitStop> tripSequence;
+    private final TreeBidirectionalMap<LocalDateTime, Integer> timeSequence;
 
     public DirectoryBackedTrip(final TripId tripId, final String routeName,
                                final String routeNumber,
@@ -52,10 +55,10 @@ public class DirectoryBackedTrip implements Trip {
         this.routeName = routeName;
         this.routeNumber = routeNumber;
 
-        tripSchedule = new TreeBidirectionalMap<>(
-                (TransitStop o1, TransitStop o2) -> o1.getStopId().compareTo(
-                        o2.getStopId()),
-                (LocalDateTime o1, LocalDateTime o2) -> o1.compareTo(o2));
+        tripSequence = new TreeMap<>();
+        timeSequence = new TreeBidirectionalMap<>(
+                (LocalDateTime o1, LocalDateTime o2) -> o1.compareTo(o2),
+                (Integer o1, Integer o2) -> Integer.compare(o1, o2));
 
         final TransitTime earliestTransitTime = TransitTime.fromLocalTime(
                 earliestTime.toLocalTime());
@@ -91,48 +94,52 @@ public class DirectoryBackedTrip implements Trip {
         for (final TripStop stop : stops) {
             final LocalDateTime time = startTime.plus(TransitTime
                     .durationBetween(startTransitTime, stop.getTime()));
+            final int sequence = stop.getSequence();
 
             /* The trip may go beyond the edges of the current map or beyond
              * the allowable time. 
              * Do not add these stops. */
             if (stopIdMap.containsKey(stop.getStopId())) {
-                tripSchedule.put(stopIdMap.get(stop.getStopId()), time);
+                tripSequence.put(sequence, stopIdMap.get(stop.getStopId()));
+                timeSequence.put(time, sequence);
             }
         }
     }
 
     @Override
-    public ScheduledLocation getNextScheduledLocation(final TransitStop stop) {
-        final LocalDateTime currentTime = tripSchedule.get(stop);
+    public ScheduledLocation getNextScheduledLocation(
+            final TransitStop stop, final LocalDateTime time) {
 
-        final LocalDateTime nextTime = tripSchedule.nextValue(currentTime);
-        if (nextTime == null) {
+        final int sequence = timeSequence.get(time);
+        final Map.Entry<Integer, TransitStop> higherEntry
+                = tripSequence.higherEntry(sequence);
+        
+        if (higherEntry == null) {
             return null;
         }
-        final TransitStop nextStop = tripSchedule.getKey(nextTime);
-
-        return new ScheduledLocation(nextStop, tripSchedule.get(nextStop));
+        final TransitStop nextStop = higherEntry.getValue();
+        final LocalDateTime nextTime 
+                = timeSequence.getKey(higherEntry.getKey());
+        
+        return new ScheduledLocation(nextStop, nextTime);
     }
 
     @Override
-    public ScheduledLocation
-            getPreviousScheduledLocation(final TransitStop stop) {
-        final LocalDateTime currentTime = tripSchedule.get(stop);
+    public ScheduledLocation getPreviousScheduledLocation(
+            final TransitStop stop, final LocalDateTime time) {
 
-        final LocalDateTime previousTime
-                = tripSchedule.previousValue(currentTime);
-        if (previousTime == null) {
+        final int sequence = timeSequence.get(time);
+        final Map.Entry<Integer, TransitStop> lowerEntry
+                = tripSequence.lowerEntry(sequence);
+        
+        if (lowerEntry == null) {
             return null;
         }
-        final TransitStop previousStop = tripSchedule.getKey(previousTime);
-
-        return new ScheduledLocation(previousStop,
-                                     tripSchedule.get(previousStop));
-    }
-
-    @Override
-    public LocalDateTime getScheduledTime(final TransitStop stop) {
-        return tripSchedule.get(stop);
+        final TransitStop nextStop = lowerEntry.getValue();
+        final LocalDateTime nextTime 
+                = timeSequence.getKey(lowerEntry.getKey());
+        
+        return new ScheduledLocation(nextStop, nextTime);
     }
 
 }

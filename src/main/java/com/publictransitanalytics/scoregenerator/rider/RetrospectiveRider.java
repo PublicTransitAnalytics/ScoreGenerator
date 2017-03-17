@@ -22,7 +22,8 @@ import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 import java.time.LocalDateTime;
-import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A transit rider looks backward for how they could have gotten to a location.
@@ -35,7 +36,9 @@ public class RetrospectiveRider implements Rider {
     private final TransitStop initialPosition;
     private final LocalDateTime cutoffTime;
 
+    private LocalDateTime initialTime;
     private TransitStop position;
+    private LocalDateTime time;
     private Trip currentTrip;
 
     public RetrospectiveRider(final TransitStop initialPosition,
@@ -48,20 +51,26 @@ public class RetrospectiveRider implements Rider {
     }
 
     @Override
-    public Collection<Trip> getTrips(final LocalDateTime currentTime) {
-        return schedule.getTripsInRange(cutoffTime, currentTime);
+    public Set<RiderStatus> getEntryPoints(
+            final LocalDateTime currentTime) {
+        return schedule.getArrivalsInRange(cutoffTime, currentTime).stream()
+                .map(arrival -> new RiderStatus(
+                        initialPosition, arrival.getTime(), arrival.getTrip()))
+                .collect(Collectors.toSet());
     }
 
     @Override
-    public void takeTrip(final Trip trip) {
+    public void takeTrip(final Trip trip, LocalDateTime entryTime) {
         currentTrip = trip;
+        time = entryTime;
+        initialTime = entryTime;
         position = initialPosition;
     }
 
     @Override
     public boolean canContinueTrip() {
         final ScheduledLocation continued
-                = currentTrip.getPreviousScheduledLocation(position);
+                = currentTrip.getPreviousScheduledLocation(position, time);
         if (continued == null) {
             return false;
         }
@@ -70,23 +79,22 @@ public class RetrospectiveRider implements Rider {
 
     @Override
     public RiderStatus continueTrip() {
-        final ScheduledLocation location = currentTrip
-                .getPreviousScheduledLocation(position);
+        final ScheduledLocation location
+                = currentTrip.getPreviousScheduledLocation(position, time);
         position = location.getLocation();
+        time = location.getScheduledTime();
         return new RiderStatus(location.getLocation(),
-                               location.getScheduledTime());
+                               location.getScheduledTime(), currentTrip);
     }
 
     @Override
     public Movement getRideRecord() {
         return new TransitRideMovement(
                 currentTrip.getTripId().getBaseId(),
-                currentTrip.getRouteNumber(),
-                currentTrip.getRouteName(),
-                position.getStopId(), position.getStopName(),
-                currentTrip.getScheduledTime(position),
-                initialPosition.getStopId(), initialPosition.getStopName(),
-                currentTrip.getScheduledTime(initialPosition));
+                currentTrip.getRouteNumber(), currentTrip.getRouteName(),
+                position.getStopId(), position.getStopName(), 
+                time, initialPosition.getStopId(), 
+                initialPosition.getStopName(), initialTime);
     }
 
 }

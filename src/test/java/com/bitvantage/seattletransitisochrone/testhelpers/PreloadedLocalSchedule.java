@@ -17,11 +17,13 @@ package com.bitvantage.seattletransitisochrone.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.schedule.LocalSchedule;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.TripArrival;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -37,9 +39,11 @@ public class PreloadedLocalSchedule implements LocalSchedule {
     }
 
     @Override
-    public Collection<Trip> getTripsInRange(final LocalDateTime startTime,
+    public Set<TripArrival> getArrivalsInRange(final LocalDateTime startTime,
                                             final LocalDateTime endTime) {
-        return map.subMap(startTime, true, endTime, true).values();
+        return map.subMap(startTime, true, endTime, true).entrySet().stream()
+                .map(entry -> new TripArrival(entry.getValue(), entry.getKey()))
+                .collect(Collectors.toSet());
     }
 
 }

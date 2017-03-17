@@ -42,7 +42,8 @@ public class PreloadedTrip implements Trip {
     private final List<ScheduledLocation> stops;
 
     @Override
-    public ScheduledLocation getNextScheduledLocation(final TransitStop stop) {
+    public ScheduledLocation getNextScheduledLocation(
+            final TransitStop stop, final LocalDateTime time) {
         int index = stops.stream().map(
                 scheduledLocation -> scheduledLocation.getLocation()).collect(
                         Collectors.toList()).indexOf(stop);
@@ -54,7 +55,7 @@ public class PreloadedTrip implements Trip {
 
     @Override
     public ScheduledLocation getPreviousScheduledLocation(
-            final TransitStop stop) {
+            final TransitStop stop, final LocalDateTime time) {
         int index = stops.stream().map(
                 scheduledLocation -> scheduledLocation.getLocation()).collect(
                         Collectors.toList()).indexOf(stop);
@@ -62,13 +63,6 @@ public class PreloadedTrip implements Trip {
             return null;
         }
         return stops.get(index - 1);
-    }
-
-    @Override
-    public LocalDateTime getScheduledTime(final TransitStop stop) {
-        Optional<ScheduledLocation> location = stops.stream().filter(
-                testStop -> stop.equals(testStop.getLocation())).findFirst();
-        return location.isPresent() ? location.get().getScheduledTime() : null;
     }
 
 }

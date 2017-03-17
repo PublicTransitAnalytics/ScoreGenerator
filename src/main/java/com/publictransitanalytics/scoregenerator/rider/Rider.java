@@ -16,26 +16,27 @@
 package com.publictransitanalytics.scoregenerator.rider;
 
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.TripArrival;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import java.time.LocalDateTime;
-import java.util.Collection;
+import java.util.Set;
 
 /**
  * Models the capabilities of a transit rider that consults a schedule and takes
  * trips.
- * 
+ *
  * @author Public Transit Analytics
  */
 public interface Rider {
 
-    Collection<Trip> getTrips(LocalDateTime currentTime);
+    Set<RiderStatus> getEntryPoints(LocalDateTime currentTime);
 
-    public void takeTrip(Trip trip);
+    void takeTrip(Trip trip, LocalDateTime entryTime);
 
-    public boolean canContinueTrip();
+    boolean canContinueTrip();
 
-    public RiderStatus continueTrip();
+    RiderStatus continueTrip();
 
-    public Movement getRideRecord();
+    Movement getRideRecord();
 
 }

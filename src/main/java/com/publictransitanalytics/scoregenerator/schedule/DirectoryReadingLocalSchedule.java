@@ -27,17 +27,18 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.key
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RouteDetails;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * A transit schedule as viewed from the context of a transit stop backed by
  * directories.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Slf4j
@@ -46,14 +47,14 @@ public class DirectoryReadingLocalSchedule implements LocalSchedule {
     final TransitStop associatedStop;
     final NavigableMap<LocalDateTime, Trip> timeTripMap;
 
-    public DirectoryReadingLocalSchedule(final TransitStop associatedStop,
-                         final LocalDateTime earliestTime,
-                         final LocalDateTime latestTime,
-                         final StopTimesDirectory stopTimesDirectory,
-                         final RouteDetailsDirectory routeDetailsDirectory,
-                         final ServiceTypeCalendar serviceTypeCalendar,
-                         final TripDetailsDirectory tripDetailsDirectory,
-                         final Map<String, TransitStop> stopIdMap) {
+    public DirectoryReadingLocalSchedule(
+            final TransitStop associatedStop, final LocalDateTime earliestTime,
+            final LocalDateTime latestTime, 
+            final StopTimesDirectory stopTimesDirectory,
+            final RouteDetailsDirectory routeDetailsDirectory,
+            final ServiceTypeCalendar serviceTypeCalendar,
+            final TripDetailsDirectory tripDetailsDirectory,
+            final Map<String, TransitStop> stopIdMap) {
 
         this.associatedStop = associatedStop;
         timeTripMap = new TreeMap<>();
@@ -66,7 +67,7 @@ public class DirectoryReadingLocalSchedule implements LocalSchedule {
                 earliestTime.toLocalDate());
 
         createTrips(earliestTransitTime, latestTransitTime, serviceSet,
-                    earliestTime, latestTime, routeDetailsDirectory, 
+                    earliestTime, latestTime, routeDetailsDirectory,
                     stopTimesDirectory, tripDetailsDirectory, stopIdMap);
 
         final TransitTime earliestOverflowedTransitTime = TransitTime
@@ -111,10 +112,10 @@ public class DirectoryReadingLocalSchedule implements LocalSchedule {
                 final RouteDetails routeDetails = routeDetailsDirectory
                         .getRouteDetails(tripDetails.getRouteId());
 
-                final DirectoryBackedTrip trip = new DirectoryBackedTrip(tripId, routeDetails.getRouteName(),
-                                           routeDetails.getRouteNumber(),
-                                           startTime, endTime,
-                                           stopTimesDirectory, stopIdMap);
+                final DirectoryBackedTrip trip = new DirectoryBackedTrip(
+                        tripId, routeDetails.getRouteName(),
+                        routeDetails.getRouteNumber(), startTime, endTime,
+                        stopTimesDirectory, stopIdMap);
                 final LocalDateTime time = startTime.plus(
                         TransitTime.durationBetween(startTransitTime,
                                                     stopTime.getTime()));
@@ -124,8 +125,11 @@ public class DirectoryReadingLocalSchedule implements LocalSchedule {
     }
 
     @Override
-    public Collection<Trip> getTripsInRange(final LocalDateTime startTime,
-                                            final LocalDateTime endTime) {
-        return timeTripMap.subMap(startTime, true, endTime, true).values();
+    public Set<TripArrival> getArrivalsInRange(
+            final LocalDateTime startTime, final LocalDateTime endTime) {
+        return timeTripMap.subMap(startTime, true, endTime, true).entrySet()
+                .stream()
+                .map(entry -> new TripArrival(entry.getValue(), entry.getKey()))
+                .collect(Collectors.toSet());
     }
 }
