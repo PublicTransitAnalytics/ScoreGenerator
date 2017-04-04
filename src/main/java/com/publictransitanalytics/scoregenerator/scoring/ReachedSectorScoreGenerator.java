@@ -16,11 +16,12 @@
 package com.publictransitanalytics.scoregenerator.scoring;
 
 import com.publictransitanalytics.scoregenerator.SectorTable;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
  * Score generator for counting the number of sectors reached.
- * 
+ *
  * @author Public Transit Analytics
  */
 public class ReachedSectorScoreGenerator {
@@ -30,8 +31,28 @@ public class ReachedSectorScoreGenerator {
         int totalSectors = sectorTable.getSectors().size();
         int reachedSectors = (int) sectorTable.getSectors().stream().filter(
                 sector -> !sector.getPaths().get(time).isEmpty()).count();
-        
+
         return (reachedSectors * 1000) / totalSectors;
+    }
+
+    public int getScore(
+            final SectorTable sectorTable, final LocalDateTime startTime,
+            final LocalDateTime endTime, final Duration samplingInterval) {
+        int totalSectors = sectorTable.getSectors().size();
+
+        LocalDateTime time = startTime;
+        int samples = 0;
+        int totalReachedSectors = 0;
+        while (time.isBefore(endTime)) {
+            final LocalDateTime currentTime = time;
+            totalReachedSectors += (int) sectorTable.getSectors().stream()
+                    .filter(sector -> !sector.getPaths().get(currentTime)
+                            .isEmpty()).count();
+            time = time.plus(samplingInterval);
+            samples++;
+        }
+
+        return (totalReachedSectors * 1000) / (totalSectors * samples);
     }
 
 }

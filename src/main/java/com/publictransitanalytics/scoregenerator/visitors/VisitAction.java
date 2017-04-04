@@ -20,7 +20,8 @@ import java.util.concurrent.RecursiveAction;
 import lombok.RequiredArgsConstructor;
 
 /**
- *
+ * Action for a visitor visiting a location.
+ * 
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor

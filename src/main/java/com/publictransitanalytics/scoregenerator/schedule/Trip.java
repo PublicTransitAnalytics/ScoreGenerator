@@ -15,38 +15,89 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
+import com.bitvantage.bitvantagetypes.collections.TreeBidirectionalMap;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import lombok.Getter;
 
 /**
- * Models the path of a transit vehicle: the stops it takes and the times at 
- * which it makes them.
+ * The course of a single transit vehicle bound over a time interval.
+ *
  * @author Public Transit Analytics
  */
-public interface Trip {
+public class Trip {
 
-    /**
-     * Get the next stop on the trip, or null if it does not exist.
-     * @param stop The current stop.
-     * @param time The current time.
-     * @return the next stop.
-     */
-    ScheduledLocation getNextScheduledLocation(
-            TransitStop stop, LocalDateTime time);
+    @Getter
+    private final TripId tripId;
+    @Getter
+    private final String routeName;
+    @Getter
+    private final String routeNumber;
 
-    /**
-     * Get the previous stop on the trip, or null if it does not exist.
-     * @param stop The current stop.
-     * @param time The current time.
-     * @return the previous  stop.
-     */
-    ScheduledLocation getPreviousScheduledLocation(
-            TransitStop stop, LocalDateTime time);
-    
-    TripId getTripId();
-    
-    String getRouteNumber();
-    
-    String getRouteName();
-    
+    private final NavigableMap<Integer, TransitStop> tripSequence;
+    private final TreeBidirectionalMap<LocalDateTime, Integer> timeSequence;
+
+    public Trip(final TripId tripId, final String routeName,
+                final String routeNumber, final Set<ScheduleEntry> stops) {
+        this.tripId = tripId;
+        this.routeName = routeName;
+        this.routeNumber = routeNumber;
+
+        tripSequence = new TreeMap<>();
+        timeSequence = new TreeBidirectionalMap<>(
+                (LocalDateTime o1, LocalDateTime o2) -> o1.compareTo(o2),
+                (Integer o1, Integer o2) -> Integer.compare(o1, o2));
+        for (final ScheduleEntry stop : stops) {
+            tripSequence.put(stop.getSequence(), stop.getStop());
+            timeSequence.put(stop.getTime(), stop.getSequence());
+        }
+    }
+
+    public ScheduledLocation getNextScheduledLocation(
+            final TransitStop stop, final LocalDateTime time) {
+
+        final int sequence = timeSequence.get(time);
+        final Map.Entry<Integer, TransitStop> higherEntry
+                = tripSequence.higherEntry(sequence);
+
+        if (higherEntry == null) {
+            return null;
+        }
+        final TransitStop nextStop = higherEntry.getValue();
+        final LocalDateTime nextTime
+                = timeSequence.getKey(higherEntry.getKey());
+
+        return new ScheduledLocation(nextStop, nextTime);
+    }
+
+    public ScheduledLocation getPreviousScheduledLocation(
+            final TransitStop stop, final LocalDateTime time) {
+
+        final int sequence = timeSequence.get(time);
+        final Map.Entry<Integer, TransitStop> lowerEntry
+                = tripSequence.lowerEntry(sequence);
+
+        if (lowerEntry == null) {
+            return null;
+        }
+        final TransitStop nextStop = lowerEntry.getValue();
+        final LocalDateTime nextTime
+                = timeSequence.getKey(lowerEntry.getKey());
+
+        return new ScheduledLocation(nextStop, nextTime);
+    }
+
+    public List<ScheduledLocation> getCompleteSchedule() {
+        return tripSequence.keySet().stream().map(
+                k -> new ScheduledLocation(tripSequence.get(k),
+                                           timeSequence.getKey(k)))
+                .collect(Collectors.toList());
+    }
+
 }

@@ -18,7 +18,9 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 
 /**
- *
+ * Describes the information pertaining to the rider's arrival to a Sector at
+ * a time.
+ * 
  * @author Public Transit Analytics
  */
 public class DestinationInformation {

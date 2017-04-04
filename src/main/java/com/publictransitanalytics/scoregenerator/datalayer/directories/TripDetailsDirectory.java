@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
+import java.util.Set;
 
 /**
  * Directory that contains information about transit trips.
@@ -26,5 +27,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.key
 public interface TripDetailsDirectory {
 
     TripDetails getTripDetails(final TripGroupKey key);
+    
+    Set<TripDetails> getAllTripDetails();
 
 }

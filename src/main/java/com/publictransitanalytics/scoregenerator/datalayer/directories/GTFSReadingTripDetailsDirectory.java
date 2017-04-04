@@ -16,11 +16,13 @@
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
 import com.bitvantage.bitvantagecaching.Store;
+import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -48,6 +50,12 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
     public TripDetails getTripDetails(final TripGroupKey key) {
         return tripDetailsStore.get(key);
     }
+    
+    
+    @Override
+    public Set<TripDetails> getAllTripDetails() {
+        return ImmutableSet.copyOf(tripDetailsStore.getValues());
+    }
 
     private void parseTripsFile(final Reader tripReader) throws IOException {
 
@@ -69,5 +77,6 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
                 = new TripDetails(tripId, routeId, serviceType);
         tripDetailsStore.put(new TripGroupKey(tripId), details);
     }
+
 
 }

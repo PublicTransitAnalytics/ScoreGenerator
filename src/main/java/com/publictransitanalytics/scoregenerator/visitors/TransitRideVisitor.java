@@ -20,17 +20,18 @@ import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.Rider;
-import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
-import com.publictransitanalytics.scoregenerator.schedule.LocalSchedule;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
+import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
 
 /**
  * A visitor that visits Locations, noting recording its presence and taking all
@@ -45,11 +46,10 @@ public class TransitRideVisitor implements Visitor {
     final private LocalDateTime cutoffTime;
     private final LocalDateTime currentTime;
     private final MovementPath currentPath;
-    private final TripId lastTrip;
+    private final TripId lastTripId;
     private final int currentDepth;
     private final int maxDepth;
-    private final Map<TransitStop, LocalSchedule> scheduleBook;
-    private final RiderFactory riderFactory;
+    private final RiderBehaviorFactory riderFactory;
     private final Set<VisitorFactory> visitorFactories;
 
     @Override
@@ -66,21 +66,22 @@ public class TransitRideVisitor implements Visitor {
         transitStop.addPath(keyTime, currentPath);
 
         if (currentDepth < maxDepth) {
-            final LocalSchedule schedule = scheduleBook.get(transitStop);
-            final Rider rider = riderFactory.getNewRider(
-                    transitStop, schedule, cutoffTime);
+            final ScheduleReader reader = riderFactory.getNewReader();
+            final Set<EntryPoint> entryPoints = reader
+                    .getEntryPoints(transitStop, currentTime, cutoffTime);
 
-            final Set<RiderStatus> entryPoints
-                    = rider.getEntryPoints(currentTime);
             final ImmutableList.Builder<VisitAction> visitActionsBuilder
                     = ImmutableList.builder();
-
-            for (final RiderStatus entryPoint : entryPoints) {
+            for (final EntryPoint entryPoint : entryPoints) {
+                
+                final Trip trip = entryPoint.getTrip();
                 /* Don't get on a trip that we came from. Either we just got off
-                * of it, or we walked around a bit and came to it again.
+                 * of it, or we walked around a bit and came to it again.
                  */
-                if (!entryPoint.getTrip().getTripId().equals(lastTrip)) {
-                    rider.takeTrip(entryPoint.getTrip(), entryPoint.getTime());
+                if (!trip.getTripId().equals(lastTripId)) {
+                    final Rider rider = riderFactory.getNewRider(
+                            transitStop, entryPoint.getTime(), cutoffTime,
+                            entryPoint.getTrip());
                     while (rider.canContinueTrip()) {
 
                         final RiderStatus status = rider.continueTrip();

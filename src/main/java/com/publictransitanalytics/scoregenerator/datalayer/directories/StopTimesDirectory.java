@@ -19,6 +19,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Tra
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStop;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Directory that describes where transit vehicles are located. Allows
@@ -34,20 +35,39 @@ public interface StopTimesDirectory {
      * @param endTime The end, inclusive, of the time range to search.
      * @return The TripStops making up the portion of the trip in the interval.
      */
-    List<TripStop> getStopsOnTrip(final TripId tripId,
-                                  final TransitTime startTime,
-                                  final TransitTime endTime);
+    List<TripStop> getStopsOnTripInRange(
+            final TripId tripId, final TransitTime startTime,
+            final TransitTime endTime);
 
     /**
-     * The the transit trips passing through a stop between the two specified 
+     * Gets the stops on a given transit trip after a given time.
+     *
+     * @param tripId The id of the trip.
+     * @param startTime The beginning, inclusive, of the time range to search.
+     * @return The TripStops making up the portion of the trip in the interval.
+     */
+    List<TripStop> getSubsequentStopsOnTrip(
+            final TripId tripId, final TransitTime startTime);
+
+    /**
+     * The the transit trips passing through a stop between the two specified
      * times.
+     *
      * @param stopId The stop id at which to find trips.
      * @param startTime The beginning, inclusive, of the time range to search.
      * @param endTime The end, inclusive, of the time range to search.
      * @return The TripStops indicating of the trips passing through.
      */
-    List<TripStop> getStopsAtStop(final String stopId,
-                                  final TransitTime startTime,
-                                  final TransitTime endTime);
+    List<TripStop> getStopsAtStopInRange(final String stopId,
+                                         final TransitTime startTime,
+                                         final TransitTime endTime);
+    
+    /**
+     * Get all the qualified trip ids. This is the only directory that deals 
+     * with qualified trip ids, and should not be confused with the TripDetails,
+     * which are unqualified.
+     * @return A set of a all tripIds.
+     */
+    Set<TripId> getTripIds();
 
 }

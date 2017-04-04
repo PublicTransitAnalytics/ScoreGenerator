@@ -16,15 +16,12 @@
 package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.publictransitanalytics.scoregenerator.Mode;
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.LocalSchedule;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 
 /**
  * Creates a TransitRideVisitor.
@@ -35,8 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class TransitRideVisitorFactory implements VisitorFactory {
 
     private final int maxDepth;
-    private final Map<TransitStop, LocalSchedule> scheduleBook;
-    private final RiderFactory riderFactory;
+    private final RiderBehaviorFactory riderFactory;
     
     @Override
     public Visitor getVisitor(final LocalDateTime keyTime,
@@ -47,8 +43,8 @@ public class TransitRideVisitorFactory implements VisitorFactory {
                               final int currentDepth,
                               final Set<VisitorFactory> visitorFactories) {
         return new TransitRideVisitor(keyTime, cutoffTime, currentTime,
-                currentPath, lastTrip, currentDepth, maxDepth, scheduleBook, 
-                riderFactory, visitorFactories);
+                currentPath, lastTrip, currentDepth, maxDepth, riderFactory, 
+                visitorFactories);
 
     }
 

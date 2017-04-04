@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.FrequencyRecord;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RawTripStop;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
@@ -25,6 +26,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.key
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripSequenceKey;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SortedSetMultimap;
 import com.google.common.collect.TreeMultimap;
 import java.io.FileNotFoundException;
@@ -33,6 +35,7 @@ import java.io.Reader;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -48,42 +51,58 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
 
     final RangedStore<TripSequenceKey, TripStop> tripSequenceStore;
     final RangedStore<StopTimeKey, TripStop> stopTimesStore;
+    final Store<TripIdKey, TripId> tripsStore;
 
     public GTFSReadingStopTimesDirectory(
             final RangedStore<TripSequenceKey, TripStop> tripSequenceStore,
             final RangedStore<StopTimeKey, TripStop> stopTimesStore,
-            final Reader frequenciesReader, final Reader stopTimesReader) 
+            final Store<TripIdKey, TripId> tripsStore,
+            final Reader frequenciesReader, final Reader stopTimesReader)
             throws IOException {
 
         final ImmutableMap.Builder<String, FrequencyRecord> builder
                 = ImmutableMap.builder();
         this.tripSequenceStore = tripSequenceStore;
         this.stopTimesStore = stopTimesStore;
+        this.tripsStore = tripsStore;
 
-        if (tripSequenceStore.isEmpty() || stopTimesStore.isEmpty()) {
+        if (tripSequenceStore.isEmpty() || stopTimesStore.isEmpty()
+                || tripsStore.isEmpty()) {
             parseFrequenciesFile(builder, frequenciesReader);
             parseStopTimesFile(builder.build(), stopTimesReader);
         }
     }
 
     @Override
-    public List<TripStop> getStopsAtStop(final String stopId,
-                                         final TransitTime startTime,
-                                         final TransitTime endTime) {
+    public List<TripStop> getStopsAtStopInRange(
+            final String stopId, final TransitTime startTime,
+            final TransitTime endTime) {
         return stopTimesStore.getValuesInRange(
                 StopTimeKey.getMinKey(stopId, startTime),
                 StopTimeKey.getMaxKey(stopId, endTime));
     }
 
     @Override
-    public List<TripStop> getStopsOnTrip(final TripId tripId,
-                                         final TransitTime startTime,
-                                         final TransitTime endTime) {
+    public List<TripStop> getStopsOnTripInRange(
+            final TripId tripId, final TransitTime startTime,
+            final TransitTime endTime) {
         final TripIdKey baseKey = new TripIdKey(tripId.getRawTripId(), tripId
                                                 .getQualifier());
         return tripSequenceStore.getValuesInRange(
                 new TripSequenceKey(baseKey, startTime, 0),
                 new TripSequenceKey(baseKey, endTime, Integer.MAX_VALUE));
+    }
+
+    @Override
+    public List<TripStop> getSubsequentStopsOnTrip(
+            final TripId tripId, final TransitTime startTime) {
+        return getStopsOnTripInRange(tripId, startTime,
+                                     TransitTime.MAX_TRANSIT_TIME);
+    }
+
+    @Override
+    public Set<TripId> getTripIds() {
+        return ImmutableSet.copyOf(tripsStore.getValues());
     }
 
     private void parseFrequenciesFile(
@@ -112,7 +131,6 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
             final ImmutableMap<String, FrequencyRecord> frequencyRecordMap,
             final Reader stopTimesReader)
             throws FileNotFoundException, IOException {
-        log.info("Building stop time directory.");
 
         final CSVParser parser = new CSVParser(stopTimesReader,
                                                CSVFormat.DEFAULT.withHeader());
@@ -138,11 +156,13 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
                                           stopSequence);
                 rawTripMap.put(rawTripId, rawTripStop);
             } else {
+                final TripId tripId = new TripId(rawTripId);
                 final TripStop tripStop = new TripStop(stopTime, stopId,
-                                                       new TripId(rawTripId),
-                                                       stopSequence);
+                                                       tripId, stopSequence);
+                final TripIdKey tripIdKey = new TripIdKey(rawTripId);
+                tripsStore.put(tripIdKey, tripId);
                 tripSequenceStore.put(new TripSequenceKey(
-                        new TripIdKey(rawTripId), stopTime, stopSequence),
+                        tripIdKey, stopTime, stopSequence),
                                       tripStop);
                 stopTimesStore.put(StopTimeKey.getWriteKey(stopId, stopTime),
                                    tripStop);
@@ -169,10 +189,12 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
                     final TripStop tripStop = new TripStop(stopTime, stopId,
                                                            tripId, stopSequence);
 
+                    final TripIdKey tripIdKey = new TripIdKey(
+                            tripId.getRawTripId(), tripId.getQualifier());
+                    
+                    tripsStore.put(tripIdKey, tripId);
                     tripSequenceStore.put(new TripSequenceKey(
-                            new TripIdKey(tripId.getRawTripId(), tripId
-                                          .getQualifier()), stopTime,
-                            stopSequence), tripStop);
+                            tripIdKey, stopTime, stopSequence), tripStop);
                     stopTimesStore
                             .put(StopTimeKey.getWriteKey(stopId, stopTime),
                                  tripStop);

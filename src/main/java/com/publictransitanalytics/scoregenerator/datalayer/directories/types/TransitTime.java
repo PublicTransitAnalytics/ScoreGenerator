@@ -25,7 +25,7 @@ import lombok.Value;
  * TransitTime is a local time that allows improper times, such as 25 hours to
  * indicate overlapping into the next actual day on the same day of transit
  * service. TransitTime has second granularity.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Value
@@ -38,10 +38,10 @@ public class TransitTime implements Comparable<TransitTime> {
             "(\\d\\d):(\\d\\d):(\\d\\d)");
 
     public static final TransitTime MIN_TRANSIT_TIME
-            = new TransitTime((byte) 0, (byte) 0, (byte) 0);
+            = new TransitTime(0, 0, 0);
 
     public static final TransitTime MAX_TRANSIT_TIME
-            = new TransitTime((byte) 47, (byte) 59, (byte) 59);
+            = new TransitTime(47, 59, 59);
 
     /**
      * Create a transit time from an ordinary time.
@@ -50,8 +50,8 @@ public class TransitTime implements Comparable<TransitTime> {
      * @return The transit time.
      */
     public static TransitTime fromLocalTime(LocalTime time) {
-        return new TransitTime((byte) time.getHour(), (byte) time.getMinute(),
-                               (byte) time.getSecond());
+        return new TransitTime(time.getHour(), time.getMinute(),
+                               time.getSecond());
     }
 
     /**
@@ -63,14 +63,13 @@ public class TransitTime implements Comparable<TransitTime> {
      * @return The transit time.
      */
     public static TransitTime fromLocalTimeWithOverflow(LocalTime time) {
-        return new TransitTime((byte) (time.getHour() + 24),
-                               (byte) time.getMinute(),
-                               (byte) time.getSecond());
+        return new TransitTime(time.getHour() + 24, time.getMinute(),
+                               time.getSecond());
     }
 
-    private final byte hours;
-    private final byte minutes;
-    private final byte seconds;
+    private final int hours;
+    private final int minutes;
+    private final int seconds;
 
     /**
      * Create a new TransitTime with the specified hours, minutes, and seconds.
@@ -79,8 +78,7 @@ public class TransitTime implements Comparable<TransitTime> {
      * @param minutes Number of minutes. Must be less than 60.
      * @param seconds Number of seconds. Must be less than 60.
      */
-    public TransitTime(final byte hours, final byte minutes,
-                       final byte seconds) {
+    public TransitTime(final int hours, final int minutes, final int seconds) {
         if (seconds > 59 || seconds < 0) {
             throw new IllegalArgumentException();
         }
@@ -106,9 +104,9 @@ public class TransitTime implements Comparable<TransitTime> {
     public static TransitTime parse(final String stringRep) {
         Matcher matcher = PATTERN.matcher(stringRep);
         if (matcher.matches()) {
-            return new TransitTime(Byte.valueOf(matcher.group(1)),
-                                   Byte.valueOf(matcher.group(2)),
-                                   Byte.valueOf(matcher.group(3)));
+            return new TransitTime(Integer.valueOf(matcher.group(1)),
+                                   Integer.valueOf(matcher.group(2)),
+                                   Integer.valueOf(matcher.group(3)));
         }
         throw new IllegalArgumentException();
     }
@@ -157,12 +155,13 @@ public class TransitTime implements Comparable<TransitTime> {
     public TransitTime plus(Duration duration) {
         long newSeconds = duration.getSeconds() + (this.hours * 3600)
                                   + (this.minutes * 60) + this.seconds;
-        byte justSeconds = (byte) (newSeconds % 60);
+        long justSeconds = (newSeconds % 60);
         long newMinutes = newSeconds / 60;
-        byte justMinutes = (byte) (newMinutes % 60);
+        long justMinutes = (newMinutes % 60);
         long newHours = newMinutes / 60;
 
-        return new TransitTime((byte) newHours, justMinutes, justSeconds);
+        return new TransitTime((int) newHours, (int) justMinutes,
+                               (int) justSeconds);
     }
 
     /**

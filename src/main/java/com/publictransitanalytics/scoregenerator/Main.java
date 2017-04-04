@@ -62,17 +62,11 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.output.SingleTimePointMap;
 import com.publictransitanalytics.scoregenerator.output.SingleTimeSectorMap;
-import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
-import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
-import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingLocalSchedule;
-import com.publictransitanalytics.scoregenerator.schedule.LocalSchedule;
+import com.publictransitanalytics.scoregenerator.rider.ForwardRiderBehaviorFactory;
+import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.tracking.RetrospectivePath;
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
-import com.publictransitanalytics.scoregenerator.tracking.WalkMovement;
 import com.publictransitanalytics.scoregenerator.visitors.TransitRideVisitorFactory;
 import com.publictransitanalytics.scoregenerator.visitors.VisitorFactory;
 import com.publictransitanalytics.scoregenerator.visitors.WalkVisitorFactory;
@@ -81,12 +75,9 @@ import com.publictransitanalytics.scoregenerator.walking.ForwardTimeTracker;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multiset;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -97,9 +88,7 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
@@ -112,8 +101,12 @@ import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableList;
-import com.google.gson.typeadapters.RuntimeTypeAdapterFactory;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
+import com.publictransitanalytics.scoregenerator.output.TimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
+import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingEntryPoints;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoints;
 import com.publictransitanalytics.scoregenerator.scoring.ReachedSectorScoreGenerator;
 import java.io.FileReader;
 import java.io.Reader;
@@ -121,6 +114,7 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.util.concurrent.ForkJoinPool;
 import org.opensextant.geodesy.Geodetic2DBounds;
+import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 
 @Slf4j
 /**
@@ -153,6 +147,7 @@ public class Main {
             = "candidate_distance_store";
     private static final String TRIP_SEQUENCE_STORE = "trip_sequence_store";
     private static final String STOP_TIMES_STORE = "stop_times_store";
+    private static final String TRIPS_STORE = "trips_store";
     private static final String SERVICE_TYPES_STORE = "service_types_store";
     private static final String ROUTE_DETAILS_STORE = "route_details_store";
     private static final String TRIP_DETAILS_STORE = "trip_details_store";
@@ -195,7 +190,8 @@ public class Main {
         final Geodetic2DPoint startingCoordinate = (coordinateString == null)
                 ? null : new Geodetic2DPoint(coordinateString);
 
-        final LocalDateTime startTime = LocalDateTime.parse(ns.get("startTime"));
+        final LocalDateTime startTime
+                = LocalDateTime.parse(ns.get("startTime"));
 
         final String endTimeString = ns.get("endTime");
 
@@ -217,7 +213,8 @@ public class Main {
 
         final String samplingIntervalString = ns.get("samplingInterval");
         final Duration samplingInterval = (samplingIntervalString != null)
-                ? Duration.parse(samplingIntervalString) : null;
+                ? Duration.ofMinutes(Long.valueOf(samplingIntervalString))
+                : null;
 
         final Store<StopIdKey, StopDetails> stopDetailsBackingStore
                 = new LmdbStore<>(base.resolve(revision).resolve(
@@ -334,8 +331,19 @@ public class Main {
             startLocation = pointIdMap.get(startingStop);
         }
 
-        final ImmutableMap.Builder<TransitStop, LocalSchedule> scheduleBookBuilder
-                = ImmutableMap.builder();
+        final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
+                = new LmdbStore<>(base.resolve(revision).resolve(
+                        TRIP_DETAILS_STORE), TripDetails.class);
+        final Cache<TripGroupKey, TripDetails> tripDetailsCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        Store<TripGroupKey, TripDetails> tripDetailsStore
+                = new CachingStore(tripDetailsBackingStore, tripDetailsCache);
+
+        final Reader tripReader = new FileReader(base.resolve(revision).resolve(
+                GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
+        final TripDetailsDirectory tripDetailsDirectory
+                = new GTFSReadingTripDetailsDirectory(tripDetailsStore,
+                                                      tripReader);
 
         final RangedStore<TripSequenceKey, TripStop> tripSequenceBackingStore
                 = new RangedLmdbStore<>(base.resolve(revision).resolve(
@@ -356,6 +364,14 @@ public class Main {
                 = new RangedCachingStore<>(stopTimesBackingStore,
                                            stopTimesCache);
 
+        final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
+                base.resolve(revision).resolve(TRIPS_STORE),
+                TripId.class);
+        final Cache<TripIdKey, TripId> tripsCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<TripIdKey, TripId> tripsStore
+                = new CachingStore<>(tripsBackingStore, tripsCache);
+
         final Path frequenciesPath = base.resolve(revision).resolve(
                 GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
         final Reader frequenciesReader;
@@ -369,8 +385,8 @@ public class Main {
 
         final GTFSReadingStopTimesDirectory stopTimesDirectory
                 = new GTFSReadingStopTimesDirectory(
-                        tripSequenceStore, stopTimesStore, frequenciesReader,
-                        stopTimesReader);
+                        tripSequenceStore, stopTimesStore, tripsStore,
+                        frequenciesReader, stopTimesReader);
 
         final Store<DateKey, ServiceSet> serviceTypesBackingStore
                 = new LmdbStore<>(
@@ -410,31 +426,10 @@ public class Main {
                 = new GTFSReadingRouteDetailsDirectory(
                         routeDetailsStore, routeReader);
 
-        final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
-                = new LmdbStore<>(base.resolve(revision).resolve(
-                        TRIP_DETAILS_STORE), TripDetails.class);
-        final Cache<TripGroupKey, TripDetails> tripDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        Store<TripGroupKey, TripDetails> tripDetailsStore
-                = new CachingStore(tripDetailsBackingStore, tripDetailsCache);
-
-        final Reader tripReader = new FileReader(base.resolve(revision).resolve(
-                GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
-        final TripDetailsDirectory tripDetailsDirectory
-                = new GTFSReadingTripDetailsDirectory(tripDetailsStore,
-                                                      tripReader);
-
-        for (final TransitStop transitStop : stopIdMap.values()) {
-            final LocalSchedule localSchedule
-                    = new DirectoryReadingLocalSchedule(
-                            transitStop, earliestTime, latestTime,
-                            stopTimesDirectory, routeDetailsDirectory,
-                            serviceTypeCalendar, tripDetailsDirectory,
-                            stopIdMap);
-            scheduleBookBuilder.put(transitStop, localSchedule);
-        }
-        final Map<TransitStop, LocalSchedule> scheduleBook
-                = scheduleBookBuilder.build();
+        final EntryPoints entryPoints = new DirectoryReadingEntryPoints(
+                earliestTime, latestTime, stopTimesDirectory, 
+                routeDetailsDirectory, tripDetailsDirectory, 
+                serviceTypeCalendar, stopIdMap);
 
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
                 = new LmdbStore(base.resolve(WALKING_DISTANCE_STORE),
@@ -474,18 +469,18 @@ public class Main {
                         sectorTable.getSectors(), pointMap.values(),
                         maxWalkingDistance, candidateDistancesStore);
 
-        final RiderFactory riderFactory;
+        final RiderBehaviorFactory riderFactory;
         final TimeTracker timeTracker;
         final DistanceFilter distanceFilter;
         final MovementPath basePath;
         if (backward == null || !backward) {
-            riderFactory = new ForwardRiderFactory();
+            riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
             timeTracker = new ForwardTimeTracker();
             distanceFilter = new ManyDestinationsDistanceFilter(
                     distanceClient);
             basePath = new ForwardMovingPath(ImmutableList.of());
         } else {
-            riderFactory = new RetrospectiveRiderFactory();
+            riderFactory = new RetrospectiveRiderBehaviorFactory(entryPoints);
             timeTracker = new BackwardTimeTracker();
             distanceFilter = new ManyOriginsDistanceFilter(distanceClient);
             basePath = new RetrospectivePath(ImmutableList.of());
@@ -496,13 +491,8 @@ public class Main {
                         distanceFilter, distanceEstimator, timeTracker,
                         ESTIMATE_WALK_METERS_PER_SECOND, locationIdMap);
 
-        final ForkJoinPool pool = ForkJoinPool.commonPool();
-
-        final UUID uuid = UUID.randomUUID();
-
         final Set<VisitorFactory> visitorFactories = ImmutableSet.of(
-                new TransitRideVisitorFactory(
-                        MAX_DEPTH, scheduleBook, riderFactory),
+                new TransitRideVisitorFactory(MAX_DEPTH, riderFactory),
                 new WalkVisitorFactory(
                         MAX_DEPTH, reachabilityClient, timeTracker));
 
@@ -511,22 +501,15 @@ public class Main {
                 = new ReachedSectorScoreGenerator();
 
         try {
-            final Workflow workflow = new Workflow(
-                    pointIdMap.values(), sectorTable.getSectors(), pool,
-                    timeTracker, basePath, visitorFactories);
+            final Workflow workflow
+                    = new Workflow(timeTracker, basePath, visitorFactories);
 
-            final RuntimeTypeAdapterFactory<Movement> adapter
-                    = RuntimeTypeAdapterFactory.of(Movement.class)
-                    .registerSubtype(WalkMovement.class)
-                    .registerSubtype(TransitRideMovement.class);
-
-            final Gson gson = new GsonBuilder().setPrettyPrinting()
-                    .registerTypeAdapterFactory(adapter).create();
+            final Gson gson = new GsonBuilder().setPrettyPrinting().create();
             final String output;
 
             if (pointMode == null || !pointMode) {
                 if (endTime == null && durations.size() == 1) {
-                    workflow.getSectorPathsAtTime(
+                    workflow.getPathsAtTime(
                             durations.first(), startTime, startLocation);
                     final int score = scoreGenerator.getScore(
                             sectorTable, startTime);
@@ -537,14 +520,23 @@ public class Main {
                     output = gson.toJson(map);
                     publisher.publish(output);
                 } else if (durations.size() == 1) {
-                    throw new UnsupportedOperationException(
-                            "No problem to solve.");
+                    workflow.getPathsOverRange(
+                            startLocation, durations.first(), startTime,
+                            endTime, samplingInterval);
+                    final int score = scoreGenerator.getScore(
+                            sectorTable, startTime, endTime, samplingInterval);
+                    final TimeRangeSectorMap map = new TimeRangeSectorMap(
+                            sectorTable, startLocation, startTime, endTime,
+                            samplingInterval, durations.first(), score, 10);
+
+                    output = gson.toJson(map);
+                    publisher.publish(output);
                 } else {
                     throw new UnsupportedOperationException(
                             "No problem to solve.");
                 }
             } else if (endTime == null && durations.size() == 1) {
-                workflow.getSectorPathsAtTime(
+                workflow.getPathsAtTime(
                         durations.first(), startTime, startLocation);
                 final SingleTimePointMap map = new SingleTimePointMap(
                         sectorTable, pointIdMap.values(), startLocation,
@@ -552,8 +544,7 @@ public class Main {
                 output = gson.toJson(map);
                 publisher.publish(output);
             } else if (durations.size() == 1) {
-                throw new UnsupportedOperationException(
-                        "No problem to solve.");
+                throw new UnsupportedOperationException("No problem to solve.");
             } else if (durations.size() > 1) {
                 throw new UnsupportedOperationException("No problem to solve.");
             } else {
@@ -561,130 +552,7 @@ public class Main {
             }
 
         } finally {
-            pool.shutdown();
+            ForkJoinPool.commonPool().shutdown();
         }
     }
-
-    private static String getBounds(final Sector sector) {
-        return String.format(
-                "%f,%f,%f,%f", sector.getBounds().getNorthLat().inDegrees(),
-                sector.getBounds().getSouthLat().inDegrees(),
-                sector.getBounds().getEastLon().inDegrees(),
-                sector.getBounds().getWestLon().inDegrees());
-    }
-
-    private static String getFirstPath(final Sector sector,
-                                       final LocalDateTime time) {
-        final MovementPath path = sector.getPaths().get(time).first();
-
-        return String.join(" => ", path.getMovements().stream().map(
-                           Movement::getShortForm).collect(
-                                   Collectors.toList()));
-    }
-
-    private static void produceSingleTimeSectorMapOutput(
-            final Duration duration, final String uuid,
-            final PointLocation startLocation,
-            final LocalDateTime startTime, final Workflow workflow,
-            final Gson gson) throws
-            IOException, ExecutionException, InterruptedException {
-        final FileWriter writer = new FileWriter(String.format(
-                "%s-freq-from=%s-time=[%s]-dur=%s", uuid, startLocation
-                .getIdentifier(),
-                startTime, duration));
-        try {
-            final Multimap<Sector, MovementPath> pointPaths = workflow.
-                    getSectorPathsAtTime(duration, startTime, startLocation);
-
-            final ImmutableMap.Builder<String, String> outputBuilder
-                    = ImmutableMap.
-                    <String, String>builder();
-            for (final Sector sector : pointPaths.keySet()) {
-                outputBuilder.put(getBounds(sector),
-                                  getFirstPath(sector, startTime));
-            }
-            final ImmutableMap<String, String> output = outputBuilder.build();
-
-            final String outputString = gson.toJson(output);
-            writer.write(outputString);
-        } finally {
-            writer.close();
-        }
-    }
-
-    private static void produceTimeRangeSectorMapOutput(
-            final Duration duration, final Duration interval, final String uuid,
-            final PointLocation startLocation, final LocalDateTime startTime,
-            final LocalDateTime endTime, final Workflow workflow,
-            final Gson gson) throws IOException, ExecutionException,
-            InterruptedException {
-        final FileWriter writer = new FileWriter(String.format(
-                "%s-freq-from=%s-time=[%s-%s(%s)]-dur=%s", uuid,
-                startLocation.getIdentifier(), startTime, endTime, interval,
-                duration));
-        try {
-            final Multiset<PointLocation> output
-                    = workflow.getReachedPointsOverRange(
-                            startLocation, duration, startTime, endTime,
-                            interval);
-
-            final String outputString = gson.toJson(output);
-            writer.write(outputString);
-        } finally {
-            writer.close();
-        }
-    }
-
-    private static void produceSingleTimePointMapOutput(
-            final Duration duration, final String uuid,
-            final PointLocation startLocation, final LocalDateTime startTime,
-            final Workflow workflow, final Gson gson) throws IOException,
-            ExecutionException, InterruptedException {
-        final FileWriter writer = new FileWriter(String.format(
-                "%s-freq-from=%s-time=[%s]-dur=%s", uuid, startLocation
-                .getIdentifier(),
-                startTime, duration));
-        try {
-            final Multimap<PointLocation, MovementPath> pointPaths = workflow.
-                    getLocationPathsAtTime(duration, startTime, startLocation);
-
-            final ImmutableSet.Builder<String> outputBuilder = ImmutableSet
-                    .builder();
-            for (final PointLocation location : pointPaths.keySet()) {
-                outputBuilder.add(String.format(
-                        "%f,%f", location.getLocation().getLatitudeAsDegrees(),
-                        location.getLocation().getLongitudeAsDegrees()));
-            }
-            final Set<String> output = outputBuilder.build();
-
-            final String outputString = gson.toJson(output);
-            writer.write(outputString);
-        } finally {
-            writer.close();
-        }
-    }
-
-    private static void produceTimeRangePointMapOutput(
-            final Duration duration, final Duration interval, final String uuid,
-            final PointLocation startLocation, final LocalDateTime startTime,
-            final LocalDateTime endTime, final Workflow workflow,
-            final Gson gson) throws IOException, ExecutionException,
-            InterruptedException {
-        final FileWriter writer = new FileWriter(String.format(
-                "%s-freq-from=%s-time=[%s-%s(%s)]-dur=%s", uuid,
-                startLocation.getIdentifier(), startTime, endTime, interval,
-                duration));
-        try {
-            final Multiset<PointLocation> output
-                    = workflow.getReachedPointsOverRange(
-                            startLocation, duration, startTime, endTime,
-                            interval);
-
-            final String outputString = gson.toJson(output);
-            writer.write(outputString);
-        } finally {
-            writer.close();
-        }
-    }
-
 }

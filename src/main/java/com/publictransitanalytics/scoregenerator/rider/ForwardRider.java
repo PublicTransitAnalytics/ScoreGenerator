@@ -17,14 +17,10 @@ package com.publictransitanalytics.scoregenerator.rider;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
-import com.publictransitanalytics.scoregenerator.schedule.LocalSchedule;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import com.publictransitanalytics.scoregenerator.schedule.TripArrival;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 import java.time.LocalDateTime;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * A transit rider that moves forward through time, like a normal rider.
@@ -33,45 +29,31 @@ import java.util.stream.Collectors;
  */
 public class ForwardRider implements Rider {
 
-    private final LocalSchedule schedule;
     private final TransitStop initialPosition;
+    private final LocalDateTime entryTime;
+
+    private final Trip trip;
     private final LocalDateTime cutoffTime;
 
-    private LocalDateTime initialTime;
     private TransitStop position;
     private LocalDateTime time;
-    private Trip currentTrip;
 
     public ForwardRider(final TransitStop initialPosition,
-                        final LocalSchedule schedule,
-                        final LocalDateTime cutoffTime) {
+                        final LocalDateTime entryTime,
+                        final LocalDateTime cutoffTime,
+                        final Trip trip) {
         this.initialPosition = initialPosition;
+        this.entryTime = entryTime;
         position = initialPosition;
-        this.schedule = schedule;
-        this.cutoffTime = cutoffTime;
-    }
-
-    @Override
-    public Set<RiderStatus> getEntryPoints(
-            final LocalDateTime currentTime) {
-        return schedule.getArrivalsInRange(currentTime, cutoffTime).stream()
-                .map(arrival -> new RiderStatus(
-                        initialPosition, arrival.getTime(), arrival.getTrip()))
-                .collect(Collectors.toSet());
-    }
-
-    @Override
-    public void takeTrip(final Trip trip, LocalDateTime entryTime) {
-        currentTrip = trip;
         time = entryTime;
-        initialTime = entryTime;
-        position = initialPosition;
+        this.cutoffTime = cutoffTime;
+        this.trip = trip;
     }
 
     @Override
     public boolean canContinueTrip() {
         final ScheduledLocation continued
-                = currentTrip.getNextScheduledLocation(position, time);
+                = trip.getNextScheduledLocation(position, time);
         if (continued == null) {
             return false;
         }
@@ -81,20 +63,20 @@ public class ForwardRider implements Rider {
     @Override
     public RiderStatus continueTrip() {
         final ScheduledLocation location
-                = currentTrip.getNextScheduledLocation(position, time);
+                = trip.getNextScheduledLocation(position, time);
         position = location.getLocation();
         time = location.getScheduledTime();
         return new RiderStatus(location.getLocation(),
-                               location.getScheduledTime(), currentTrip);
+                               location.getScheduledTime(), trip);
     }
 
     @Override
     public Movement getRideRecord() {
         return new TransitRideMovement(
-                currentTrip.getTripId().getBaseId(),
-                currentTrip.getRouteNumber(), currentTrip.getRouteName(),
+                trip.getTripId().getBaseId(),
+                trip.getRouteNumber(), trip.getRouteName(),
                 initialPosition.getStopId(), initialPosition.getStopName(),
-                initialTime, position.getStopId(), position.getStopName(), 
+                entryTime, position.getStopId(), position.getStopName(),
                 time);
     }
 

@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
+import java.time.LocalDate;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -29,10 +30,11 @@ import lombok.Value;
 public class TripId {
 
     @NonNull
-    public String baseId;
-    public String offset;
+    private final String baseId;
+    private final LocalDate serviceDay;
+    private final  String offset;
     
-    public TripId(final String baseId) {
-        this(baseId, null);
+    public TripId(final String baseId, final LocalDate serviceDay) {
+        this(baseId, serviceDay, null);
     }
 }
