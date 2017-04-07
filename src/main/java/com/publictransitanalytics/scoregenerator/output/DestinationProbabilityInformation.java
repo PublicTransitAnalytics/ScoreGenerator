@@ -40,22 +40,25 @@ public class DestinationProbabilityInformation {
             final SortedSetMultimap<LocalDateTime, MovementPath> sectorPaths,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Duration samplingInterval, final int buckets) {
-        final LocalDateTime time = startTime;
         final int samples
                 = (int) (Duration.between(startTime, endTime).getSeconds()
                          / samplingInterval.getSeconds());
         final Multiset<SimplePath> paths = HashMultiset.create();
 
+        LocalDateTime time = startTime;
         int count = 0;
         while (!time.isAfter(endTime)) {
-            time.plus(samplingInterval);
-            count += sectorPaths.containsKey(time) ? 1 : 0;
-            paths.add(new SimplePath(sectorPaths.get(time).first()));
+            if (sectorPaths.containsKey(time)) {
+                count += 1;
+                paths.add(new SimplePath(sectorPaths.get(time).first()));
+            }
+            time = time.plus(samplingInterval);
         }
 
+        final int bucketSize = samples / buckets;
         reachCount = count;
-        reachBucket = (reachCount * buckets) / samples;
-        pathCounts = paths.stream().collect(Collectors.toMap(
+        reachBucket = ((reachCount + bucketSize - 1) * buckets) / samples;
+        pathCounts = paths.elementSet().stream().collect(Collectors.toMap(
                 k -> k, k -> paths.count(k)));
     }
 

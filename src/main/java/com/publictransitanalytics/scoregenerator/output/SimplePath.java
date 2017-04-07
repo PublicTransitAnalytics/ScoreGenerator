@@ -18,11 +18,13 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.util.stream.Collectors;
+import lombok.EqualsAndHashCode;
 
 /**
  *
  * @author Public Transit Analytics
  */
+@EqualsAndHashCode
 public class SimplePath {
 
     private final String pathString;
