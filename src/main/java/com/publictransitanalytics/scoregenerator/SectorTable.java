@@ -112,10 +112,15 @@ public class SectorTable {
 
         return sector;
     }
+    
+    public Sector getSector(final Geodetic2DBounds bounds) {
+        return sectorTable.get(bounds.getSouthLat(), bounds.getWestLon());
+    }
 
     public ImmutableSet<Sector> getSectors() {
         return ImmutableSet.<Sector>builder().addAll(sectorTable.values())
                 .build();
     }
+    
 
 }

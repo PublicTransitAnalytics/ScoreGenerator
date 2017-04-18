@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
 import com.bitvantage.bitvantagecaching.Store;
-import com.publictransitanalytics.scoregenerator.SeattleIsochroneFatalException;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.ServiceSet;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.DateKey;
 import com.google.common.collect.HashMultimap;
@@ -156,7 +156,7 @@ public class GTFSReadingServiceTypeCalendar implements ServiceTypeCalendar {
                 serviceTypesMap.remove(date, serviceType);
                 break;
             default:
-                throw new SeattleIsochroneFatalException(String.format(
+                throw new ScoreGeneratorFatalException(String.format(
                         "Invalid exception type %s", exceptionType));
             }
         }

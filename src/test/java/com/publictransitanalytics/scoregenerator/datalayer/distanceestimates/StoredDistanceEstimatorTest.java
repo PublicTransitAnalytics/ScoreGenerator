@@ -20,7 +20,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.Dis
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.StoredDistanceEstimator;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.mocks.MapRangedStore;
-import com.publictransitanalytics.scoregenerator.SeattleIsochroneFatalException;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableSet;
@@ -172,7 +172,7 @@ public class StoredDistanceEstimatorTest {
         try {
             estimator.getReachableLocations(location1.getIdentifier(), 5000);
             Assert.fail();
-        } catch (final SeattleIsochroneFatalException e) {
+        } catch (final ScoreGeneratorFatalException e) {
         }
     }
 

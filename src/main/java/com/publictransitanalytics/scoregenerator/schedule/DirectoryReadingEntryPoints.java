@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.schedule;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.TreeBasedTable;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.RouteDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
@@ -72,6 +73,13 @@ public class DirectoryReadingEntryPoints implements EntryPoints {
 
             final RouteDetails routeDetails = routeDetailsDirectory
                     .getRouteDetails(tripDetails.getRouteId());
+            if (routeDetails == null) {
+                throw new ScoreGeneratorFatalException(String.format(
+                        "Trip %s provided route id %s, " +
+                        "which does not have route details.",
+                        tripDetails, tripDetails.getRouteId()));
+            }
+
             final String routeName = routeDetails.getRouteName();
             final String routeNumber = routeDetails.getRouteNumber();
 

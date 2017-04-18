@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.publishing;
 
-import com.publictransitanalytics.scoregenerator.SeattleIsochroneFatalException;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import java.io.FileWriter;
 import java.io.IOException;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -34,14 +34,14 @@ public class LocalFilePublisher {
             writer = new FileWriter(fileName);
             writer.write(output);
         } catch (IOException e) {
-            throw new SeattleIsochroneFatalException(e);
+            throw new ScoreGeneratorFatalException(e);
         } finally {
             try {
                 if (writer != null) {
                     writer.close();
                 }
             } catch (IOException e) {
-                throw new SeattleIsochroneFatalException(e);
+                throw new ScoreGeneratorFatalException(e);
             }
         }
     }

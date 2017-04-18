@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.publictransitanalytics.scoregenerator.Mode;
-import com.publictransitanalytics.scoregenerator.SeattleIsochroneFatalException;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
@@ -136,7 +136,7 @@ public class WalkVisitor implements Visitor {
                     action.join();
                 }
             } catch (final DistanceClientException e) {
-                throw new SeattleIsochroneFatalException(e);
+                throw new ScoreGeneratorFatalException(e);
             }
         }
     }

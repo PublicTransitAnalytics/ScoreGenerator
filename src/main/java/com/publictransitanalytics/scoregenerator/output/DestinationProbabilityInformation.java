@@ -18,11 +18,13 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.SortedSetMultimap;
+import com.google.common.collect.TreeMultimap;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.NavigableSet;
 
 /**
  * Describes the information pertaining to the rider's arrival at a Sector over
@@ -33,8 +35,9 @@ import java.util.stream.Collectors;
 public class DestinationProbabilityInformation {
 
     final int reachCount;
+    final String reachPercentage;
     final int reachBucket;
-    final Map<SimplePath, Integer> pathCounts;
+    final Map<SimplePath, String> pathPercentage;
 
     DestinationProbabilityInformation(
             final SortedSetMultimap<LocalDateTime, MovementPath> sectorPaths,
@@ -57,9 +60,29 @@ public class DestinationProbabilityInformation {
 
         final int bucketSize = samples / buckets;
         reachCount = count;
+        reachPercentage = String.format("%.1f%%", ((double) count * 100)
+                                                          / samples);
         reachBucket = ((reachCount + bucketSize - 1) * buckets) / samples;
-        pathCounts = paths.elementSet().stream().collect(Collectors.toMap(
-                k -> k, k -> paths.count(k)));
+
+        final TreeMultimap<Integer, SimplePath> frequencyMap
+                = TreeMultimap.create(
+                        Integer::compareTo,
+                        (p1, p2) -> p1.toString().compareTo(p2.toString()));
+
+        for (SimplePath path : paths.elementSet()) {
+            frequencyMap.put(paths.count(path), path);
+        }
+
+        pathPercentage = new LinkedHashMap<>();
+        for (final Integer frequency : frequencyMap.keySet().descendingSet()) {
+            final NavigableSet<SimplePath> pathsForFrequency
+                    = frequencyMap.get(frequency);
+            for (final SimplePath pathForFrequency : pathsForFrequency) {
+                final String percentString = String.format(
+                        "%.1f%%", ((double) frequency * 100) / samples);
+                pathPercentage.put(pathForFrequency, percentString);
+            }
+        }
     }
 
 }

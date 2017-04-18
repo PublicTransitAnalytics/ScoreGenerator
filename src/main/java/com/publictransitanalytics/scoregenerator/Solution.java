@@ -13,16 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator;
+
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import lombok.Value;
 
 /**
- *
+ * The solution to a single-map problem.
+ * 
  * @author Public Transit Analytics
  */
-public enum MapType {
-    
-    SINGLE_TIME_SECTOR,
-    TIME_RANGE_SECTOR,
-    COMPARATIVE_TIME_RANGE_SECTOR;
+@Value
+public class Solution {
+    private final SectorTable sectorTable;
+    private final PointLocation startLocation;
     
 }

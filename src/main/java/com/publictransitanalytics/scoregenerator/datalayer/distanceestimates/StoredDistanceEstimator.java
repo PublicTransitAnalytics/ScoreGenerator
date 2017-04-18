@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
 
 import com.bitvantage.bitvantagecaching.RangedStore;
-import com.publictransitanalytics.scoregenerator.SeattleIsochroneFatalException;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
@@ -76,7 +76,7 @@ public class StoredDistanceEstimator implements DistanceEstimator {
                                              final double distanceMeters) {
 
         if (distanceMeters > maxDistanceMeters) {
-            throw new SeattleIsochroneFatalException(String.format(
+            throw new ScoreGeneratorFatalException(String.format(
                     "Cannot get locations %f meters away; maximum distance is %f.",
                     distanceMeters, maxDistanceMeters));
         }

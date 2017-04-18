@@ -20,13 +20,13 @@ package com.publictransitanalytics.scoregenerator;
  * 
  * @author Public Transit Analytics
  */
-public class SeattleIsochroneFatalException extends RuntimeException {
+public class ScoreGeneratorFatalException extends RuntimeException {
 
-    public SeattleIsochroneFatalException(Exception e) {
+    public ScoreGeneratorFatalException(Exception e) {
         super(e);
     }
 
-    public SeattleIsochroneFatalException(String message) {
+    public ScoreGeneratorFatalException(String message) {
         super(message);
     }
 }

@@ -60,7 +60,6 @@ import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.output.SingleTimePointMap;
 import com.publictransitanalytics.scoregenerator.output.SingleTimeSectorMap;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderBehaviorFactory;
@@ -73,7 +72,6 @@ import com.publictransitanalytics.scoregenerator.visitors.WalkVisitorFactory;
 import com.publictransitanalytics.scoregenerator.walking.BackwardTimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.ForwardTimeTracker;
 import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -84,7 +82,6 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
@@ -103,6 +100,7 @@ import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
+import com.publictransitanalytics.scoregenerator.output.ComparativeTimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.output.TimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingEntryPoints;
@@ -115,6 +113,10 @@ import java.nio.file.Files;
 import java.util.concurrent.ForkJoinPool;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import net.sourceforge.argparse4j.inf.Subparser;
+import net.sourceforge.argparse4j.inf.Subparsers;
 
 @Slf4j
 /**
@@ -140,6 +142,8 @@ public class Main {
     private static final double ESTIMATE_WALK_METERS_PER_SECOND = 1.1;
 
     private static final int MAX_DEPTH = 6;
+
+    private static final int NUM_BUCKETS = 9;
 
     private static final String WALKING_DISTANCE_STORE
             = "new_walking_distance_store";
@@ -167,57 +171,191 @@ public class Main {
             IOException, ArgumentParserException, InterruptedException,
             ExecutionException {
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
-                "SeattleTransitIsochrone").defaultHelp(true)
+                "ScoreGenerator").defaultHelp(true)
                 .description("Generate isochrone map data.");
-        final MutuallyExclusiveGroup group = parser.addMutuallyExclusiveGroup();
-        group.addArgument("-o", "--stopId");
-        group.addArgument("-c", "--coordinate");
-        parser.addArgument("-s", "--startTime");
-        parser.addArgument("-e", "--endTime");
+
         parser.addArgument("-l", "--tripLengths").action(Arguments.append());
         parser.addArgument("-i", "--samplingInterval");
         parser.addArgument("-a", "--apiKey");
-        parser.addArgument("-b", "--base");
-        parser.addArgument("-r", "--revision");
-        parser.addArgument("-n", "--investigate");
+        parser.addArgument("-d", "--baseDirectory");
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
-        parser.addArgument("-p", "--points").action(Arguments.storeTrue());
 
-        final Namespace ns = parser.parseArgs(args);
-        final String startingStop = ns.get("stopId");
+        final Subparsers subparsers = parser.addSubparsers().dest("command");
+        final Subparser generateParser = subparsers.addParser(
+                "generatePointUtility");
+        generateParser.addArgument("-s", "--startTime");
+        generateParser.addArgument("-e", "--endTime");
+        generateParser.addArgument("-f", "--files");
+        generateParser.addArgument("-c", "--startCoordinate");
 
-        final String coordinateString = ns.get("coordinate");
-        final Geodetic2DPoint startingCoordinate = (coordinateString == null)
-                ? null : new Geodetic2DPoint(coordinateString);
+        final Subparser compareParser = subparsers.addParser(
+                "comparePointUtility");
+        compareParser.addArgument("-a", "--startTime");
+        compareParser.addArgument("-s", "--span");
+        compareParser.addArgument("-t", "--baseDate");
+        compareParser.addArgument("-f", "--baseFiles");
+        compareParser.addArgument("-T", "--trialDate");
+        compareParser.addArgument("-F", "--trialFiles");
+        compareParser.addArgument("-c", "--coordinate");
 
-        final LocalDateTime startTime
-                = LocalDateTime.parse(ns.get("startTime"));
+        final Namespace namespace = parser.parseArgs(args);
 
-        final String endTimeString = ns.get("endTime");
+        final List<String> durationMinuteStrings
+                = namespace.getList("tripLengths");
+        final NavigableSet<Duration> durations = new TreeSet<>();
+        for (String durationMinuteString : durationMinuteStrings) {
+            final Duration duration = Duration.ofMinutes(Integer.valueOf(
+                    durationMinuteString));
+            durations.add(duration);
+        }
 
-        final LocalDateTime endTime = (endTimeString != null) ? LocalDateTime.
-                parse(endTimeString) : null;
+        final String baseDirectoryString = namespace.get("baseDirectory");
+        final Path baseDirectory = Paths.get(baseDirectoryString);
 
-        final List<String> durationMinuteStrings = ns.getList("tripLengths");
+        final String key = namespace.get("apiKey");
 
-        final String basePathString = ns.get("base");
-        final Path base = Paths.get(basePathString);
+        final Boolean backwardObject = namespace.getBoolean("backward");
+        final boolean backward
+                = (backwardObject == null) ? false : backwardObject;
 
-        final String key = ns.get("apiKey");
-
-        final String revision = ns.get("revision");
-
-        final Boolean backward = ns.getBoolean("backward");
-
-        final Boolean pointMode = ns.getBoolean("points");
-
-        final String samplingIntervalString = ns.get("samplingInterval");
+        final String samplingIntervalString = namespace.get(
+                "samplingInterval");
         final Duration samplingInterval = (samplingIntervalString != null)
                 ? Duration.ofMinutes(Long.valueOf(samplingIntervalString))
                 : null;
 
+        final String command = namespace.get("command");
+
+        final ReachedSectorScoreGenerator scoreGenerator
+                = new ReachedSectorScoreGenerator();
+        final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        final LocalFilePublisher publisher = new LocalFilePublisher();
+
+        final DistanceClient distanceClient
+                = buildDistanceClient(baseDirectory, key);
+
+        try {
+            if ("generatePointUtility".equals(command)) {
+                final String files = namespace.get("files");
+                final LocalDateTime startTime
+                        = LocalDateTime.parse(namespace.get("startTime"));
+
+                final String endTimeString = namespace.get("endTime");
+
+                final LocalDateTime endTime = (endTimeString != null)
+                        ? LocalDateTime.
+                        parse(endTimeString) : null;
+
+                final String coordinateString 
+                        = namespace.get("coordinate");
+                final Geodetic2DPoint startingCoordinate
+                        = (coordinateString == null)
+                                ? null : new Geodetic2DPoint(coordinateString);
+
+                final Solution solution = generateSolution(
+                        baseDirectory, files, durations, backward, startTime,
+                        endTime, startingCoordinate,
+                        distanceClient, samplingInterval);
+                final SectorTable sectorTable = solution.getSectorTable();
+                final PointLocation startLocation = solution.getStartLocation();
+
+                if (endTime == null && durations.size() == 1) {
+                    final int score = scoreGenerator.getScore(
+                            sectorTable, startTime);
+                    final SingleTimeSectorMap map = new SingleTimeSectorMap(
+                            sectorTable, startLocation, startTime,
+                            durations.first(), score);
+
+                    final String output = gson.toJson(map);
+                    publisher.publish(output);
+                } else if (durations.size() == 1) {
+
+                    final int score = scoreGenerator.getScore(
+                            sectorTable, startTime, endTime, samplingInterval);
+                    final TimeRangeSectorMap map = new TimeRangeSectorMap(
+                            sectorTable, startLocation, startTime, endTime,
+                            samplingInterval, durations.first(), score,
+                            NUM_BUCKETS);
+
+                    final String output = gson.toJson(map);
+                    publisher.publish(output);
+                } else {
+                    throw new UnsupportedOperationException("Unknown problem.");
+                }
+            } else if ("comparePointUtility".equals(command)) {
+                final LocalTime startTime
+                        = LocalTime.parse(namespace.get("startTime"));
+                final Duration span
+                        = Duration.parse(namespace.get("span"));
+
+                final String baseFiles = namespace.get("baseFiles");
+
+                final LocalDate baseDate
+                        = LocalDate.parse(namespace.get("baseDate"));
+
+                final String coordinateString
+                        = namespace.get("coordinate");
+                final Geodetic2DPoint startingCoordinate = new Geodetic2DPoint(
+                        coordinateString);
+
+                final String trialFiles = namespace.get("trialFiles");
+                final LocalDate trialDate
+                        = LocalDate.parse(namespace.get("trialDate"));
+
+                final LocalDateTime baseStartDateTime
+                        = baseDate.atTime(startTime);
+                final LocalDateTime baseEndDateTime
+                        = baseStartDateTime.plus(span);
+
+                final Solution baseSolution = generateSolution(
+                        baseDirectory, baseFiles, durations, backward,
+                        baseStartDateTime, baseEndDateTime, startingCoordinate,
+                        distanceClient, samplingInterval);
+
+                final int baseScore = scoreGenerator.getScore(
+                        baseSolution.getSectorTable(), baseStartDateTime,
+                        baseEndDateTime, samplingInterval);
+
+                final LocalDateTime trialStartDateTime
+                        = trialDate.atTime(startTime);
+                final LocalDateTime trialEndDateTime
+                        = trialStartDateTime.plus(span);
+
+                final Solution trialSolution = generateSolution(
+                        baseDirectory, trialFiles, durations, backward,
+                        trialStartDateTime, trialEndDateTime,
+                        startingCoordinate, distanceClient, samplingInterval);
+
+                final int trialScore = scoreGenerator.getScore(
+                        trialSolution.getSectorTable(), trialStartDateTime,
+                        trialEndDateTime, samplingInterval);
+
+                final ComparativeTimeRangeSectorMap map
+                        = new ComparativeTimeRangeSectorMap(
+                                baseSolution.getSectorTable(), baseDate,
+                                baseScore, trialSolution.getSectorTable(),
+                                trialDate, trialScore, coordinateString,
+                                startTime, span, samplingInterval,
+                                durations.first(), NUM_BUCKETS);
+                final String output = gson.toJson(map);
+                publisher.publish(output);
+            }
+        } finally {
+            ForkJoinPool.commonPool().shutdown();
+        }
+    }
+
+    private static Solution generateSolution(
+            final Path baseDirectory, final String revision,
+            final NavigableSet<Duration> durations, final boolean backward,
+            final LocalDateTime startTime, final LocalDateTime endTime,
+            final Geodetic2DPoint startingCoordinate,
+            final DistanceClient distanceClient,
+            final Duration samplingInterval)
+            throws IOException, ExecutionException, InterruptedException {
+
         final Store<StopIdKey, StopDetails> stopDetailsBackingStore
-                = new LmdbStore<>(base.resolve(revision).resolve(
+                = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
                         STOP_DETAILS_STORE), StopDetails.class);
         final Cache<StopIdKey, StopDetails> stopDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
@@ -225,19 +363,12 @@ public class Main {
                 stopDetailsBackingStore, stopDetailsCache);
 
         final Reader stopDetailsReader = new FileReader(
-                base.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
+                baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
                 STOPS_FILE).toFile());
 
         final GTFSReadingStopDetailsDirectory stopDetailsDirectory
                 = new GTFSReadingStopDetailsDirectory(stopDetailsStore,
                                                       stopDetailsReader);
-
-        final NavigableSet<Duration> durations = new TreeSet<>();
-        for (String durationMinuteString : durationMinuteStrings) {
-            final Duration duration = Duration.ofMinutes(Integer.valueOf(
-                    durationMinuteString));
-            durations.add(duration);
-        }
 
         final LocalDateTime earliestTime;
         if (backward) {
@@ -258,10 +389,6 @@ public class Main {
         } else {
             latestTime = startTime.plus(durations.last());
         }
-
-        final ImmutableBiMap<String, VisitableLocation> locationIdMap;
-        final ImmutableBiMap<String, PointLocation> pointIdMap;
-        final ImmutableBiMap<String, TransitStop> stopIdMap;
 
         SectorTable sectorTable = new SectorTable(
                 SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS);
@@ -298,55 +425,45 @@ public class Main {
                         stopDetails, location));
             }
         }
-        final PointLocation startLocation;
 
-        if (startingCoordinate != null) {
-            final Sector containingSector = sectorTable.findSector(
-                    startingCoordinate);
+        final Sector containingSector = sectorTable.findSector(
+                startingCoordinate);
 
-            if (containingSector == null) {
-                throw new SeattleIsochroneFatalException(String.format(
-                        "Starting location %s was not in the SectorTable",
-                        startingCoordinate));
-            }
-
-            final Landmark startingPoint = new Landmark(containingSector,
-                                                        startingCoordinate);
-            startLocation = startingPoint;
-            locationMapBuilder.put(startingPoint.getIdentifier(),
-                                   startingPoint);
-            pointMapBuilder.put(startingPoint.getIdentifier(), startingPoint);
-            locationIdMap = locationMapBuilder.build();
-            pointIdMap = pointMapBuilder.build();
-            stopIdMap = stopMapBuilder.build();
-        } else {
-            locationIdMap = locationMapBuilder.build();
-            pointIdMap = pointMapBuilder.build();
-            stopIdMap = stopMapBuilder.build();
-
-            if (!pointIdMap.containsKey(startingStop)) {
-                throw new SeattleIsochroneFatalException(String.format(
-                        "Starting location %s is invalid.", startingStop));
-            }
-            startLocation = pointIdMap.get(startingStop);
+        if (containingSector == null) {
+            throw new ScoreGeneratorFatalException(String.format(
+                    "Starting location %s was not in the SectorTable",
+                    startingCoordinate));
         }
 
+        final Landmark startingPoint = new Landmark(containingSector,
+                                                    startingCoordinate);
+        final PointLocation startLocation = startingPoint;
+        locationMapBuilder.put(startingPoint.getIdentifier(),
+                               startingPoint);
+        pointMapBuilder.put(startingPoint.getIdentifier(), startingPoint);
+        final ImmutableBiMap<String, VisitableLocation> locationIdMap
+                = locationMapBuilder.build();
+        final ImmutableBiMap<String, PointLocation> pointIdMap = pointMapBuilder
+                .build();
+        final ImmutableBiMap<String, TransitStop> stopIdMap
+                = stopMapBuilder.build();
+
         final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
-                = new LmdbStore<>(base.resolve(revision).resolve(
+                = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
                         TRIP_DETAILS_STORE), TripDetails.class);
         final Cache<TripGroupKey, TripDetails> tripDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         Store<TripGroupKey, TripDetails> tripDetailsStore
                 = new CachingStore(tripDetailsBackingStore, tripDetailsCache);
 
-        final Reader tripReader = new FileReader(base.resolve(revision).resolve(
-                GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
+        final Reader tripReader = new FileReader(baseDirectory.resolve(revision)
+                .resolve(GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
         final TripDetailsDirectory tripDetailsDirectory
                 = new GTFSReadingTripDetailsDirectory(tripDetailsStore,
                                                       tripReader);
 
         final RangedStore<TripSequenceKey, TripStop> tripSequenceBackingStore
-                = new RangedLmdbStore<>(base.resolve(revision).resolve(
+                = new RangedLmdbStore<>(baseDirectory.resolve(revision).resolve(
                         TRIP_SEQUENCE_STORE), TripStop.class);
         final Cache<TripSequenceKey, TripStop> tripSequenceCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
@@ -356,8 +473,8 @@ public class Main {
 
         final RangedStore<StopTimeKey, TripStop> stopTimesBackingStore
                 = new RangedLmdbStore<>(
-                        base.resolve(revision).resolve(STOP_TIMES_STORE),
-                        TripStop.class);
+                        baseDirectory.resolve(revision)
+                        .resolve(STOP_TIMES_STORE), TripStop.class);
         final Cache<StopTimeKey, TripStop> stopTimesCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
@@ -365,14 +482,15 @@ public class Main {
                                            stopTimesCache);
 
         final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
-                base.resolve(revision).resolve(TRIPS_STORE),
-                TripId.class);
+                baseDirectory.resolve(revision).resolve(TRIPS_STORE),
+                TripId.class
+        );
         final Cache<TripIdKey, TripId> tripsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<TripIdKey, TripId> tripsStore
                 = new CachingStore<>(tripsBackingStore, tripsCache);
 
-        final Path frequenciesPath = base.resolve(revision).resolve(
+        final Path frequenciesPath = baseDirectory.resolve(revision).resolve(
                 GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
         final Reader frequenciesReader;
         if (Files.exists(frequenciesPath)) {
@@ -380,7 +498,8 @@ public class Main {
         } else {
             frequenciesReader = new StringReader("");
         }
-        final Reader stopTimesReader = new FileReader(base.resolve(revision).
+        final Reader stopTimesReader = new FileReader(baseDirectory.resolve(
+                revision).
                 resolve(GTFS_DIRECTORY).resolve(STOP_TIMES_FILE).toFile());
 
         final GTFSReadingStopTimesDirectory stopTimesDirectory
@@ -390,8 +509,8 @@ public class Main {
 
         final Store<DateKey, ServiceSet> serviceTypesBackingStore
                 = new LmdbStore<>(
-                        base.resolve(revision).resolve(SERVICE_TYPES_STORE),
-                        ServiceSet.class);
+                        baseDirectory.resolve(revision).resolve(
+                        SERVICE_TYPES_STORE), ServiceSet.class);
 
         final Cache<DateKey, ServiceSet> serviceTypesCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
@@ -400,9 +519,9 @@ public class Main {
                                      serviceTypesCache);
 
         final Reader calendarReader = new FileReader(
-                base.resolve(revision).resolve(GTFS_DIRECTORY).
+                baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).
                 resolve(CALENDAR_FILE).toFile());
-        final Reader calendarDatesReader = new FileReader(base.
+        final Reader calendarDatesReader = new FileReader(baseDirectory.
                 resolve(revision).resolve(GTFS_DIRECTORY).
                 resolve(CALENDAR_DATES_FILE).toFile());
 
@@ -412,44 +531,32 @@ public class Main {
 
         final Store<RouteIdKey, RouteDetails> routeDetailsBackingStore
                 = new LmdbStore<>(
-                        base.resolve(revision).resolve(ROUTE_DETAILS_STORE),
-                        RouteDetails.class);
+                        baseDirectory.resolve(revision).resolve(
+                        ROUTE_DETAILS_STORE), RouteDetails.class);
         final Cache<RouteIdKey, RouteDetails> routeDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<RouteIdKey, RouteDetails> routeDetailsStore
                 = new CachingStore(routeDetailsBackingStore,
                                    routeDetailsCache);
-        final Reader routeReader = new FileReader(base.resolve(revision)
-                .resolve(GTFS_DIRECTORY).resolve(ROUTES_FILE).toFile());
+        final Reader routeReader = new FileReader(baseDirectory
+                .resolve(revision).resolve(GTFS_DIRECTORY)
+                .resolve(ROUTES_FILE).toFile());
 
         final RouteDetailsDirectory routeDetailsDirectory
                 = new GTFSReadingRouteDetailsDirectory(
                         routeDetailsStore, routeReader);
 
         final EntryPoints entryPoints = new DirectoryReadingEntryPoints(
-                earliestTime, latestTime, stopTimesDirectory, 
-                routeDetailsDirectory, tripDetailsDirectory, 
+                earliestTime, latestTime, stopTimesDirectory,
+                routeDetailsDirectory, tripDetailsDirectory,
                 serviceTypeCalendar, stopIdMap);
 
-        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
-                = new LmdbStore(base.resolve(WALKING_DISTANCE_STORE),
-                                WalkingDistanceMeasurement.class);
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceMemoryCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCacheStore
-                = new CachingStore<>(walkingDistanceBackingStore,
-                                     walkingDistanceMemoryCache);
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCache
-                = new UnboundedCache<>(walkingDistanceCacheStore);
-
-        final DistanceClient distanceClient = new CachingDistanceClient(
-                walkingDistanceCache, new GoogleDistanceClient(key));
-
-        final Path candidateDistancesStorePath = base.resolve(revision)
+        final Path candidateDistancesStorePath = baseDirectory.resolve(revision)
                 .resolve(CANDIDATE_STOP_DISTANCES_STORE);
         final RangedStore<LocationDistanceKey, String> candidateStopDistancesBackingStore
                 = new RangedLmdbStore<>(candidateDistancesStorePath,
-                                        String.class);
+                                        String.class
+                );
         final Cache<LocationDistanceKey, String> candidateStopDistancesCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final RangedStore<LocationDistanceKey, String> candidateDistancesStore
@@ -473,7 +580,7 @@ public class Main {
         final TimeTracker timeTracker;
         final DistanceFilter distanceFilter;
         final MovementPath basePath;
-        if (backward == null || !backward) {
+        if (!backward) {
             riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
             timeTracker = new ForwardTimeTracker();
             distanceFilter = new ManyDestinationsDistanceFilter(
@@ -496,63 +603,38 @@ public class Main {
                 new WalkVisitorFactory(
                         MAX_DEPTH, reachabilityClient, timeTracker));
 
-        final LocalFilePublisher publisher = new LocalFilePublisher();
-        final ReachedSectorScoreGenerator scoreGenerator
-                = new ReachedSectorScoreGenerator();
-
-        try {
-            final Workflow workflow
-                    = new Workflow(timeTracker, basePath, visitorFactories);
-
-            final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            final String output;
-
-            if (pointMode == null || !pointMode) {
-                if (endTime == null && durations.size() == 1) {
-                    workflow.getPathsAtTime(
-                            durations.first(), startTime, startLocation);
-                    final int score = scoreGenerator.getScore(
-                            sectorTable, startTime);
-                    final SingleTimeSectorMap map = new SingleTimeSectorMap(
-                            sectorTable, startLocation, startTime,
-                            durations.first(), score);
-
-                    output = gson.toJson(map);
-                    publisher.publish(output);
-                } else if (durations.size() == 1) {
-                    workflow.getPathsOverRange(
-                            startLocation, durations.first(), startTime,
-                            endTime, samplingInterval);
-                    final int score = scoreGenerator.getScore(
-                            sectorTable, startTime, endTime, samplingInterval);
-                    final TimeRangeSectorMap map = new TimeRangeSectorMap(
-                            sectorTable, startLocation, startTime, endTime,
-                            samplingInterval, durations.first(), score, 10);
-
-                    output = gson.toJson(map);
-                    publisher.publish(output);
-                } else {
-                    throw new UnsupportedOperationException(
-                            "No problem to solve.");
-                }
-            } else if (endTime == null && durations.size() == 1) {
-                workflow.getPathsAtTime(
-                        durations.first(), startTime, startLocation);
-                final SingleTimePointMap map = new SingleTimePointMap(
-                        sectorTable, pointIdMap.values(), startLocation,
-                        startTime, durations.first());
-                output = gson.toJson(map);
-                publisher.publish(output);
-            } else if (durations.size() == 1) {
-                throw new UnsupportedOperationException("No problem to solve.");
-            } else if (durations.size() > 1) {
-                throw new UnsupportedOperationException("No problem to solve.");
-            } else {
-                throw new UnsupportedOperationException("No problem to solve.");
-            }
-
-        } finally {
-            ForkJoinPool.commonPool().shutdown();
+        final Workflow workflow
+                = new Workflow(timeTracker, basePath, visitorFactories);
+        if (endTime == null && durations.size() == 1) {
+            workflow.getPathsAtTime(
+                    durations.first(), startTime, startLocation);
+        } else if (durations.size() == 1) {
+            workflow.getPathsOverRange(
+                    startLocation, durations.first(), startTime,
+                    endTime, samplingInterval);
+        } else {
+            throw new UnsupportedOperationException("No problem to solve.");
         }
+        return new Solution(sectorTable, startLocation);
+
+    }
+
+    private static DistanceClient buildDistanceClient(final Path baseDirectory,
+                                                      final String key) {
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
+                = new LmdbStore(baseDirectory.resolve(WALKING_DISTANCE_STORE),
+                                WalkingDistanceMeasurement.class);
+        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceMemoryCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCacheStore
+                = new CachingStore<>(walkingDistanceBackingStore,
+                                     walkingDistanceMemoryCache);
+        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCache
+                = new UnboundedCache<>(walkingDistanceCacheStore);
+
+        final DistanceClient distanceClient = new CachingDistanceClient(
+                walkingDistanceCache, new GoogleDistanceClient(key));
+
+        return distanceClient;
     }
 }

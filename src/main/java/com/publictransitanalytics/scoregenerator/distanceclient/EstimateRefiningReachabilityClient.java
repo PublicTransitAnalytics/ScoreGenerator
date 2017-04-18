@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.SeattleIsochroneFatalException;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
@@ -61,7 +61,7 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
                 = distanceEstimator.getReachableLocations(
                         locationId, maximumDistanceMeters);
         if (candidateStopIds == null) {
-            throw new SeattleIsochroneFatalException(String.format(
+            throw new ScoreGeneratorFatalException(String.format(
                     "Distance estimates did not contain location %s",
                     locationId));
         }

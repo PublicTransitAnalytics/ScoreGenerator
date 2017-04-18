@@ -28,7 +28,7 @@ import java.util.Map;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
- * A record for drawing the time range probability map.
+ * A record for drawing a time range probability map.
  *
  * @author Public Transit Analytics
  */
