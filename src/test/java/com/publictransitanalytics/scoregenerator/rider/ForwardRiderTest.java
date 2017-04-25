@@ -158,27 +158,4 @@ public class ForwardRiderTest {
 
     }
 
-    @Test
-    public void testConstructsRideRecord() {
-        final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, STOP_TIME, STOP_ON_TRIP),
-                        new ScheduleEntry(1, LATER_STOP_TIME,
-                                          LATER_STOP_ON_TRIP)));
-
-        final LocalDateTime cutoffTime
-                = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 45, 0);
-
-        final ForwardRider rider = new ForwardRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
-
-        rider.continueTrip();
-        final Movement movement = rider.getRideRecord();
-        Assert.assertEquals(new TransitRideMovement(
-                TRIP_BASE_ID, ROUTE_NUMBER, ROUTE_NAME, STOP_ID, STOP_NAME,
-                STOP_TIME, LATER_STOP_ID, LATER_STOP_NAME,
-                LATER_STOP_TIME), movement);
-    }
-
 }

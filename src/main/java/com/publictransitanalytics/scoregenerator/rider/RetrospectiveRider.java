@@ -18,8 +18,6 @@ package com.publictransitanalytics.scoregenerator.rider;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 import java.time.LocalDateTime;
 
 /**
@@ -68,16 +66,6 @@ public class RetrospectiveRider implements Rider {
         time = location.getScheduledTime();
         return new RiderStatus(location.getLocation(),
                                location.getScheduledTime(), trip);
-    }
-
-    @Override
-    public Movement getRideRecord() {
-        return new TransitRideMovement(
-                trip.getTripId().getBaseId(),
-                trip.getRouteNumber(), trip.getRouteName(),
-                position.getStopId(), position.getStopName(),
-                time, initialPosition.getStopId(),
-                initialPosition.getStopName(), initialTime);
     }
 
 }

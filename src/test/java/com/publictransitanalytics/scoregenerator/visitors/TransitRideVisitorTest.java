@@ -15,7 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.visitors;
 
-import com.publictransitanalytics.scoregenerator.visitors.TransitRideVisitor;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
@@ -27,9 +26,7 @@ import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedRider;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedRiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleReader;
 import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import java.time.LocalDate;
@@ -77,7 +74,7 @@ public class TransitRideVisitorTest {
                 KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
-                        new PreloadedRider(Collections.emptyList(), null)),
+                        new PreloadedRider(Collections.emptyList())),
                 Collections.emptySet());
 
         visitor.visit(sector);
@@ -103,7 +100,7 @@ public class TransitRideVisitorTest {
                 KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
-                        new PreloadedRider(Collections.emptyList(), null)),
+                        new PreloadedRider(Collections.emptyList())),
                 Collections.emptySet());
 
         visitor.visit(stop);
@@ -129,7 +126,7 @@ public class TransitRideVisitorTest {
                 KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
-                        new PreloadedRider(Collections.emptyList(), null)),
+                        new PreloadedRider(Collections.emptyList())),
                 Collections.emptySet());
 
         visitor.visit(stop);
@@ -155,7 +152,7 @@ public class TransitRideVisitorTest {
                 KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
-                        new PreloadedRider(Collections.emptyList(), null)),
+                        new PreloadedRider(Collections.emptyList())),
                 Collections.emptySet());
 
         visitor.visit(landmark);
@@ -176,11 +173,7 @@ public class TransitRideVisitorTest {
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
 
-        final Movement movement = new TransitRideMovement(
-                "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
-
-        final Trip trip = new Trip(
+       final Trip trip = new Trip(
                 new TripId("tripId", TRIP_SERVICE_DAY),
                 "Somewhere via Elsewhere", "-1", Collections.emptySet());
         final TransitStop nextStop = new TransitStop(
@@ -192,7 +185,7 @@ public class TransitRideVisitorTest {
                 Collections.singleton(new EntryPoint(trip, DUMMY_TIME)));
         final PreloadedRider rider = new PreloadedRider(
                 Collections.singletonList(
-                        new RiderStatus(nextStop, DUMMY_TIME, trip)), movement);
+                        new RiderStatus(nextStop, DUMMY_TIME, trip)));
 
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
@@ -221,9 +214,6 @@ public class TransitRideVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
-        final Movement movement = new TransitRideMovement(
-                "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new Trip(new TripId(
                 "tripId", TRIP_SERVICE_DAY),
@@ -237,7 +227,7 @@ public class TransitRideVisitorTest {
                 Collections.singleton(new EntryPoint(trip, DUMMY_TIME)));
         final PreloadedRider rider = new PreloadedRider(
                 Collections.singletonList(
-                        new RiderStatus(nextStop, DUMMY_TIME, trip)), movement);
+                        new RiderStatus(nextStop, DUMMY_TIME, trip)));
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
@@ -264,9 +254,6 @@ public class TransitRideVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
-        final Movement movement = new TransitRideMovement(
-                "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new Trip(
                 new TripId("tripId", TRIP_SERVICE_DAY),
@@ -275,7 +262,7 @@ public class TransitRideVisitorTest {
         final PreloadedScheduleReader reader = new PreloadedScheduleReader(
                 Collections.singleton(new EntryPoint(trip, DUMMY_TIME)));
         final PreloadedRider rider = new PreloadedRider(
-                Collections.emptyList(), movement);
+                Collections.emptyList());
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
@@ -302,14 +289,11 @@ public class TransitRideVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
-        final Movement movement = new TransitRideMovement(
-                "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final PreloadedScheduleReader reader = new PreloadedScheduleReader(
                 Collections.emptySet());
         final PreloadedRider rider = new PreloadedRider(
-                Collections.emptyList(), movement);
+                Collections.emptyList());
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
@@ -336,9 +320,6 @@ public class TransitRideVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
-        final Movement movement = new TransitRideMovement(
-                "tripId", "-1", "Somewhere via Elsewhere", "stop1", "Stop 1",
-                DUMMY_TIME, "stop2", "Stop 2", DUMMY_TIME);
 
         final Trip trip = new Trip(
                 new TripId("tripId", TRIP_SERVICE_DAY),
@@ -353,7 +334,7 @@ public class TransitRideVisitorTest {
                 Collections.singleton(new EntryPoint(trip, DUMMY_TIME)));
         final PreloadedRider rider = new PreloadedRider(
                 Collections.singletonList(
-                        new RiderStatus(nextStop, DUMMY_TIME, trip)), movement);
+                        new RiderStatus(nextStop, DUMMY_TIME, trip)));
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 

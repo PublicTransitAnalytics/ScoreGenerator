@@ -15,13 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import com.publictransitanalytics.scoregenerator.tracking.WalkMovement;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Month;
 import org.junit.Assert;
@@ -88,15 +86,13 @@ public class VisitableLocationTest {
     @Test
     public void testBetterPathBetter() {
         final VisitableLocation location = new Landmark(SECTOR, POINT);
-        location.addPath(
-                TIME, new ForwardMovingPath(
-                        ImmutableList.of()).makeAppended(new WalkMovement(
-                        LocalDateTime.of(1987, Month.MARCH, 8, 16, 39), 70,
-                        ORIGIN_POINT,
-                        LocalDateTime.of(1987, Month.MARCH, 8, 16, 49),
-                        POINT)));
+        final Landmark origin = new Landmark(SECTOR, POINT);
 
-        final MovementPath path = new ForwardMovingPath(ImmutableList.of());
+        location.addPath(TIME, new ForwardMovingPath().appendWalk(
+                        origin, TIME, location, TIME,
+                        new WalkingCosts(Duration.ZERO, 0)));
+
+        final MovementPath path = new ForwardMovingPath();
         Assert.assertTrue(location.hasNoBetterPath(TIME, path));
     }
 }

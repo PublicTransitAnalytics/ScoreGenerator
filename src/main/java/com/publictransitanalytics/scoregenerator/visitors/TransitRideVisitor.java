@@ -32,6 +32,7 @@ import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 
 /**
  * A visitor that visits Locations, noting recording its presence and taking all
@@ -73,7 +74,7 @@ public class TransitRideVisitor implements Visitor {
             final ImmutableList.Builder<VisitAction> visitActionsBuilder
                     = ImmutableList.builder();
             for (final EntryPoint entryPoint : entryPoints) {
-                
+
                 final Trip trip = entryPoint.getTrip();
                 /* Don't get on a trip that we came from. Either we just got off
                  * of it, or we walked around a bit and came to it again.
@@ -88,10 +89,14 @@ public class TransitRideVisitor implements Visitor {
 
                         final LocalDateTime newTime = status.getTime();
                         final TransitStop newStop = status.getStop();
-
-                        final Movement movement = rider.getRideRecord();
-                        final MovementPath newPath
-                                = currentPath.makeAppended(movement);
+                        
+                        
+                        final MovementPath newPath 
+                                = currentPath.appendTransitRide(
+                                        trip.getTripId().getBaseId(),
+                                        trip.getRouteNumber(), 
+                                        trip.getRouteNumber(), transitStop, 
+                                        entryPoint.getTime(), newStop, newTime);
 
                         if (newStop.hasNoBetterPath(keyTime, newPath)) {
 

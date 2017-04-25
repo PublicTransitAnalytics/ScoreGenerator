@@ -15,7 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import junit.framework.Assert;
 import org.junit.Test;
@@ -99,7 +98,7 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testNullOnOutofBoundsLatitude() {
+    public void testNullOnLowerLatitude() {
 
         final Sector sector = TABLE.findSector(
                 new Geodetic2DPoint(
@@ -110,7 +109,29 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testNullOnOutofBoundsLongitude() {
+    public void testNullOnHigherLatitude() {
+
+        final Sector sector = TABLE.findSector(
+                new Geodetic2DPoint(
+                        new Longitude(-111, Longitude.DEGREES),
+                        new Latitude(65, Latitude.DEGREES)));
+
+        Assert.assertNull(sector);
+    }
+
+    @Test
+    public void testNullOnLowerLongitude() {
+
+        final Sector sector = TABLE.findSector(
+                new Geodetic2DPoint(
+                        new Longitude(-95, Longitude.DEGREES),
+                        new Latitude(45, Latitude.DEGREES)));
+
+        Assert.assertNull(sector);
+    }
+
+    @Test
+    public void testNullOnHigherLongitude() {
 
         final Sector sector = TABLE.findSector(
                 new Geodetic2DPoint(

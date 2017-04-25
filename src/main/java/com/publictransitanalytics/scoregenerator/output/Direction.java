@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.rider;
+package com.publictransitanalytics.scoregenerator.output;
 
 /**
- * Models the capabilities of a transit rider that consults a schedule and takes
- * trips.
  *
  * @author Public Transit Analytics
  */
-public interface Rider {
+public enum Direction {
     
-    boolean canContinueTrip();
-
-    RiderStatus continueTrip();
-
+    FORWARD,
+    BACKWARD
+    
 }

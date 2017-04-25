@@ -15,16 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator.rider;
 
-import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
-import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRider;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduleEntry;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.time.LocalDate;
@@ -164,30 +159,6 @@ public class RetrospectiveRiderTest {
         Assert.assertEquals(EARLIER_STOP_TIME, status.getTime());
         Assert.assertEquals(EARLIER_STOP_ON_TRIP, status.getStop());
 
-    }
-
-    @Test
-    public void testConstructsRideRecord() {
-        final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER,
-                ImmutableSet.of(
-                        new ScheduleEntry(0, EARLIER_STOP_TIME,
-                                          EARLIER_STOP_ON_TRIP),
-                        new ScheduleEntry(1, STOP_TIME, STOP_ON_TRIP)));
-
-        final LocalDateTime cutoffTime
-                = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 0, 0);
-
-        final RetrospectiveRider rider = new RetrospectiveRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
-
-        rider.continueTrip();
-        final Movement movement = rider.getRideRecord();
-        Assert.assertEquals(new TransitRideMovement(
-                TRIP_BASE_ID, ROUTE_NUMBER, ROUTE_NAME, EARLIER_STOP_ID,
-                EARLIER_STOP_NAME, EARLIER_STOP_TIME, STOP_ID, STOP_NAME,
-                STOP_TIME), movement);
     }
 
 }

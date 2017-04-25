@@ -47,7 +47,7 @@ public class SingleTimeSectorMap {
     private final String tripDuration;
 
     private final int score;
-
+    
     public SingleTimeSectorMap(
             final SectorTable sectorTable, final PointLocation startPoint,
             final LocalDateTime time, final Duration tripDuration, int score) {

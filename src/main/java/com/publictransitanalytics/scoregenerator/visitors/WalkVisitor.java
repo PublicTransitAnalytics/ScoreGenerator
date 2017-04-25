@@ -26,7 +26,6 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import com.publictransitanalytics.scoregenerator.tracking.WalkMovement;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -104,13 +103,9 @@ public class WalkVisitor implements Visitor {
                         final VisitableLocation walkableLocation
                                 = entry.getKey();
 
-                        final WalkMovement movement = new WalkMovement(
-                                currentTime, costs.getDistanceMeters(),
-                                location.getLocation(), newTime,
-                                walkableLocation.getNearestPoint(
-                                        location.getLocation()));
-                        final MovementPath newPath
-                                = currentPath.makeAppended(movement);
+                        final MovementPath newPath = currentPath.appendWalk(
+                                location, currentTime, walkableLocation,
+                                newTime, costs);
 
                         if (walkableLocation.hasNoBetterPath(
                                 keyTime, newPath)) {
@@ -120,14 +115,13 @@ public class WalkVisitor implements Visitor {
                                         = visitorFactory.getVisitor(
                                                 keyTime, cutoffTime, newTime,
                                                 Mode.WALKING, lastTrip, newPath,
-                                                currentDepth + 1, 
+                                                currentDepth + 1,
                                                 visitorFactories);
                                 final VisitAction visitAction
                                         = new VisitAction(walkableLocation,
                                                           visitor);
                                 visitAction.fork();
                                 visitActionsBuilder.add(visitAction);
-                                //walkableLocation.accept(visitor);
                             }
                         }
                     }

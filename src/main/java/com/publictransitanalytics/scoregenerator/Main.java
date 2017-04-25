@@ -186,7 +186,7 @@ public class Main {
         generateParser.addArgument("-s", "--startTime");
         generateParser.addArgument("-e", "--endTime");
         generateParser.addArgument("-f", "--files");
-        generateParser.addArgument("-c", "--startCoordinate");
+        generateParser.addArgument("-c", "--coordinate");
 
         final Subparser compareParser = subparsers.addParser(
                 "comparePointUtility");

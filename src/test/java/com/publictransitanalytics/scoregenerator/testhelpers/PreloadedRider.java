@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.rider.Rider;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 public class PreloadedRider implements Rider {
 
     private final List<RiderStatus> riderStatuses;
-    private final Movement movement;
     
     private int calls;
 
@@ -43,11 +41,6 @@ public class PreloadedRider implements Rider {
         final RiderStatus status = riderStatuses.get(calls);
         calls++;
         return status;
-    }
-
-    @Override
-    public Movement getRideRecord() {
-        return movement;
     }
 
 }

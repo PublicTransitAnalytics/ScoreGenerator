@@ -15,17 +15,18 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import com.publictransitanalytics.scoregenerator.tracking.WalkMovement;
-import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import org.junit.Assert;
 import org.junit.Test;
+import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
 import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
@@ -36,17 +37,36 @@ import org.opensextant.geodesy.Longitude;
  */
 public class MovementPathTest {
 
+    private final static Sector SECTOR = new Sector(new Geodetic2DBounds(
+            new Geodetic2DPoint(
+                    new Longitude(-122.459696, Longitude.DEGREES),
+                    new Latitude(47.734145, Latitude.DEGREES)),
+            new Geodetic2DPoint(
+                    new Longitude(-122.224433, Longitude.DEGREES),
+                    new Latitude(47.48172, Latitude.DEGREES))));
     private static final Geodetic2DPoint ORIGIN_POINT = new Geodetic2DPoint(
             new Longitude(-122.3367105, Longitude.DEGREES),
             new Latitude(47.6072246, Latitude.DEGREES));
+    private static final TransitStop ORIGIN_STOP = new TransitStop(
+            SECTOR, "originStopId", "originStopName", ORIGIN_POINT);
+    private static final LocalDateTime TIME_AT_ORIGIN
+            = LocalDateTime.of(2017, Month.JANUARY, 23, 20, 20);
 
-    private static final Geodetic2DPoint WAYPOINT = new Geodetic2DPoint(
+    private static final Geodetic2DPoint WAYPOINT_POINT = new Geodetic2DPoint(
             new Longitude(-122.3356412, Longitude.DEGREES),
             new Latitude(47.6154922, Latitude.DEGREES));
+    private static final TransitStop WAYPOINT_STOP = new TransitStop(
+            SECTOR, "waypointStopId", "waypointStopName", WAYPOINT_POINT);
+    private static final LocalDateTime TIME_AT_WAYPOINT
+            = LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30);
 
     private static final Geodetic2DPoint DESTINATION_POINT
             = new Geodetic2DPoint(new Longitude(-122.346473, Longitude.DEGREES),
                                   new Latitude(47.6135901, Latitude.DEGREES));
+    private static final TransitStop DESTINATION_STOP = new TransitStop(
+            SECTOR, "waypointStopId", "waypointStopName", DESTINATION_POINT);
+    private static final LocalDateTime TIME_AT_DESTINATION
+            = LocalDateTime.of(2017, Month.JANUARY, 23, 21, 10);
 
     @Test
     public void testEmptyPathDuration() {
@@ -56,164 +76,120 @@ public class MovementPathTest {
 
     @Test
     public void testGetsDuration() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 35),
-                WAYPOINT);
-        final Movement m2 = new TransitRideMovement(
-                "tripId", "routeNumber", "routeName", "pickupStopId",
-                "pickupStop", LocalDateTime.of(2017, Month.JANUARY, 23, 20, 36),
-                "dropoffStopId", "dropoffStop",
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 39));
-        final Movement m3 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 39),
-                5.5, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                WAYPOINT);
-        final MovementPath p1 = new ForwardMovingPath(
-                ImmutableList.of()).makeAppended(m1).makeAppended(m2)
-                .makeAppended(m3);
-        Assert.assertEquals(Duration.ofMinutes(11), p1.getDuration());
+        final MovementPath path = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, WAYPOINT_STOP, TIME_AT_WAYPOINT)
+                .appendTransitRide(
+                        "tripId", "0", "Somewhere via Elsewhere", WAYPOINT_STOP,
+                        TIME_AT_WAYPOINT, DESTINATION_STOP,
+                        TIME_AT_DESTINATION);
+
+        Assert.assertEquals(Duration.ofMinutes(50), path.getDuration());
     }
 
     @Test
     public void testEmptyBetter() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p1 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m1);
+        final MovementPath emptyPath = new ForwardMovingPath();
 
-        final MovementPath p2 = new ForwardMovingPath(ImmutableList.of());
+        final MovementPath nonemptyPath = emptyPath.appendTransitRide(
+                "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                TIME_AT_ORIGIN, WAYPOINT_STOP, TIME_AT_WAYPOINT);
 
-        Assert.assertTrue(p1.compareTo(p2) > 0);
+        Assert.assertTrue(nonemptyPath.compareTo(emptyPath) > 0);
     }
 
     @Test
-    public void testEarlierBetter() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p1 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m1);
+    public void testEarlierArrivalBetter() {
+        final MovementPath earlierPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, WAYPOINT_STOP, TIME_AT_WAYPOINT)
+                .appendTransitRide(
+                        "tripId", "0", "Somewhere via Elsewhere", WAYPOINT_STOP,
+                        TIME_AT_WAYPOINT, DESTINATION_STOP,
+                        TIME_AT_DESTINATION);
 
-        final Movement m2 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                5, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 34),
-                WAYPOINT);
-        final Movement m3 = new TransitRideMovement(
-                "tripId", "routeNumber", "routeName", "pickupStopId", 
-                "pickupStop", LocalDateTime.of(2017, Month.JANUARY, 23, 20, 35),
-                "dropoffStopId", "dropoffStop",
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 39));
-        final MovementPath p2 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m2).makeAppended(m3);
+        final MovementPath laterPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP,
+                        LocalDateTime.of(2017, Month.JANUARY, 23, 21, 11));
 
-        Assert.assertTrue(p1.compareTo(p2) > 0);
+        Assert.assertTrue(laterPath.compareTo(earlierPath) > 0);
+    }
+
+    @Test
+    public void testLaterStartBetter() {
+        final MovementPath earlierPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        LocalDateTime.of(2017, Month.JANUARY, 23, 20, 10),
+                        WAYPOINT_STOP, TIME_AT_WAYPOINT)
+                .appendTransitRide(
+                        "tripId", "0", "Somewhere via Elsewhere", WAYPOINT_STOP,
+                        TIME_AT_WAYPOINT, DESTINATION_STOP,
+                        TIME_AT_DESTINATION);
+
+        final MovementPath laterPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
+
+        Assert.assertTrue(earlierPath.compareTo(laterPath) > 0);
     }
 
     @Test
     public void testLessWalkingBetter() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p1 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m1);
+        final MovementPath noWalkingPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, WAYPOINT_STOP, TIME_AT_WAYPOINT)
+                .appendTransitRide(
+                        "tripId", "0", "Somewhere via Elsewhere", WAYPOINT_STOP,
+                        TIME_AT_WAYPOINT, DESTINATION_STOP,
+                        TIME_AT_DESTINATION);
 
-        final Movement m2 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                5, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 34),
-                WAYPOINT);
-        final Movement m3 = new TransitRideMovement(
-                "tripId", "routeNumber", "routeName", "pickupStopId", 
-                "pickupStop", LocalDateTime.of(2017, Month.JANUARY, 23, 20, 35),
-                "dropoffStopId", "dropoffStop",
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41));
-        final MovementPath p2 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m2).makeAppended(m3);
+        final MovementPath walkingPath = new ForwardMovingPath().appendWalk(
+                ORIGIN_STOP, TIME_AT_ORIGIN, DESTINATION_STOP,
+                TIME_AT_DESTINATION,
+                new WalkingCosts(Duration.ofSeconds(50), 10));
 
-        Assert.assertTrue(p1.compareTo(p2) > 0);
-    }
-
-    @Test
-    public void testLessTimeBetter() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p1 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m1);
-
-        final Movement m2 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 31),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 34),
-                WAYPOINT);
-        final Movement m3 = new TransitRideMovement(
-                "tripId", "routeNumber", "routeName", "pickupStopId", 
-                "pickupStop", LocalDateTime.of(2017, Month.JANUARY, 23, 20, 35),
-                "dropoffStopId", "dropoffStop",
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41));
-        final MovementPath p2 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m2).makeAppended(m3);
-
-        Assert.assertTrue(p1.compareTo(p2) > 0);
+        Assert.assertTrue(walkingPath.compareTo(noWalkingPath) > 0);
     }
 
     @Test
     public void testFewerMovementsBetter() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p1 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m1);
+        final MovementPath twoModePath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, WAYPOINT_STOP, TIME_AT_WAYPOINT)
+                .appendTransitRide(
+                        "tripId", "0", "Somewhere via Elsewhere", WAYPOINT_STOP,
+                        TIME_AT_WAYPOINT, DESTINATION_STOP,
+                        TIME_AT_DESTINATION);
 
-        final Movement m2 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 34),
-                WAYPOINT);
-        final Movement m3 = new TransitRideMovement(
-                "tripId", "routeNumber", "routeName", "pickupStopId", 
-                "pickupStop", LocalDateTime.of(2017, Month.JANUARY, 23, 20, 35),
-                "dropoffStopId", "dropoffStop",
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41));
-        final MovementPath p2 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m2).makeAppended(m3);
+        final MovementPath oneModePath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
 
-        Assert.assertTrue(p2.compareTo(p1) > 0);
+        Assert.assertTrue(twoModePath.compareTo(oneModePath) > 0);
     }
 
     @Test
     public void testTiesBroken() {
-        final Movement m1 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p1 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m1);
 
-        final Movement m2 = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 30),
-                10, ORIGIN_POINT,
-                LocalDateTime.of(2017, Month.JANUARY, 23, 20, 41),
-                DESTINATION_POINT);
-        final MovementPath p2 = new ForwardMovingPath(ImmutableList.of())
-                .makeAppended(m2);
+        final MovementPath aPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
 
-        Assert.assertFalse(p1.compareTo(p2) == 0);
+        final MovementPath otherPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
+
+        Assert.assertFalse(aPath.compareTo(otherPath) == 0);
     }
 }

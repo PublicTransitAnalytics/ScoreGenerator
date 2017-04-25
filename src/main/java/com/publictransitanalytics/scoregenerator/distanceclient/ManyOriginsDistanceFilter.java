@@ -56,7 +56,7 @@ public class ManyOriginsDistanceFilter implements DistanceFilter {
              * the point is within the sector. */
             if (!origin.getNearestPoint(destination.getLocation()).equals(
                     destination.getLocation())) {
-                queryOriginsBuilder.add(destination);
+                queryOriginsBuilder.add(origin);
             }
         }
         final ImmutableSet<VisitableLocation> queryOrigins

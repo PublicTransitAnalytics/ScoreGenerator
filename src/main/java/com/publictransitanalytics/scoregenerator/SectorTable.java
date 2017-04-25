@@ -30,10 +30,11 @@ import org.opensextant.geodesy.Longitude;
 
 /**
  * A table that allows fast lookups from a point to its containing sector.
- * 
+ *
  * @author Public Transit Analytics
  */
 public class SectorTable {
+
     @Getter
     private final Geodetic2DBounds bounds;
     private final Angle latitudeDelta;
@@ -41,7 +42,7 @@ public class SectorTable {
     private final TreeBasedTable<Latitude, Longitude, Sector> sectorTable;
 
     public SectorTable(final Geodetic2DBounds bounds,
-                       final int numLatitudeSectors, 
+                       final int numLatitudeSectors,
                        final int numLongitudeSectors) {
         sectorTable = TreeBasedTable.create();
         this.bounds = bounds;
@@ -89,30 +90,43 @@ public class SectorTable {
     }
 
     public Sector findSector(final Geodetic2DPoint location) {
-        final NavigableMap<Latitude, Map<Longitude, Sector>> latitudeMap 
+        final NavigableMap<Latitude, Map<Longitude, Sector>> latitudeMap
                 = new TreeMap<>(sectorTable.rowMap());
-     
-    
-        final Map.Entry<Latitude, Map<Longitude, Sector>> floorLatitudeEntry 
+
+        final Angle maxLatitude = latitudeMap.lastKey().add(latitudeDelta);
+        /* Include the equality test to ensure that floating point rounding
+         * is not making point appear unequal. */
+        if (!location.getLatitude().equals(maxLatitude) && location
+                .getLatitude().compareTo(maxLatitude) > 0) {
+            return null;
+        }
+        final Map.Entry<Latitude, Map<Longitude, Sector>> floorLatitudeEntry
                 = latitudeMap.floorEntry(location.getLatitude());
         if (floorLatitudeEntry == null) {
             return null;
         }
-        
+
         final NavigableMap<Longitude, Sector> longitudeMap = new TreeMap<>(
                 floorLatitudeEntry.getValue());
-        
-        final Map.Entry<Longitude, Sector> floorLongitudeEntry 
+
+        /* Include the equality test to ensure that floating point rounding
+         * is not making point appear unequal. */
+        final Angle maxLongitude = longitudeMap.lastKey().add(longitudeDelta);
+        if (!location.getLongitude().equals(maxLongitude) && location
+                .getLongitude().compareTo(maxLongitude) > 0) {
+            return null;
+        }
+        final Map.Entry<Longitude, Sector> floorLongitudeEntry
                 = longitudeMap.floorEntry(location.getLongitude());
         if (floorLongitudeEntry == null) {
             return null;
         }
-        
-        final Sector sector  = floorLongitudeEntry.getValue();
+
+        final Sector sector = floorLongitudeEntry.getValue();
 
         return sector;
     }
-    
+
     public Sector getSector(final Geodetic2DBounds bounds) {
         return sectorTable.get(bounds.getSouthLat(), bounds.getWestLon());
     }
@@ -121,6 +135,5 @@ public class SectorTable {
         return ImmutableSet.<Sector>builder().addAll(sectorTable.values())
                 .build();
     }
-    
 
 }
