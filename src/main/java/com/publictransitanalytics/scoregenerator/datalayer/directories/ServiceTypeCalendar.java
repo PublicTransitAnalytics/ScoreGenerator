@@ -20,7 +20,7 @@ import java.time.LocalDate;
 
 /**
  * A calendar that maps days to the service types available on that day.
- * 
+ *
  * @author Public Transit Analytics
  */
 public interface ServiceTypeCalendar {
@@ -28,9 +28,11 @@ public interface ServiceTypeCalendar {
     /**
      * Gets the description of the service available on a day. Returns null if
      * no service is available.
+     *
      * @param date The date on which to retrieve service.
      * @return the service available.
      */
-    ServiceSet getServiceType(final LocalDate date);
+    ServiceSet getServiceType(final LocalDate date)
+            throws InterruptedException;
 
 }

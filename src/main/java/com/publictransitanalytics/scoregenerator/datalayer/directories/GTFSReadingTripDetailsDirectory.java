@@ -38,7 +38,8 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
 
     public GTFSReadingTripDetailsDirectory(
             final Store<TripGroupKey, TripDetails> tripDetailsStore,
-            final Reader tripReader) throws IOException {
+            final Reader tripReader)
+            throws IOException, InterruptedException {
 
         this.tripDetailsStore = tripDetailsStore;
         if (tripDetailsStore.isEmpty()) {
@@ -47,17 +48,18 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
     }
 
     @Override
-    public TripDetails getTripDetails(final TripGroupKey key) {
+    public TripDetails getTripDetails(final TripGroupKey key)
+            throws InterruptedException {
         return tripDetailsStore.get(key);
     }
-    
-    
+
     @Override
-    public Set<TripDetails> getAllTripDetails() {
+    public Set<TripDetails> getAllTripDetails() throws InterruptedException {
         return ImmutableSet.copyOf(tripDetailsStore.getValues());
     }
 
-    private void parseTripsFile(final Reader tripReader) throws IOException {
+    private void parseTripsFile(final Reader tripReader) throws IOException,
+            InterruptedException {
 
         final CSVParser tripParser = new CSVParser(
                 tripReader, CSVFormat.DEFAULT.withHeader());
@@ -72,11 +74,11 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
     }
 
     private void populateTripDetail(final String tripId, final String routeId,
-                                    final String serviceType) {
+                                    final String serviceType)
+            throws InterruptedException {
         final TripDetails details
                 = new TripDetails(tripId, routeId, serviceType);
         tripDetailsStore.put(new TripGroupKey(tripId), details);
     }
-
 
 }

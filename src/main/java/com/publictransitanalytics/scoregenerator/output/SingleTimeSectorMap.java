@@ -35,6 +35,8 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 public class SingleTimeSectorMap {
 
     private final MapType mapType;
+    
+    private final Direction direction;
 
     private final Bounds mapBounds;
 
@@ -50,8 +52,10 @@ public class SingleTimeSectorMap {
     
     public SingleTimeSectorMap(
             final SectorTable sectorTable, final PointLocation startPoint,
-            final LocalDateTime time, final Duration tripDuration, int score) {
+            final LocalDateTime time, final Duration tripDuration, 
+            final boolean backward, int score) {
         mapType = MapType.SINGLE_TIME_SECTOR;
+        direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
         mapBounds = new Bounds(sectorTable);
         startingPoint = new Point(startPoint);
         this.time = time.format(DateTimeFormatter.ofPattern(

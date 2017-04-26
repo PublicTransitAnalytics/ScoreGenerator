@@ -46,7 +46,7 @@ public class ManyOriginsDistanceFilter implements DistanceFilter {
             final PointLocation destination,
             final Set<VisitableLocation> origins,
             final LocalDateTime currentTime, final LocalDateTime cutoffTime)
-            throws DistanceClientException {
+            throws DistanceClientException, InterruptedException {
 
         final ImmutableSet.Builder<VisitableLocation> queryOriginsBuilder
                 = ImmutableSet.builder();

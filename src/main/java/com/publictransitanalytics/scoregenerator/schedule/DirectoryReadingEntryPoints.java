@@ -52,7 +52,8 @@ public class DirectoryReadingEntryPoints implements EntryPoints {
             final RouteDetailsDirectory routeDetailsDirectory,
             final TripDetailsDirectory tripDetailsDirectory,
             final ServiceTypeCalendar calendar,
-            final Map<String, TransitStop> stopIdMap) {
+            final Map<String, TransitStop> stopIdMap)
+            throws InterruptedException {
 
         entryPoints = TreeBasedTable.create(
                 (stop1, stop2) -> stop1.getIdentifier().compareTo(
@@ -75,8 +76,8 @@ public class DirectoryReadingEntryPoints implements EntryPoints {
                     .getRouteDetails(tripDetails.getRouteId());
             if (routeDetails == null) {
                 throw new ScoreGeneratorFatalException(String.format(
-                        "Trip %s provided route id %s, " +
-                        "which does not have route details.",
+                        "Trip %s provided route id %s, "
+                                + "which does not have route details.",
                         tripDetails, tripDetails.getRouteId()));
             }
 

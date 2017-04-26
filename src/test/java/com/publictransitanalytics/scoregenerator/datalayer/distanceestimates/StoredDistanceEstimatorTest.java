@@ -15,16 +15,16 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
 
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationDistanceKey;
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.DistanceEstimator;
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.StoredDistanceEstimator;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.mocks.MapRangedStore;
+import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableSet;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.TreeMap;
 import org.junit.Assert;
@@ -41,7 +41,7 @@ import org.opensextant.geodesy.Longitude;
 public class StoredDistanceEstimatorTest {
 
     @Test
-    public void testReaches() {
+    public void testReaches() throws Exception {
         final Sector sector = new Sector(new Geodetic2DBounds(
                 new Geodetic2DPoint(
                         new Longitude(-122.459696, Longitude.DEGREES),
@@ -61,12 +61,15 @@ public class StoredDistanceEstimatorTest {
         final Landmark location1 = new Landmark(sector, point1);
         final Landmark location2 = new Landmark(sector, point2);
 
-        final RangedStore<LocationDistanceKey, String> store
+        final RangedStore<LocationDistanceKey, String> candidateDistancesStore
                 = new MapRangedStore<>(new TreeMap<>());
+        final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
+                new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                Collections.emptySet(), ImmutableSet.of(location1, location2),
-                6500, store);
+                location1, Collections.emptySet(),
+                ImmutableSet.of(location1, location2), 6500, maxDistanceStore,
+                candidateDistancesStore);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 location1.getIdentifier(), 6500);
@@ -74,11 +77,10 @@ public class StoredDistanceEstimatorTest {
         Assert.assertEquals(ImmutableSet.of(
                 location1.getIdentifier(), location2.getIdentifier()),
                             reachable);
-
     }
 
     @Test
-    public void testDoesNotUseSectorAsOrigin() {
+    public void testDoesNotUseSectorAsOrigin() throws Exception {
         final Sector sector = new Sector(new Geodetic2DBounds(
                 new Geodetic2DPoint(
                         new Longitude(-122.459696, Longitude.DEGREES),
@@ -93,12 +95,14 @@ public class StoredDistanceEstimatorTest {
 
         final Landmark location1 = new Landmark(sector, point1);
 
-        final RangedStore<LocationDistanceKey, String> store
+        final RangedStore<LocationDistanceKey, String> candidateDistanceStore
                 = new MapRangedStore<>(new TreeMap<>());
+        final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
+                new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                ImmutableSet.of(sector), ImmutableSet.of(location1),
-                6500, store);
+                location1, ImmutableSet.of(sector), ImmutableSet.of(location1),
+                6500, maxDistanceStore, candidateDistanceStore);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 sector.getIdentifier(), 6500);
@@ -106,7 +110,7 @@ public class StoredDistanceEstimatorTest {
     }
 
     @Test
-    public void testDoesNotReach() {
+    public void testDoesNotReach() throws Exception {
         final Sector sector = new Sector(new Geodetic2DBounds(
                 new Geodetic2DPoint(
                         new Longitude(-122.459696, Longitude.DEGREES),
@@ -126,12 +130,15 @@ public class StoredDistanceEstimatorTest {
         final Landmark location1 = new Landmark(sector, point1);
         final Landmark location2 = new Landmark(sector, point2);
 
-        final RangedStore<LocationDistanceKey, String> store
+        final RangedStore<LocationDistanceKey, String> candidateDistanceStore
                 = new MapRangedStore<>(new TreeMap<>());
+        final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
+                new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                Collections.emptySet(), ImmutableSet.of(location1, location2),
-                6500, store);
+                location1, Collections.emptySet(),
+                ImmutableSet.of(location1, location2), 6500, maxDistanceStore,
+                candidateDistanceStore);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 location1.getIdentifier(), 5000);
@@ -142,7 +149,7 @@ public class StoredDistanceEstimatorTest {
     }
 
     @Test
-    public void testDoesNotGoBeyondMax() {
+    public void testDoesNotGoBeyondMax() throws Exception {
         final Sector sector = new Sector(new Geodetic2DBounds(
                 new Geodetic2DPoint(
                         new Longitude(-122.459696, Longitude.DEGREES),
@@ -164,16 +171,17 @@ public class StoredDistanceEstimatorTest {
 
         final RangedStore<LocationDistanceKey, String> store
                 = new MapRangedStore<>(new TreeMap<>());
+        final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
+                new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                Collections.emptySet(), ImmutableSet.of(location1, location2),
-                4000, store);
-
+                location1, Collections.emptySet(),
+                ImmutableSet.of(location1, location2), 4000, maxDistanceStore,
+                store);
         try {
             estimator.getReachableLocations(location1.getIdentifier(), 5000);
             Assert.fail();
         } catch (final ScoreGeneratorFatalException e) {
         }
     }
-
 }

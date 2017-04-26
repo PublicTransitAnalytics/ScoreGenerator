@@ -45,6 +45,8 @@ public class ComparativeTimeRangeSectorMap {
 
     private final MapType mapType;
 
+    private final Direction direction;
+
     private final Bounds mapBounds;
 
     private final Map<Bounds, DestinationProbabilityComparison> sectors;
@@ -70,8 +72,12 @@ public class ComparativeTimeRangeSectorMap {
             final LocalDate trialDate, final int trialScore,
             final String startingPointString, final LocalTime startTime,
             final Duration span, final Duration samplingInterval,
-            final Duration tripDuration, final int buckets) {
+            final Duration tripDuration, final boolean backward, 
+            final int buckets) {
         mapType = MapType.COMPARATIVE_TIME_RANGE_SECTOR;
+
+        direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
+
         if (!baseSectorTable.getBounds().equals(trialSectorTable.getBounds())) {
             throw new IllegalArgumentException();
         }

@@ -26,8 +26,9 @@ import java.util.Set;
  */
 public interface TripDetailsDirectory {
 
-    TripDetails getTripDetails(final TripGroupKey key);
+    TripDetails getTripDetails(final TripGroupKey key) 
+            throws InterruptedException;
     
-    Set<TripDetails> getAllTripDetails();
+    Set<TripDetails> getAllTripDetails() throws InterruptedException;
 
 }

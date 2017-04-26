@@ -25,8 +25,8 @@ import com.google.common.collect.Multiset;
  */
 public interface StopDetailsDirectory {
 
-    StopDetails getDetails(String stopId);
+    StopDetails getDetails(String stopId) throws InterruptedException;
 
-    Multiset<StopDetails> getAllStopDetails();
+    Multiset<StopDetails> getAllStopDetails() throws InterruptedException;
 
 }

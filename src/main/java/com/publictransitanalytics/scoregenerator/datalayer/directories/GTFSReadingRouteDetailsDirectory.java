@@ -36,7 +36,7 @@ public class GTFSReadingRouteDetailsDirectory implements RouteDetailsDirectory {
 
     public GTFSReadingRouteDetailsDirectory(
             final Store<RouteIdKey, RouteDetails> routeDetailsStore,
-            final Reader routeReader) throws IOException {
+            final Reader routeReader) throws InterruptedException, IOException {
 
         this.routeDetailsStore = routeDetailsStore;
         if (routeDetailsStore.isEmpty()) {
@@ -45,13 +45,14 @@ public class GTFSReadingRouteDetailsDirectory implements RouteDetailsDirectory {
     }
 
     @Override
-    public RouteDetails getRouteDetails(final String routeId) {
+    public RouteDetails getRouteDetails(final String routeId)
+            throws InterruptedException {
         return routeDetailsStore.get(new RouteIdKey(routeId));
     }
 
     private static void parseRoutesFile(
             final Store<RouteIdKey, RouteDetails> store,
-            final Reader routeReader) throws IOException {
+            final Reader routeReader) throws InterruptedException, IOException {
 
         final CSVParser routeParser = new CSVParser(
                 routeReader, CSVFormat.DEFAULT.withHeader());
@@ -68,7 +69,8 @@ public class GTFSReadingRouteDetailsDirectory implements RouteDetailsDirectory {
     private static void populateRouteDetail(
             final String routeId, final String routeShortName,
             final String routeDescription,
-            final Store<RouteIdKey, RouteDetails> store) {
+            final Store<RouteIdKey, RouteDetails> store)
+            throws InterruptedException {
         final RouteDetails details = new RouteDetails(routeShortName,
                                                       routeDescription);
         store.put(new RouteIdKey(routeId), details);

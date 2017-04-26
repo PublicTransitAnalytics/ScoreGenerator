@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
 
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
@@ -37,13 +38,18 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 public class StoredDistanceEstimator implements DistanceEstimator {
 
     private final RangedStore<LocationDistanceKey, String> candidateDistancesStore;
+    private final Store<LocationKey, Double> maxCandidateDistanceStore;
+
     private final double maxDistanceMeters;
 
     public StoredDistanceEstimator(
-            final Set<Sector> sectors, final Set<PointLocation> points,
-            final double maxDistanceMeters,
-            final RangedStore<LocationDistanceKey, String> candidateDistancesStore) {
+            final PointLocation center, final Set<Sector> sectors,
+            final Set<PointLocation> points, final double maxDistanceMeters,
+            final Store<LocationKey, Double> maxCandidateDistanceStore,
+            final RangedStore<LocationDistanceKey, String> candidateDistancesStore)
+            throws InterruptedException {
 
+        this.maxCandidateDistanceStore = maxCandidateDistanceStore;
         this.candidateDistancesStore = candidateDistancesStore;
         this.maxDistanceMeters = maxDistanceMeters;
 
@@ -52,28 +58,30 @@ public class StoredDistanceEstimator implements DistanceEstimator {
         builder.addAll(sectors);
         builder.addAll(points);
         final Set<VisitableLocation> terminals = builder.build();
-        if (candidateDistancesStore.isEmpty()) {
-            for (final PointLocation location : points) {
-                for (final VisitableLocation secondLocation : terminals) {
-                    final double distanceMeters = estimateDistanceMeters(
-                            location.getCanonicalPoint(),
-                            secondLocation.getCanonicalPoint());
 
-                    if (distanceMeters <= maxDistanceMeters) {
-                        final LocationDistanceKey key = LocationDistanceKey
-                                .getWriteKey(location.getIdentifier(),
-                                             distanceMeters);
-                        candidateDistancesStore.put(key, secondLocation
-                                                    .getIdentifier());
-                    }
-                }
+        if (candidateDistancesStore.isEmpty()
+                    || maxCandidateDistanceStore.isEmpty()) {
+            generateEstimates(terminals, points, maxDistanceMeters,
+                              candidateDistancesStore);
+            maxCandidateDistanceStore.put(
+                    new LocationKey(center.getIdentifier()), maxDistanceMeters);
+        } else {
+            final Double max = maxCandidateDistanceStore.get(
+                    new LocationKey(center.getIdentifier()));
+            if (max == null || max < maxDistanceMeters) {
+                generateEstimates(terminals, points, maxDistanceMeters,
+                                  candidateDistancesStore);
+                maxCandidateDistanceStore.put(
+                        new LocationKey(center.getIdentifier()),
+                        maxDistanceMeters);
             }
         }
     }
 
     @Override
     public Set<String> getReachableLocations(final String originLocationId,
-                                             final double distanceMeters) {
+                                             final double distanceMeters)
+            throws InterruptedException {
 
         if (distanceMeters > maxDistanceMeters) {
             throw new ScoreGeneratorFatalException(String.format(
@@ -90,8 +98,31 @@ public class StoredDistanceEstimator implements DistanceEstimator {
         return ImmutableSet.copyOf(reachableLocations);
     }
 
-    private double estimateDistanceMeters(final Geodetic2DPoint a,
-                                          final Geodetic2DPoint b) {
+    private static void generateEstimates(
+            final Set<VisitableLocation> terminals,
+            final Set<PointLocation> points,
+            final double maxDistanceMeters,
+            final RangedStore<LocationDistanceKey, String> candidateDistancesStore)
+            throws InterruptedException {
+        for (final PointLocation location : points) {
+            for (final VisitableLocation secondLocation : terminals) {
+                final double distanceMeters = estimateDistanceMeters(
+                        location.getCanonicalPoint(),
+                        secondLocation.getCanonicalPoint());
+
+                if (distanceMeters <= maxDistanceMeters) {
+                    final LocationDistanceKey key = LocationDistanceKey
+                            .getWriteKey(location.getIdentifier(),
+                                         distanceMeters);
+                    candidateDistancesStore.put(key, secondLocation
+                                                .getIdentifier());
+                }
+            }
+        }
+    }
+
+    private static double estimateDistanceMeters(final Geodetic2DPoint a,
+                                                 final Geodetic2DPoint b) {
         final Geodetic2DArc arc = new Geodetic2DArc(b, a);
         return arc.getDistanceInMeters();
     }

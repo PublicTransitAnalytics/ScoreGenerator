@@ -20,12 +20,13 @@ import java.util.Set;
 /**
  * A directory for all estimates of distance from one location to all other
  * potentially feasible ones.
- * 
+ *
  * @author Public Transit Analytics
  */
 public interface DistanceEstimator {
 
     Set<String> getReachableLocations(String originStopId,
-                                      double distanceMeters);
+                                      double distanceMeters)
+            throws InterruptedException;
 
 }

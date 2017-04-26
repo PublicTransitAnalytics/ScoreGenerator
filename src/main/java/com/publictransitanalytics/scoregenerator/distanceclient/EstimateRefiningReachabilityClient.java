@@ -48,7 +48,8 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
     @Override
     public Map<VisitableLocation, WalkingCosts> getWalkingDistances(
             final PointLocation location, final LocalDateTime currentTime,
-            final LocalDateTime cutoffTime) throws DistanceClientException {
+            final LocalDateTime cutoffTime) 
+            throws DistanceClientException, InterruptedException {
 
         final String locationId = location.getIdentifier();
 

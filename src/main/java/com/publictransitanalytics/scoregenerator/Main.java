@@ -91,7 +91,6 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
-import net.sourceforge.argparse4j.inf.MutuallyExclusiveGroup;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.opensextant.geodesy.Geodetic2DPoint;
 import org.opensextant.geodesy.Latitude;
@@ -100,6 +99,7 @@ import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
+import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
 import com.publictransitanalytics.scoregenerator.output.ComparativeTimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.output.TimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
@@ -147,6 +147,8 @@ public class Main {
 
     private static final String WALKING_DISTANCE_STORE
             = "new_walking_distance_store";
+    private static final String MAX_CANDIDATE_STOP_DISTANCE_STORE
+            = "max_candidate_distance_store";
     private static final String CANDIDATE_STOP_DISTANCES_STORE
             = "candidate_distance_store";
     private static final String TRIP_SEQUENCE_STORE = "trip_sequence_store";
@@ -170,6 +172,7 @@ public class Main {
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
             ExecutionException {
+        
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
                 "ScoreGenerator").defaultHelp(true)
                 .description("Generate isochrone map data.");
@@ -246,7 +249,7 @@ public class Main {
                         ? LocalDateTime.
                         parse(endTimeString) : null;
 
-                final String coordinateString 
+                final String coordinateString
                         = namespace.get("coordinate");
                 final Geodetic2DPoint startingCoordinate
                         = (coordinateString == null)
@@ -264,7 +267,7 @@ public class Main {
                             sectorTable, startTime);
                     final SingleTimeSectorMap map = new SingleTimeSectorMap(
                             sectorTable, startLocation, startTime,
-                            durations.first(), score);
+                            durations.first(), backward, score);
 
                     final String output = gson.toJson(map);
                     publisher.publish(output);
@@ -274,8 +277,8 @@ public class Main {
                             sectorTable, startTime, endTime, samplingInterval);
                     final TimeRangeSectorMap map = new TimeRangeSectorMap(
                             sectorTable, startLocation, startTime, endTime,
-                            samplingInterval, durations.first(), score,
-                            NUM_BUCKETS);
+                            samplingInterval, durations.first(), backward,
+                            score, NUM_BUCKETS);
 
                     final String output = gson.toJson(map);
                     publisher.publish(output);
@@ -336,7 +339,7 @@ public class Main {
                                 baseScore, trialSolution.getSectorTable(),
                                 trialDate, trialScore, coordinateString,
                                 startTime, span, samplingInterval,
-                                durations.first(), NUM_BUCKETS);
+                                durations.first(), backward, NUM_BUCKETS);
                 final String output = gson.toJson(map);
                 publisher.publish(output);
             }
@@ -555,14 +558,22 @@ public class Main {
                 .resolve(CANDIDATE_STOP_DISTANCES_STORE);
         final RangedStore<LocationDistanceKey, String> candidateStopDistancesBackingStore
                 = new RangedLmdbStore<>(candidateDistancesStorePath,
-                                        String.class
-                );
+                                        String.class);
         final Cache<LocationDistanceKey, String> candidateStopDistancesCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final RangedStore<LocationDistanceKey, String> candidateDistancesStore
-                = new RangedCachingStore<>(
-                        candidateStopDistancesBackingStore,
-                        candidateStopDistancesCache);
+                = new RangedCachingStore<>(candidateStopDistancesBackingStore,
+                                           candidateStopDistancesCache);
+
+        final Path maxCandidateDistanceStorePath = baseDirectory.resolve(
+                revision).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
+        final Store<LocationKey, Double> maxCandidateDistancesBackingStore
+                = new LmdbStore<>(maxCandidateDistanceStorePath, Double.class);
+        final Cache<LocationKey, Double> maxCandidateDistanceCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<LocationKey, Double> maxCandidateDistanceStore
+                = new CachingStore<>(maxCandidateDistancesBackingStore,
+                                     maxCandidateDistanceCache);
 
         final ImmutableBiMap<String, PointLocation> pointMap
                 = pointMapBuilder.build();
@@ -573,8 +584,10 @@ public class Main {
 
         final DistanceEstimator distanceEstimator
                 = new StoredDistanceEstimator(
-                        sectorTable.getSectors(), pointMap.values(),
-                        maxWalkingDistance, candidateDistancesStore);
+                        startLocation, sectorTable.getSectors(),
+                        pointMap.values(), maxWalkingDistance,
+                        maxCandidateDistancesBackingStore, 
+                        candidateDistancesStore);
 
         final RiderBehaviorFactory riderFactory;
         final TimeTracker timeTracker;

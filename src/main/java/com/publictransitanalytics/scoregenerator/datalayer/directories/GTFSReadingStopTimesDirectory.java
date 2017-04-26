@@ -58,7 +58,7 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
             final RangedStore<StopTimeKey, TripStop> stopTimesStore,
             final Store<TripIdKey, TripId> tripsStore,
             final Reader frequenciesReader, final Reader stopTimesReader)
-            throws IOException {
+            throws IOException, InterruptedException {
 
         final ImmutableMap.Builder<String, FrequencyRecord> builder
                 = ImmutableMap.builder();
@@ -67,7 +67,7 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
         this.tripsStore = tripsStore;
 
         if (tripSequenceStore.isEmpty() || stopTimesStore.isEmpty()
-                || tripsStore.isEmpty()) {
+                    || tripsStore.isEmpty()) {
             parseFrequenciesFile(builder, frequenciesReader);
             parseStopTimesFile(builder.build(), stopTimesReader);
         }
@@ -76,7 +76,7 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
     @Override
     public List<TripStop> getStopsAtStopInRange(
             final String stopId, final TransitTime startTime,
-            final TransitTime endTime) {
+            final TransitTime endTime) throws InterruptedException {
         return stopTimesStore.getValuesInRange(
                 StopTimeKey.getMinKey(stopId, startTime),
                 StopTimeKey.getMaxKey(stopId, endTime));
@@ -85,7 +85,7 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
     @Override
     public List<TripStop> getStopsOnTripInRange(
             final TripId tripId, final TransitTime startTime,
-            final TransitTime endTime) {
+            final TransitTime endTime) throws InterruptedException {
         final TripIdKey baseKey = new TripIdKey(tripId.getRawTripId(), tripId
                                                 .getQualifier());
         return tripSequenceStore.getValuesInRange(
@@ -95,13 +95,14 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
 
     @Override
     public List<TripStop> getSubsequentStopsOnTrip(
-            final TripId tripId, final TransitTime startTime) {
+            final TripId tripId, final TransitTime startTime)
+            throws InterruptedException {
         return getStopsOnTripInRange(tripId, startTime,
                                      TransitTime.MAX_TRANSIT_TIME);
     }
 
     @Override
-    public Set<TripId> getTripIds() {
+    public Set<TripId> getTripIds() throws InterruptedException {
         return ImmutableSet.copyOf(tripsStore.getValues());
     }
 
@@ -130,7 +131,7 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
     private void parseStopTimesFile(
             final ImmutableMap<String, FrequencyRecord> frequencyRecordMap,
             final Reader stopTimesReader)
-            throws FileNotFoundException, IOException {
+            throws FileNotFoundException, IOException, InterruptedException {
 
         final CSVParser parser = new CSVParser(stopTimesReader,
                                                CSVFormat.DEFAULT.withHeader());
@@ -191,7 +192,7 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
 
                     final TripIdKey tripIdKey = new TripIdKey(
                             tripId.getRawTripId(), tripId.getQualifier());
-                    
+
                     tripsStore.put(tripIdKey, tripId);
                     tripSequenceStore.put(new TripSequenceKey(
                             tripIdKey, stopTime, stopSequence), tripStop);

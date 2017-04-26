@@ -33,6 +33,6 @@ public interface DistanceFilter {
     Map<VisitableLocation, WalkingCosts> getFilteredDistances(
         final PointLocation center, final Set<VisitableLocation> candidates,
         final LocalDateTime currentTime, final LocalDateTime cutoffTime)
-        throws DistanceClientException;
+        throws DistanceClientException, InterruptedException;
 
 }

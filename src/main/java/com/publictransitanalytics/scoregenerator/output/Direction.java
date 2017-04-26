@@ -21,7 +21,7 @@ package com.publictransitanalytics.scoregenerator.output;
  */
 public enum Direction {
     
-    FORWARD,
-    BACKWARD
+    FROM_POINT,
+    TO_POINT
     
 }

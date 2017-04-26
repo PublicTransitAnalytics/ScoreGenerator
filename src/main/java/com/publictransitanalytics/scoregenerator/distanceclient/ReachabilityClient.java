@@ -24,12 +24,13 @@ import java.util.Map;
 /**
  * Takes a location and a time range and returns all reachable locations and
  * their measurements.
- * 
+ *
  * @author Public Transit Analytics
  */
 public interface ReachabilityClient {
 
     Map<VisitableLocation, WalkingCosts> getWalkingDistances(
-        final PointLocation location, final LocalDateTime currentTime,
-        final LocalDateTime cutoffTime) throws DistanceClientException;
+            final PointLocation location, final LocalDateTime currentTime,
+            final LocalDateTime cutoffTime)
+            throws DistanceClientException, InterruptedException;
 }

@@ -13,18 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.datalayer.directories;
+package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
 
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RouteDetails;
+import com.bitvantage.bitvantagecaching.Key;
+import lombok.Value;
 
 /**
- * Directory that maps route identifiers to information about that route.
  *
  * @author Public Transit Analytics
  */
-public interface RouteDetailsDirectory {
+@Value
+public class LocationKey implements Key {
+    
+    private final String locationId;
 
-    RouteDetails getRouteDetails(final String routeId)
-            throws InterruptedException;
-
+    @Override
+    public String getKeyString() {
+        return locationId;
+    }
+    
 }

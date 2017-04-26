@@ -35,6 +35,8 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 public class TimeRangeSectorMap {
 
     private final MapType mapType;
+    
+    private final Direction direction;
 
     private final Bounds mapBounds;
 
@@ -56,8 +58,9 @@ public class TimeRangeSectorMap {
             final SectorTable sectorTable, final PointLocation startPoint,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Duration samplingInterval, final Duration tripDuration,
-            int score, int buckets) {
+            final boolean backward, final int score, final int buckets) {
         mapType = MapType.TIME_RANGE_SECTOR;
+        direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
         mapBounds = new Bounds(sectorTable);
         startingPoint = new Point(startPoint);
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(

@@ -88,7 +88,7 @@ public class DirectoryReadingEntryPointsTest {
     private final LocalDate SERVICE_DATE = LocalDate.of(2017, Month.APRIL, 4);
 
     @Test
-    public void testFindsTrip() {
+    public void testFindsTrip() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 Collections.singleton(new TripStop(
                         new TransitTime(0, 0, 0), STOP_ID, new TripId(TRIP_ID),
@@ -124,7 +124,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testFindsTripAtIntervalEnd() {
+    public void testFindsTripAtIntervalEnd() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 Collections.singleton(new TripStop(
                         new TransitTime(1, 30, 0), STOP_ID, new TripId(TRIP_ID),
@@ -160,7 +160,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testFindsAllTripAtStop() {
+    public void testFindsAllTripAtStop() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 ImmutableSet.of(
                         new TripStop(new TransitTime(0, 0, 0), STOP_ID,
@@ -200,7 +200,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testFindsAllTripStops() {
+    public void testFindsAllTripStops() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 ImmutableSet.of(
                         new TripStop(new TransitTime(0, 0, 0), STOP_ID,
@@ -244,7 +244,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testDoesNotFoundNotRunning() {
+    public void testDoesNotFoundNotRunning() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 ImmutableSet.of(
                         new TripStop(new TransitTime(0, 0, 0), STOP_ID,
@@ -287,7 +287,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testDoesNotFindOutOfMap() {
+    public void testDoesNotFindOutOfMap() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 ImmutableSet.of(
                         new TripStop(new TransitTime(0, 0, 0), STOP_ID,
@@ -329,7 +329,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testDoesNotFindOutOfScheduleTime() {
+    public void testDoesNotFindOutOfScheduleTime() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 ImmutableSet.of(
                         new TripStop(new TransitTime(0, 0, 0), STOP_ID,
@@ -372,7 +372,7 @@ public class DirectoryReadingEntryPointsTest {
     }
 
     @Test
-    public void testDoesNotFindOutOfRequestTime() {
+    public void testDoesNotFindOutOfRequestTime() throws Exception {
         final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
                 ImmutableSet.of(
                         new TripStop(new TransitTime(0, 0, 0), STOP_ID,

@@ -40,7 +40,8 @@ public class GTFSReadingStopDetailsDirectory implements StopDetailsDirectory {
 
     public GTFSReadingStopDetailsDirectory(
             final Store<StopIdKey, StopDetails> stopDetailsStore,
-            final Reader stopDetailsReader) throws IOException {
+            final Reader stopDetailsReader)
+            throws IOException, InterruptedException {
 
         this.stopDetailsStore = stopDetailsStore;
         if (stopDetailsStore.isEmpty()) {
@@ -62,12 +63,14 @@ public class GTFSReadingStopDetailsDirectory implements StopDetailsDirectory {
     }
 
     @Override
-    public StopDetails getDetails(final String stopId) {
+    public StopDetails getDetails(final String stopId)
+            throws InterruptedException {
         return stopDetailsStore.get(new StopIdKey(stopId));
     }
 
     @Override
-    public Multiset<StopDetails> getAllStopDetails() {
+    public Multiset<StopDetails> getAllStopDetails()
+            throws InterruptedException {
         return stopDetailsStore.getValues();
     }
 

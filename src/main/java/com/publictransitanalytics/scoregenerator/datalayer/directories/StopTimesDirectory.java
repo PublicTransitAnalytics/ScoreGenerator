@@ -37,7 +37,7 @@ public interface StopTimesDirectory {
      */
     List<TripStop> getStopsOnTripInRange(
             final TripId tripId, final TransitTime startTime,
-            final TransitTime endTime);
+            final TransitTime endTime) throws InterruptedException;
 
     /**
      * Gets the stops on a given transit trip after a given time.
@@ -47,7 +47,8 @@ public interface StopTimesDirectory {
      * @return The TripStops making up the portion of the trip in the interval.
      */
     List<TripStop> getSubsequentStopsOnTrip(
-            final TripId tripId, final TransitTime startTime);
+            final TripId tripId, final TransitTime startTime)
+            throws InterruptedException;
 
     /**
      * The the transit trips passing through a stop between the two specified
@@ -58,16 +59,17 @@ public interface StopTimesDirectory {
      * @param endTime The end, inclusive, of the time range to search.
      * @return The TripStops indicating of the trips passing through.
      */
-    List<TripStop> getStopsAtStopInRange(final String stopId,
-                                         final TransitTime startTime,
-                                         final TransitTime endTime);
-    
+    List<TripStop> getStopsAtStopInRange(
+            final String stopId, final TransitTime startTime,
+            final TransitTime endTime) throws InterruptedException;
+
     /**
-     * Get all the qualified trip ids. This is the only directory that deals 
+     * Get all the qualified trip ids. This is the only directory that deals
      * with qualified trip ids, and should not be confused with the TripDetails,
      * which are unqualified.
+     *
      * @return A set of a all tripIds.
      */
-    Set<TripId> getTripIds();
+    Set<TripId> getTripIds() throws InterruptedException;
 
 }

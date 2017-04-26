@@ -30,6 +30,6 @@ public interface DistanceClient {
     Table<VisitableLocation, VisitableLocation, WalkingCosts> getDistances(
             final Set<VisitableLocation> origins,
             final Set<VisitableLocation> destinations)
-            throws DistanceClientException;
+            throws DistanceClientException, InterruptedException;
 
 }

@@ -49,7 +49,7 @@ public class GTFSReadingServiceTypeCalendar implements ServiceTypeCalendar {
     public GTFSReadingServiceTypeCalendar(
             final Store<DateKey, ServiceSet> serviceTypesStore,
             final Reader calendarReader, final Reader calendarDatesReader)
-            throws IOException {
+            throws IOException, InterruptedException {
 
         this.serviceTypesStore = serviceTypesStore;
         if (serviceTypesStore.isEmpty()) {
@@ -68,7 +68,8 @@ public class GTFSReadingServiceTypeCalendar implements ServiceTypeCalendar {
     }
 
     @Override
-    public ServiceSet getServiceType(final LocalDate date) {
+    public ServiceSet getServiceType(final LocalDate date)
+            throws InterruptedException {
         return serviceTypesStore.get(new DateKey(date));
     }
 

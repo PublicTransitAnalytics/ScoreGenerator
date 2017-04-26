@@ -22,7 +22,6 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.Rider;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
-import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
 import java.time.LocalDateTime;
@@ -32,7 +31,6 @@ import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
 
 /**
  * A visitor that visits Locations, noting recording its presence and taking all
