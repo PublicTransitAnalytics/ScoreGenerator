@@ -101,4 +101,8 @@ public class GoogleDistanceClient implements DistanceClient {
         }
         return resultBuilder.build();
     }
+
+    @Override
+    public void close() {
+    }
 }

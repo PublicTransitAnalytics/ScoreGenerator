@@ -15,11 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Coordinate;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.StopDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.StopIdKey;
 import com.google.common.collect.Multiset;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
+import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
@@ -44,34 +47,48 @@ public class GTFSReadingStopDetailsDirectory implements StopDetailsDirectory {
             throws IOException, InterruptedException {
 
         this.stopDetailsStore = stopDetailsStore;
-        if (stopDetailsStore.isEmpty()) {
-            log.info("Building stop details directory.");
+        try {
+            if (stopDetailsStore.isEmpty()) {
+                log.info("Building stop details directory.");
 
-            final CSVParser parser = new CSVParser(
-                    stopDetailsReader, CSVFormat.DEFAULT.withHeader());
-            final List<CSVRecord> stopDetailsRecords = parser.getRecords();
-            for (CSVRecord record : stopDetailsRecords) {
-                final double latitude = Double.valueOf(record.get("stop_lat"));
-                final double longitude = Double.valueOf(record.get("stop_lon"));
-                final String stopId = record.get("stop_id");
-                final StopDetails stopDetails = new StopDetails(
-                        stopId, record.get("stop_name"),
-                        new Coordinate(latitude, longitude));
-                stopDetailsStore.put(new StopIdKey(stopId), stopDetails);
+                final CSVParser parser = new CSVParser(
+                        stopDetailsReader, CSVFormat.DEFAULT.withHeader());
+                final List<CSVRecord> stopDetailsRecords = parser.getRecords();
+                for (CSVRecord record : stopDetailsRecords) {
+                    final double latitude = Double.valueOf(record
+                            .get("stop_lat"));
+                    final double longitude = Double.valueOf(record.get(
+                            "stop_lon"));
+                    final String stopId = record.get("stop_id");
+                    final StopDetails stopDetails = new StopDetails(
+                            stopId, record.get("stop_name"),
+                            new Coordinate(latitude, longitude));
+                    stopDetailsStore.put(new StopIdKey(stopId), stopDetails);
+                }
             }
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
     }
 
     @Override
     public StopDetails getDetails(final String stopId)
             throws InterruptedException {
-        return stopDetailsStore.get(new StopIdKey(stopId));
+        try {
+            return stopDetailsStore.get(new StopIdKey(stopId));
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     @Override
     public Multiset<StopDetails> getAllStopDetails()
             throws InterruptedException {
-        return stopDetailsStore.getValues();
+        try {
+            return stopDetailsStore.getValues();
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
 }

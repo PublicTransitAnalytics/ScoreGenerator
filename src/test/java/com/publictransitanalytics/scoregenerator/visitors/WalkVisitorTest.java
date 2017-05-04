@@ -30,6 +30,7 @@ import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.testhelpers.SerialWorkAllocator;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -49,7 +50,7 @@ public class WalkVisitorTest {
 
     private static final MovementPath PATH
             = new ForwardMovingPath(ImmutableList.of());
-    
+
     private static final LocalDateTime START_TIME = LocalDateTime.of(
             2017, Month.JANUARY, 31, 10, 40, 0);
 
@@ -68,7 +69,8 @@ public class WalkVisitorTest {
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
-                new ForwardTimeTracker(), Collections.emptySet());
+                new ForwardTimeTracker(), Collections.emptySet(),
+                new SerialWorkAllocator());
 
         visitor.visit(sector);
 
@@ -95,7 +97,8 @@ public class WalkVisitorTest {
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
-                new ForwardTimeTracker(), Collections.emptySet());
+                new ForwardTimeTracker(), Collections.emptySet(),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
 
@@ -122,7 +125,8 @@ public class WalkVisitorTest {
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
-                new ForwardTimeTracker(), Collections.emptySet());
+                new ForwardTimeTracker(), Collections.emptySet(),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
 
@@ -149,7 +153,8 @@ public class WalkVisitorTest {
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
-                new ForwardTimeTracker(), Collections.emptySet());
+                new ForwardTimeTracker(), Collections.emptySet(),
+                new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -187,7 +192,8 @@ public class WalkVisitorTest {
                 new PreloadedTimeTracker(LocalDateTime.of(
                         2017, Month.JANUARY, 21, 10, 48, 0), true,
                                          Duration.ofMinutes(3)),
-                ImmutableSet.of(visitorFactory));
+                ImmutableSet.of(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
         Assert.assertEquals(1, visitorFactory.getVisitors().size());
@@ -225,7 +231,8 @@ public class WalkVisitorTest {
                 new PreloadedTimeTracker(LocalDateTime.of(
                         2017, Month.JANUARY, 21, 10, 48, 0), false,
                                          Duration.ofMinutes(3)),
-                ImmutableSet.of(visitorFactory));
+                ImmutableSet.of(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
         Assert.assertTrue(visitorFactory.getVisitors().isEmpty());
@@ -261,7 +268,8 @@ public class WalkVisitorTest {
                 new PreloadedTimeTracker(LocalDateTime.of(
                         2017, Month.JANUARY, 21, 10, 48, 0), true,
                                          Duration.ofMinutes(3)),
-                ImmutableSet.of(visitorFactory));
+                ImmutableSet.of(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
         Assert.assertTrue(visitorFactory.getVisitors().isEmpty());
@@ -297,7 +305,8 @@ public class WalkVisitorTest {
                 new PreloadedTimeTracker(LocalDateTime.of(
                         2017, Month.JANUARY, 21, 10, 48, 0), true,
                                          Duration.ofMinutes(3)),
-                ImmutableSet.of(visitorFactory));
+                ImmutableSet.of(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
         Assert.assertTrue(visitorFactory.getVisitors().isEmpty());
@@ -321,7 +330,7 @@ public class WalkVisitorTest {
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
         stop.addPath(START_TIME, PATH);
-        
+
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
@@ -335,7 +344,8 @@ public class WalkVisitorTest {
                 new PreloadedTimeTracker(LocalDateTime.of(
                         2017, Month.JANUARY, 21, 10, 48, 0), true,
                                          Duration.ofMinutes(3)),
-                ImmutableSet.of(visitorFactory));
+                ImmutableSet.of(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(landmark);
         Assert.assertTrue(visitorFactory.getVisitors().isEmpty());

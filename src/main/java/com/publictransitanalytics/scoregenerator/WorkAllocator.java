@@ -13,25 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.distanceclient;
+package com.publictransitanalytics.scoregenerator;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import com.google.common.collect.Table;
-import java.util.Set;
+import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.visitors.Visitation;
 
 /**
- * Gets the costs of walking of the product of sets of origins and destinations.
  *
  * @author Public Transit Analytics
  */
-public interface DistanceClient {
+public interface WorkAllocator {
 
-    Table<VisitableLocation, VisitableLocation, WalkingCosts> getDistances(
-            final Set<VisitableLocation> origins,
-            final Set<VisitableLocation> destinations)
-            throws DistanceClientException, InterruptedException;
+    void work(final ImmutableList<Visitation> visitations) throws
+            InterruptedException;
     
-    void close();
-
 }

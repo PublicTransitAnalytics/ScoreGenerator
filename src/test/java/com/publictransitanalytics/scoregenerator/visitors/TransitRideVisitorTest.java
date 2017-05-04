@@ -29,10 +29,12 @@ import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.testhelpers.SerialWorkAllocator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Collections;
+import java.util.concurrent.ForkJoinPool;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -75,7 +77,7 @@ public class TransitRideVisitorTest {
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
-                Collections.emptySet());
+                Collections.emptySet(), new SerialWorkAllocator());
 
         visitor.visit(sector);
 
@@ -101,7 +103,7 @@ public class TransitRideVisitorTest {
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
-                Collections.emptySet());
+                Collections.emptySet(), new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -127,7 +129,7 @@ public class TransitRideVisitorTest {
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
-                Collections.emptySet());
+                Collections.emptySet(), new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -153,7 +155,7 @@ public class TransitRideVisitorTest {
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
-                Collections.emptySet());
+                Collections.emptySet(), new SerialWorkAllocator());
 
         visitor.visit(landmark);
         Assert.assertTrue(landmark.getPaths().isEmpty());
@@ -173,7 +175,7 @@ public class TransitRideVisitorTest {
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
 
-       final Trip trip = new Trip(
+        final Trip trip = new Trip(
                 new TripId("tripId", TRIP_SERVICE_DAY),
                 "Somewhere via Elsewhere", "-1", Collections.emptySet());
         final TransitStop nextStop = new TransitStop(
@@ -193,7 +195,8 @@ public class TransitRideVisitorTest {
         final TransitRideVisitor visitor = new TransitRideVisitor(
                 KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
-                Collections.singleton(visitorFactory));
+                Collections.singleton(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -217,7 +220,8 @@ public class TransitRideVisitorTest {
 
         final Trip trip = new Trip(new TripId(
                 "tripId", TRIP_SERVICE_DAY),
-                "Somewhere via Elsewhere", "-1", Collections.emptySet());
+                                   "Somewhere via Elsewhere", "-1", Collections
+                                   .emptySet());
         final TransitStop nextStop = new TransitStop(
                 sector, "2", "Elsehere", new Geodetic2DPoint(
                         new Longitude(-122.3087554, Longitude.DEGREES),
@@ -234,7 +238,8 @@ public class TransitRideVisitorTest {
         final TransitRideVisitor visitor = new TransitRideVisitor(
                 KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 5, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
-                Collections.singleton(visitorFactory));
+                Collections.singleton(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -258,7 +263,7 @@ public class TransitRideVisitorTest {
         final Trip trip = new Trip(
                 new TripId("tripId", TRIP_SERVICE_DAY),
                 "Somewhere via Elsewhere", "-1", Collections.emptySet());
-        
+
         final PreloadedScheduleReader reader = new PreloadedScheduleReader(
                 Collections.singleton(new EntryPoint(trip, DUMMY_TIME)));
         final PreloadedRider rider = new PreloadedRider(
@@ -267,9 +272,10 @@ public class TransitRideVisitorTest {
                 = new CountingVisitorFactory();
 
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,   
+                KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
-                Collections.singleton(visitorFactory));
+                Collections.singleton(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -300,7 +306,8 @@ public class TransitRideVisitorTest {
         final TransitRideVisitor visitor = new TransitRideVisitor(
                 KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
-                Collections.singleton(visitorFactory));
+                Collections.singleton(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(stop);
 
@@ -346,7 +353,8 @@ public class TransitRideVisitorTest {
         final TransitRideVisitor visitor = new TransitRideVisitor(
                 KEY_TIME, cutoffTime, currentTime, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
-                Collections.singleton(visitorFactory));
+                Collections.singleton(visitorFactory),
+                new SerialWorkAllocator());
 
         visitor.visit(stop);
 

@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Cache;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
@@ -55,15 +56,21 @@ public class CachingDistanceClient implements DistanceClient {
             for (VisitableLocation destination : destinations) {
                 final DistanceCacheKey key = new DistanceCacheKey(
                         origin.getIdentifier(), destination.getIdentifier());
-                final WalkingDistanceMeasurement measurement = cache.get(key);
-                if (measurement != null) {
-                    final WalkingCosts costs = new WalkingCosts(
-                            measurement.getDuration(),
-                            measurement.getDistanceMeters());
-                    resultBuilder.put(origin, destination, costs);
-                } else {
-                    uncachedOriginsBuilder.add(origin);
-                    uncachedDestinationsBuilder.add(destination);
+                try {
+                    final WalkingDistanceMeasurement measurement
+                            = cache.get(key);
+
+                    if (measurement != null) {
+                        final WalkingCosts costs = new WalkingCosts(
+                                measurement.getDuration(),
+                                measurement.getDistanceMeters());
+                        resultBuilder.put(origin, destination, costs);
+                    } else {
+                        uncachedOriginsBuilder.add(origin);
+                        uncachedDestinationsBuilder.add(destination);
+                    }
+                } catch (final BitvantageStoreException e) {
+                    throw new DistanceClientException(e);
                 }
             }
         }
@@ -84,9 +91,18 @@ public class CachingDistanceClient implements DistanceClient {
                     = new WalkingDistanceMeasurement(
                             costs.getDuration(), costs.getDistanceMeters());
 
-            cache.put(cacheKey, measurement);
+            try {
+                cache.put(cacheKey, measurement);
+            } catch (final BitvantageStoreException e) {
+                throw new DistanceClientException(e);
+            }
         }
 
         return resultBuilder.build();
+    }
+
+    @Override
+    public void close() {
+        cache.close();
     }
 }

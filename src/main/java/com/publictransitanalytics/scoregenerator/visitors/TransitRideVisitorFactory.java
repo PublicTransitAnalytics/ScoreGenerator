@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.publictransitanalytics.scoregenerator.Mode;
+import com.publictransitanalytics.scoregenerator.WorkAllocator;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ public class TransitRideVisitorFactory implements VisitorFactory {
 
     private final int maxDepth;
     private final RiderBehaviorFactory riderFactory;
+    private final WorkAllocator workAllocator;
     
     @Override
     public Visitor getVisitor(final LocalDateTime keyTime,
@@ -44,7 +46,7 @@ public class TransitRideVisitorFactory implements VisitorFactory {
                               final Set<VisitorFactory> visitorFactories) {
         return new TransitRideVisitor(keyTime, cutoffTime, currentTime,
                 currentPath, lastTrip, currentDepth, maxDepth, riderFactory, 
-                visitorFactories);
+                visitorFactories, workAllocator);
 
     }
 

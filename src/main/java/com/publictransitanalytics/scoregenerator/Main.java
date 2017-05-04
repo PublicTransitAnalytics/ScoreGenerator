@@ -22,6 +22,8 @@ import com.bitvantage.bitvantagecaching.LmdbStore;
 import com.bitvantage.bitvantagecaching.RangedCachingStore;
 import com.bitvantage.bitvantagecaching.RangedLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.ReaderControlledRangedStore;
+import com.bitvantage.bitvantagecaching.ReaderControlledStore;
 import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.UnboundedCache;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingRouteDetailsDirectory;
@@ -172,7 +174,7 @@ public class Main {
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
             ExecutionException {
-        
+
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
                 "ScoreGenerator").defaultHelp(true)
                 .description("Generate isochrone map data.");
@@ -237,6 +239,10 @@ public class Main {
         final DistanceClient distanceClient
                 = buildDistanceClient(baseDirectory, key);
 
+        final ForkJoinPool pool = new ForkJoinPool();
+        final WorkAllocator workAllocator
+                = new ForkJoinWorkAllocator(20);
+                
         try {
             if ("generatePointUtility".equals(command)) {
                 final String files = namespace.get("files");
@@ -258,7 +264,7 @@ public class Main {
                 final Solution solution = generateSolution(
                         baseDirectory, files, durations, backward, startTime,
                         endTime, startingCoordinate,
-                        distanceClient, samplingInterval);
+                        distanceClient, samplingInterval, pool, workAllocator);
                 final SectorTable sectorTable = solution.getSectorTable();
                 final PointLocation startLocation = solution.getStartLocation();
 
@@ -313,7 +319,7 @@ public class Main {
                 final Solution baseSolution = generateSolution(
                         baseDirectory, baseFiles, durations, backward,
                         baseStartDateTime, baseEndDateTime, startingCoordinate,
-                        distanceClient, samplingInterval);
+                        distanceClient, samplingInterval, pool, workAllocator);
 
                 final int baseScore = scoreGenerator.getScore(
                         baseSolution.getSectorTable(), baseStartDateTime,
@@ -327,7 +333,8 @@ public class Main {
                 final Solution trialSolution = generateSolution(
                         baseDirectory, trialFiles, durations, backward,
                         trialStartDateTime, trialEndDateTime,
-                        startingCoordinate, distanceClient, samplingInterval);
+                        startingCoordinate, distanceClient, samplingInterval,
+                        pool, workAllocator);
 
                 final int trialScore = scoreGenerator.getScore(
                         trialSolution.getSectorTable(), trialStartDateTime,
@@ -344,8 +351,9 @@ public class Main {
                 publisher.publish(output);
             }
         } finally {
-            ForkJoinPool.commonPool().shutdown();
+            distanceClient.close();
         }
+
     }
 
     private static Solution generateSolution(
@@ -354,7 +362,8 @@ public class Main {
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Geodetic2DPoint startingCoordinate,
             final DistanceClient distanceClient,
-            final Duration samplingInterval)
+            final Duration samplingInterval, final ForkJoinPool pool,
+            final WorkAllocator workAllocator)
             throws IOException, ExecutionException, InterruptedException {
 
         final Store<StopIdKey, StopDetails> stopDetailsBackingStore
@@ -486,8 +495,7 @@ public class Main {
 
         final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
                 baseDirectory.resolve(revision).resolve(TRIPS_STORE),
-                TripId.class
-        );
+                TripId.class);
         final Cache<TripIdKey, TripId> tripsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<TripIdKey, TripId> tripsStore
@@ -559,11 +567,15 @@ public class Main {
         final RangedStore<LocationDistanceKey, String> candidateStopDistancesBackingStore
                 = new RangedLmdbStore<>(candidateDistancesStorePath,
                                         String.class);
+        final ReaderControlledRangedStore<LocationDistanceKey, String> limitedAccessCandidateStopDistancesStore
+                = new ReaderControlledRangedStore(
+                        candidateStopDistancesBackingStore, 126);
         final Cache<LocationDistanceKey, String> candidateStopDistancesCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final RangedStore<LocationDistanceKey, String> candidateDistancesStore
-                = new RangedCachingStore<>(candidateStopDistancesBackingStore,
-                                           candidateStopDistancesCache);
+                = new RangedCachingStore<>(
+                        limitedAccessCandidateStopDistancesStore,
+                        candidateStopDistancesCache);
 
         final Path maxCandidateDistanceStorePath = baseDirectory.resolve(
                 revision).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
@@ -586,7 +598,7 @@ public class Main {
                 = new StoredDistanceEstimator(
                         startLocation, sectorTable.getSectors(),
                         pointMap.values(), maxWalkingDistance,
-                        maxCandidateDistancesBackingStore, 
+                        maxCandidateDistanceStore,
                         candidateDistancesStore);
 
         final RiderBehaviorFactory riderFactory;
@@ -605,30 +617,36 @@ public class Main {
             distanceFilter = new ManyOriginsDistanceFilter(distanceClient);
             basePath = new RetrospectivePath(ImmutableList.of());
         }
+        try {
+            final ReachabilityClient reachabilityClient
+                    = new EstimateRefiningReachabilityClient(
+                            distanceFilter, distanceEstimator, timeTracker,
+                            ESTIMATE_WALK_METERS_PER_SECOND, locationIdMap);
 
-        final ReachabilityClient reachabilityClient
-                = new EstimateRefiningReachabilityClient(
-                        distanceFilter, distanceEstimator, timeTracker,
-                        ESTIMATE_WALK_METERS_PER_SECOND, locationIdMap);
+            final Set<VisitorFactory> visitorFactories = ImmutableSet.of(
+                    new TransitRideVisitorFactory(MAX_DEPTH, riderFactory,
+                                                  workAllocator),
+                    new WalkVisitorFactory(
+                            MAX_DEPTH, reachabilityClient, timeTracker,
+                            workAllocator));
 
-        final Set<VisitorFactory> visitorFactories = ImmutableSet.of(
-                new TransitRideVisitorFactory(MAX_DEPTH, riderFactory),
-                new WalkVisitorFactory(
-                        MAX_DEPTH, reachabilityClient, timeTracker));
-
-        final Workflow workflow
-                = new Workflow(timeTracker, basePath, visitorFactories);
-        if (endTime == null && durations.size() == 1) {
-            workflow.getPathsAtTime(
-                    durations.first(), startTime, startLocation);
-        } else if (durations.size() == 1) {
-            workflow.getPathsOverRange(
-                    startLocation, durations.first(), startTime,
-                    endTime, samplingInterval);
-        } else {
-            throw new UnsupportedOperationException("No problem to solve.");
+            final Workflow workflow
+                    = new Workflow(timeTracker, basePath, visitorFactories,
+                                   pool, workAllocator);
+            if (endTime == null && durations.size() == 1) {
+                workflow.getPathsAtTime(
+                        durations.first(), startTime, startLocation);
+            } else if (durations.size() == 1) {
+                workflow.getPathsOverRange(
+                        startLocation, durations.first(), startTime,
+                        endTime, samplingInterval);
+            } else {
+                throw new UnsupportedOperationException("No problem to solve.");
+            }
+            return new Solution(sectorTable, startLocation);
+        } finally {
+            candidateDistancesStore.close();
         }
-        return new Solution(sectorTable, startLocation);
 
     }
 
@@ -637,10 +655,12 @@ public class Main {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
                 = new LmdbStore(baseDirectory.resolve(WALKING_DISTANCE_STORE),
                                 WalkingDistanceMeasurement.class);
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> limitedAccessWalkingDistanceStore
+                = new ReaderControlledStore(walkingDistanceBackingStore, 126);
         final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceMemoryCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCacheStore
-                = new CachingStore<>(walkingDistanceBackingStore,
+                = new CachingStore<>(limitedAccessWalkingDistanceStore,
                                      walkingDistanceMemoryCache);
         final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCache
                 = new UnboundedCache<>(walkingDistanceCacheStore);

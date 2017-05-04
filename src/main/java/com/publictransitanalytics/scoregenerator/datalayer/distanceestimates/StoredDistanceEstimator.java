@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
@@ -59,22 +60,27 @@ public class StoredDistanceEstimator implements DistanceEstimator {
         builder.addAll(points);
         final Set<VisitableLocation> terminals = builder.build();
 
-        if (candidateDistancesStore.isEmpty()
-                    || maxCandidateDistanceStore.isEmpty()) {
-            generateEstimates(terminals, points, maxDistanceMeters,
-                              candidateDistancesStore);
-            maxCandidateDistanceStore.put(
-                    new LocationKey(center.getIdentifier()), maxDistanceMeters);
-        } else {
-            final Double max = maxCandidateDistanceStore.get(
-                    new LocationKey(center.getIdentifier()));
-            if (max == null || max < maxDistanceMeters) {
+        try {
+            if (candidateDistancesStore.isEmpty()
+                        || maxCandidateDistanceStore.isEmpty()) {
                 generateEstimates(terminals, points, maxDistanceMeters,
                                   candidateDistancesStore);
                 maxCandidateDistanceStore.put(
                         new LocationKey(center.getIdentifier()),
                         maxDistanceMeters);
+            } else {
+                final Double max = maxCandidateDistanceStore.get(
+                        new LocationKey(center.getIdentifier()));
+                if (max == null || max < maxDistanceMeters) {
+                    generateEstimates(terminals, points, maxDistanceMeters,
+                                      candidateDistancesStore);
+                    maxCandidateDistanceStore.put(
+                            new LocationKey(center.getIdentifier()),
+                            maxDistanceMeters);
+                }
             }
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
     }
 
@@ -92,10 +98,13 @@ public class StoredDistanceEstimator implements DistanceEstimator {
         final LocationDistanceKey key = LocationDistanceKey.getMaxKey(
                 originLocationId, distanceMeters);
 
-        final List<String> reachableLocations = candidateDistancesStore
-                .getValuesBelow(key);
-
-        return ImmutableSet.copyOf(reachableLocations);
+        try {
+            final List<String> reachableLocations = candidateDistancesStore
+                    .getValuesBelow(key);
+            return ImmutableSet.copyOf(reachableLocations);
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     private static void generateEstimates(
@@ -114,8 +123,12 @@ public class StoredDistanceEstimator implements DistanceEstimator {
                     final LocationDistanceKey key = LocationDistanceKey
                             .getWriteKey(location.getIdentifier(),
                                          distanceMeters);
-                    candidateDistancesStore.put(key, secondLocation
-                                                .getIdentifier());
+                    try {
+                        candidateDistancesStore.put(
+                                key, secondLocation.getIdentifier());
+                    } catch (final BitvantageStoreException e) {
+                        throw new ScoreGeneratorFatalException(e);
+                    }
                 }
             }
         }

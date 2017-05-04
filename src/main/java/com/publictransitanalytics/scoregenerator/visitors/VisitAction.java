@@ -15,27 +15,44 @@
  */
 package com.publictransitanalytics.scoregenerator.visitors;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.google.common.collect.ImmutableList;
 import java.util.concurrent.RecursiveAction;
 import lombok.RequiredArgsConstructor;
 
 /**
  * Action for a visitor visiting a location.
- * 
+ *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
 public class VisitAction extends RecursiveAction {
 
-    private final VisitableLocation location;
-    private final Visitor visitor;
+    private final ImmutableList<Visitation> visitations;
+    private final int maxTaskSize;
+
     @Override
     protected void compute() {
-        try {
-            location.accept(visitor);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        int numVisitations = visitations.size();
+
+        if (numVisitations < maxTaskSize) {
+            for (final Visitation visitation : visitations) {
+                try {
+                    visitation.getLocation().accept(visitation.getVisitor());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        } else {
+            final int half = numVisitations / 2;
+            final VisitAction subTasks1 = new VisitAction(
+                    visitations.subList(0, half), maxTaskSize);
+            subTasks1.fork();
+            final VisitAction subTasks2 = new VisitAction(
+                    visitations.subList(half, numVisitations), maxTaskSize);
+            subTasks2.fork();
+            subTasks1.join();
+            subTasks2.join();
         }
     }
-    
+
 }

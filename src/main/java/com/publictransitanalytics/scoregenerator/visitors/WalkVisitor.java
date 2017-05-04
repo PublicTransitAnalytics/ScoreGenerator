@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.WorkAllocator;
 
 /**
  * Finds all the locations that can be walked to given the visited point. Spawns
@@ -58,6 +59,7 @@ public class WalkVisitor implements Visitor {
     private final ReachabilityClient reachabilityClient;
     private final TimeTracker timeTracker;
     private final Set<VisitorFactory> visitorFactories;
+    private final WorkAllocator workAllocator;
 
     @Override
     public void visit(final Sector sector) {
@@ -84,54 +86,58 @@ public class WalkVisitor implements Visitor {
 
         if (currentDepth < maxDepth && !lastMode.equals(Mode.WALKING)) {
 
-            try {
-                final Map<VisitableLocation, WalkingCosts> walkCosts
-                        = reachabilityClient.getWalkingDistances(
-                                location, currentTime, cutoffTime);
-                final ImmutableList.Builder<VisitAction> visitActionsBuilder
-                        = ImmutableList.builder();
+            final ImmutableList.Builder<Visitation> visitationsBuilder
+                    = ImmutableList.builder();
+            final Map<VisitableLocation, WalkingCosts> walkCosts
+                    = getWalkCosts(location);
 
-                for (final Entry<VisitableLocation, WalkingCosts> entry
-                             : walkCosts.entrySet()) {
-                    final WalkingCosts costs = entry.getValue();
-                    final Duration walkingDuration = costs.getDuration();
+            for (final Entry<VisitableLocation, WalkingCosts> entry
+                         : walkCosts.entrySet()) {
+                final WalkingCosts costs = entry.getValue();
+                final Duration walkingDuration = costs.getDuration();
 
-                    if (timeTracker.canAdjust(currentTime, walkingDuration,
-                                              cutoffTime)) {
-                        final LocalDateTime newTime = timeTracker.adjust(
-                                currentTime, walkingDuration);
-                        final VisitableLocation walkableLocation
-                                = entry.getKey();
+                if (timeTracker.canAdjust(currentTime, walkingDuration,
+                                          cutoffTime)) {
+                    final LocalDateTime newTime = timeTracker.adjust(
+                            currentTime, walkingDuration);
+                    final VisitableLocation walkableLocation = entry.getKey();
 
-                        final MovementPath newPath = currentPath.appendWalk(
-                                location, currentTime, walkableLocation,
-                                newTime, costs);
+                    final MovementPath newPath = currentPath.appendWalk(
+                            location, currentTime, walkableLocation, newTime,
+                            costs);
 
-                        if (walkableLocation.hasNoBetterPath(
-                                keyTime, newPath)) {
-                            for (final VisitorFactory visitorFactory
-                                         : visitorFactories) {
-                                final Visitor visitor
-                                        = visitorFactory.getVisitor(
-                                                keyTime, cutoffTime, newTime,
-                                                Mode.WALKING, lastTrip, newPath,
-                                                currentDepth + 1,
-                                                visitorFactories);
-                                final VisitAction visitAction
-                                        = new VisitAction(walkableLocation,
-                                                          visitor);
-                                visitAction.fork();
-                                visitActionsBuilder.add(visitAction);
-                            }
+                    if (walkableLocation.hasNoBetterPath(
+                            keyTime, newPath)) {
+                        for (final VisitorFactory visitorFactory
+                                     : visitorFactories) {
+                            final Visitor visitor = visitorFactory.getVisitor(
+                                    keyTime, cutoffTime, newTime, Mode.WALKING,
+                                    lastTrip, newPath, currentDepth + 1,
+                                    visitorFactories);
+                            final Visitation visitation = new Visitation(
+                                    walkableLocation, visitor);
+
+                            visitationsBuilder.add(visitation);
                         }
                     }
                 }
-                for (final VisitAction action : visitActionsBuilder.build()) {
-                    action.join();
-                }
-            } catch (final DistanceClientException e) {
-                throw new ScoreGeneratorFatalException(e);
             }
+
+            final ImmutableList<Visitation> visitations
+                    = visitationsBuilder.build();
+            workAllocator.work(visitations);
+        }
+    }
+
+    private Map<VisitableLocation, WalkingCosts> getWalkCosts(
+            final PointLocation location) throws InterruptedException {
+        try {
+            final Map<VisitableLocation, WalkingCosts> walkCosts
+                    = reachabilityClient.getWalkingDistances(
+                            location, currentTime, cutoffTime);
+            return walkCosts;
+        } catch (DistanceClientException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
     }
 }

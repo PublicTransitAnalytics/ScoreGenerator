@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.ServiceSet;
@@ -52,25 +53,33 @@ public class GTFSReadingServiceTypeCalendar implements ServiceTypeCalendar {
             throws IOException, InterruptedException {
 
         this.serviceTypesStore = serviceTypesStore;
-        if (serviceTypesStore.isEmpty()) {
-            final SetMultimap<LocalDate, String> serviceTypesMap
-                    = HashMultimap.create();
-            parseCalendarFile(calendarReader, serviceTypesMap);
-            parseCalendarDatesFile(calendarDatesReader, serviceTypesMap);
+        try {
+            if (serviceTypesStore.isEmpty()) {
+                final SetMultimap<LocalDate, String> serviceTypesMap
+                        = HashMultimap.create();
+                parseCalendarFile(calendarReader, serviceTypesMap);
+                parseCalendarDatesFile(calendarDatesReader, serviceTypesMap);
 
-            for (Map.Entry<LocalDate, Collection<String>> entry
-                         : serviceTypesMap.asMap().entrySet()) {
-                serviceTypesStore.put(
-                        new DateKey(entry.getKey()),
-                        new ServiceSet(ImmutableSet.copyOf(entry.getValue())));
+                for (Map.Entry<LocalDate, Collection<String>> entry
+                             : serviceTypesMap.asMap().entrySet()) {
+                    serviceTypesStore.put(
+                            new DateKey(entry.getKey()),
+                            new ServiceSet(ImmutableSet.copyOf(entry.getValue())));
+                }
             }
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
     }
 
     @Override
     public ServiceSet getServiceType(final LocalDate date)
             throws InterruptedException {
-        return serviceTypesStore.get(new DateKey(date));
+        try {
+            return serviceTypesStore.get(new DateKey(date));
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     private void parseCalendarFile(

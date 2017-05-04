@@ -15,7 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.RouteIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RouteDetails;
 import java.io.IOException;
@@ -39,15 +41,23 @@ public class GTFSReadingRouteDetailsDirectory implements RouteDetailsDirectory {
             final Reader routeReader) throws InterruptedException, IOException {
 
         this.routeDetailsStore = routeDetailsStore;
-        if (routeDetailsStore.isEmpty()) {
-            parseRoutesFile(routeDetailsStore, routeReader);
+        try {
+            if (routeDetailsStore.isEmpty()) {
+                parseRoutesFile(routeDetailsStore, routeReader);
+            }
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
     }
 
     @Override
     public RouteDetails getRouteDetails(final String routeId)
             throws InterruptedException {
-        return routeDetailsStore.get(new RouteIdKey(routeId));
+        try {
+            return routeDetailsStore.get(new RouteIdKey(routeId));
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     private static void parseRoutesFile(
@@ -73,7 +83,11 @@ public class GTFSReadingRouteDetailsDirectory implements RouteDetailsDirectory {
             throws InterruptedException {
         final RouteDetails details = new RouteDetails(routeShortName,
                                                       routeDescription);
-        store.put(new RouteIdKey(routeId), details);
+        try {
+            store.put(new RouteIdKey(routeId), details);
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
 }

@@ -39,5 +39,9 @@ public class PreloadedDistanceClient implements DistanceClient {
             throws DistanceClientException {
             return table;
     }
+
+    @Override
+    public void close() {
+    }
     
 }

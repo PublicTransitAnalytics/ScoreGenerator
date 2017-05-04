@@ -24,6 +24,7 @@ import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.WorkAllocator;
 import java.time.LocalDateTime;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,7 @@ public class TransitRideVisitor implements Visitor {
     private final int maxDepth;
     private final RiderBehaviorFactory riderFactory;
     private final Set<VisitorFactory> visitorFactories;
+    private final WorkAllocator workAllocator;
 
     @Override
     public void visit(Sector sector) {
@@ -69,7 +71,7 @@ public class TransitRideVisitor implements Visitor {
             final Set<EntryPoint> entryPoints = reader
                     .getEntryPoints(transitStop, currentTime, cutoffTime);
 
-            final ImmutableList.Builder<VisitAction> visitActionsBuilder
+            final ImmutableList.Builder<Visitation> visitationsBuilder
                     = ImmutableList.builder();
             for (final EntryPoint entryPoint : entryPoints) {
 
@@ -87,13 +89,12 @@ public class TransitRideVisitor implements Visitor {
 
                         final LocalDateTime newTime = status.getTime();
                         final TransitStop newStop = status.getStop();
-                        
-                        
-                        final MovementPath newPath 
+
+                        final MovementPath newPath
                                 = currentPath.appendTransitRide(
                                         trip.getTripId().getBaseId(),
-                                        trip.getRouteNumber(), 
-                                        trip.getRouteNumber(), transitStop, 
+                                        trip.getRouteNumber(),
+                                        trip.getRouteNumber(), transitStop,
                                         entryPoint.getTime(), newStop, newTime);
 
                         if (newStop.hasNoBetterPath(keyTime, newPath)) {
@@ -109,18 +110,18 @@ public class TransitRideVisitor implements Visitor {
                                                 .getTripId(), newPath,
                                                 currentDepth + 1,
                                                 visitorFactories);
-                                final VisitAction visitAction
-                                        = new VisitAction(newStop, visitor);
-                                visitAction.fork();
-                                visitActionsBuilder.add(visitAction);
+                                final Visitation visitation
+                                        = new Visitation(newStop, visitor);
+                                visitationsBuilder.add(visitation);
                             }
                         }
                     }
                 }
             }
-            for (final VisitAction action : visitActionsBuilder.build()) {
-                action.join();
-            }
+            
+            final ImmutableList<Visitation> visitations
+                    = visitationsBuilder.build();
+            workAllocator.work(visitations);
         }
     }
 

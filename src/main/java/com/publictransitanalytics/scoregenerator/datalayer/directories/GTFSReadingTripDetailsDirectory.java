@@ -15,8 +15,10 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
 import java.io.IOException;
@@ -42,20 +44,32 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
             throws IOException, InterruptedException {
 
         this.tripDetailsStore = tripDetailsStore;
-        if (tripDetailsStore.isEmpty()) {
-            parseTripsFile(tripReader);
+        try {
+            if (tripDetailsStore.isEmpty()) {
+                parseTripsFile(tripReader);
+            }
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
     }
 
     @Override
     public TripDetails getTripDetails(final TripGroupKey key)
             throws InterruptedException {
-        return tripDetailsStore.get(key);
+        try {
+            return tripDetailsStore.get(key);
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     @Override
     public Set<TripDetails> getAllTripDetails() throws InterruptedException {
-        return ImmutableSet.copyOf(tripDetailsStore.getValues());
+        try {
+            return ImmutableSet.copyOf(tripDetailsStore.getValues());
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     private void parseTripsFile(final Reader tripReader) throws IOException,
@@ -78,7 +92,11 @@ public class GTFSReadingTripDetailsDirectory implements TripDetailsDirectory {
             throws InterruptedException {
         final TripDetails details
                 = new TripDetails(tripId, routeId, serviceType);
-        tripDetailsStore.put(new TripGroupKey(tripId), details);
+        try {
+            tripDetailsStore.put(new TripGroupKey(tripId), details);
+        } catch (final BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
 }

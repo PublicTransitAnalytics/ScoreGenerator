@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.publictransitanalytics.scoregenerator.Mode;
+import com.publictransitanalytics.scoregenerator.WorkAllocator;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
@@ -35,6 +36,7 @@ public class WalkVisitorFactory implements VisitorFactory {
     private final int maxDepth;
     private final ReachabilityClient reachabilityClient;
     private final TimeTracker timeAdjuster;
+    private final WorkAllocator workAllocator;
 
     @Override
     public Visitor getVisitor(final LocalDateTime keyTime,
@@ -47,7 +49,7 @@ public class WalkVisitorFactory implements VisitorFactory {
         return new WalkVisitor(keyTime, cutoffTime, currentTime, lastMode,
                                lastTrip, currentPath, currentDepth, maxDepth,
                                reachabilityClient, timeAdjuster,
-                               visitorFactories);
+                               visitorFactories, workAllocator);
     }
 
 }
