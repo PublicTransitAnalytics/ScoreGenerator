@@ -32,7 +32,7 @@ public class RetrospectiveRiderBehaviorFactory implements RiderBehaviorFactory {
     final EntryPoints entryPoints;
 
     @Override
-    public ScheduleReader getNewReader() {
+    public ScheduleReader getScheduleReader() {
         return new RetrospectiveScheduleReader(entryPoints);
 
     }

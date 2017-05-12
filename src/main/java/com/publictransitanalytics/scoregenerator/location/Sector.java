@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.location;
 
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
@@ -29,25 +28,31 @@ import org.opensextant.geodesy.Longitude;
  *
  * @author Public Transit Analytics
  */
-@RequiredArgsConstructor
 @ToString
 public class Sector extends VisitableLocation {
 
     @Getter
     private final Geodetic2DBounds bounds;
-
+    
+    private final String boundsString;
+    
+    public Sector(final Geodetic2DBounds bounds) {
+        this.bounds = bounds;
+        boundsString = bounds.toString();
+    }
+    
     public boolean contains(final Geodetic2DPoint location) {
         return bounds.contains(location);
     }
 
     @Override
     public String getIdentifier() {
-        return bounds.toString();
+        return boundsString;
     }
 
     @Override
     public String getCommonName() {
-        return getIdentifier();
+        return boundsString;
     }
 
     @Override

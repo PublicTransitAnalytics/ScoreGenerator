@@ -22,7 +22,6 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Sto
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.StopIdKey;
 import com.google.common.collect.Multiset;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;

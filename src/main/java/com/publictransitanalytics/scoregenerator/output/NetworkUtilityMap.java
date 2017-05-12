@@ -15,8 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultiset;
+import com.google.common.collect.Multiset;
 import com.google.common.collect.SortedSetMultimap;
 import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.TaskIdentifier;
@@ -27,15 +28,16 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
- * A record for drawing a time range probability map.
  *
  * @author Public Transit Analytics
  */
-public class TimeRangeSectorMap {
+public class NetworkUtilityMap {
 
     private final MapType mapType;
 
@@ -43,9 +45,9 @@ public class TimeRangeSectorMap {
 
     private final Bounds mapBounds;
 
-    private final Point startingPoint;
-
     private final Map<Bounds, DestinationProbabilityInformation> sectors;
+
+    private final Set<Point> centerPoints;
 
     private final String startTime;
 
@@ -57,16 +59,19 @@ public class TimeRangeSectorMap {
 
     private final int score;
 
-    public TimeRangeSectorMap(
-            final SectorTable sectorTable, final PointLocation centerPoint,
-            final LocalDateTime startTime, final LocalDateTime endTime,
-            final Duration samplingInterval, final String experimentName,
-            final Duration tripDuration, final boolean backward,
-            final int score, final int buckets) {
-        mapType = MapType.TIME_RANGE_SECTOR;
+    public NetworkUtilityMap(final Set<TaskIdentifier> tasks,
+                             final SectorTable sectorTable,
+                             final Set<PointLocation> centerPoints,
+                             final LocalDateTime startTime,
+                             final LocalDateTime endTime,
+                             final Duration tripDuration,
+                             final Duration samplingInterval,
+                             final boolean backward,
+                             final int buckets, final int score) {
+        mapType = MapType.NETWORK_UTILITY;
+
         direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
         mapBounds = new Bounds(sectorTable);
-        startingPoint = new Point(centerPoint);
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.endTime = endTime.format(DateTimeFormatter.ofPattern(
@@ -78,40 +83,32 @@ public class TimeRangeSectorMap {
                 tripDuration.toMillis(), true, true);
         this.score = score;
 
-        final int samples
-                = (int) (Duration.between(startTime, endTime).getSeconds()
-                         / samplingInterval.getSeconds());
+        final int samples = tasks.size();
+        final Multiset<Sector> sectorReachabilities = HashMultiset.create();
+        for (final Sector sector : sectorTable.getSectors()) {
+            for (final TaskIdentifier task : tasks) {
+
+                final Map<TaskIdentifier, MovementPath> sectorPaths
+                        = sector.getBestPaths();
+                final MovementPath taskPath = sectorPaths.get(task);
+                if (taskPath != null) {
+                    sectorReachabilities.add(sector);
+                }
+            }
+        }
 
         final ImmutableMap.Builder<Bounds, DestinationProbabilityInformation> informationBuilder
                 = ImmutableMap.builder();
-
-        for (final Sector sector : sectorTable.getSectors()) {
-            final Map<TaskIdentifier, MovementPath> sectorPaths
-                    = sector.getBestPaths();
-            if (!sectorPaths.isEmpty()) {
-                final ImmutableMultiset.Builder<MovementPath> bestPathsBuilder
-                        = ImmutableMultiset.builder();
-
-                int count = 0;
-                LocalDateTime time = startTime;
-                while (!time.isAfter(endTime)) {
-                    final TaskIdentifier task = new TaskIdentifier(
-                            time, centerPoint, experimentName);
-                    final MovementPath taskPath = sectorPaths.get(task);
-                    if (taskPath != null) {
-                        bestPathsBuilder.add(taskPath);
-                        count++;
-                    }
-                    time = time.plus(samplingInterval);
-                }
-                final Bounds bounds = new Bounds(sector);
-                final DestinationProbabilityInformation information
-                        = new DestinationProbabilityInformation(
-                                bestPathsBuilder.build(), samples, count,
-                                buckets);
-                informationBuilder.put(bounds, information);
-            }
+        for (final Sector sector : sectorReachabilities.elementSet()) {
+            final Bounds bounds = new Bounds(sector);
+            final DestinationProbabilityInformation information
+                    = new DestinationProbabilityInformation(
+                            null, samples, sectorReachabilities.count(sector),
+                            buckets);
+            informationBuilder.put(bounds, information);
         }
         sectors = informationBuilder.build();
+        this.centerPoints = centerPoints.stream().map(
+                point -> new Point(point)).collect(Collectors.toSet());
     }
 }

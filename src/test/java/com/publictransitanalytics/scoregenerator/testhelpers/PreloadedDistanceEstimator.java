@@ -36,5 +36,9 @@ public class PreloadedDistanceEstimator implements DistanceEstimator {
         return ImmutableSet.copyOf(
                 estimates.headMap(distanceMeters, true).values());
     }
+
+    @Override
+    public void close() {
+    }
     
 }

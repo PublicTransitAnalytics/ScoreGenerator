@@ -16,7 +16,6 @@
 package com.publictransitanalytics.scoregenerator.location;
 
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
-import lombok.ToString;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
@@ -24,7 +23,6 @@ import org.opensextant.geodesy.Geodetic2DPoint;
  * 
  * @author Public Transit Analytics.
  */
-@ToString
 public class Landmark extends PointLocation {
 
     public Landmark(final Sector containingSector, 

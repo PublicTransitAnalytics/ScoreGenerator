@@ -34,7 +34,7 @@ public class PreloadedRiderBehaviorFactory implements RiderBehaviorFactory {
     private final PreloadedRider rider;
 
     @Override
-    public ScheduleReader getNewReader() {
+    public ScheduleReader getScheduleReader() {
         return reader;
     }
 

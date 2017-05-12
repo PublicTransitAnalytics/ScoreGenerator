@@ -62,12 +62,13 @@ public class StoredDistanceEstimatorTest {
         final Landmark location2 = new Landmark(sector, point2);
 
         final RangedStore<LocationDistanceKey, String> candidateDistancesStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<LocationDistanceKey, String>(
+                        new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                location1, Collections.emptySet(),
+                Collections.singleton(location1), Collections.emptySet(),
                 ImmutableSet.of(location1, location2), 6500, maxDistanceStore,
                 candidateDistancesStore);
 
@@ -96,13 +97,15 @@ public class StoredDistanceEstimatorTest {
         final Landmark location1 = new Landmark(sector, point1);
 
         final RangedStore<LocationDistanceKey, String> candidateDistanceStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<LocationDistanceKey, String>(
+                        new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                location1, ImmutableSet.of(sector), ImmutableSet.of(location1),
-                6500, maxDistanceStore, candidateDistanceStore);
+                Collections.singleton(location1), ImmutableSet.of(sector), 
+                ImmutableSet.of(location1), 6500, maxDistanceStore, 
+                candidateDistanceStore);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 sector.getIdentifier(), 6500);
@@ -131,12 +134,13 @@ public class StoredDistanceEstimatorTest {
         final Landmark location2 = new Landmark(sector, point2);
 
         final RangedStore<LocationDistanceKey, String> candidateDistanceStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<LocationDistanceKey, String>(
+                        new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                location1, Collections.emptySet(),
+                Collections.singleton(location1), Collections.emptySet(),
                 ImmutableSet.of(location1, location2), 6500, maxDistanceStore,
                 candidateDistanceStore);
 
@@ -170,12 +174,13 @@ public class StoredDistanceEstimatorTest {
         final Landmark location2 = new Landmark(sector, point2);
 
         final RangedStore<LocationDistanceKey, String> store
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<LocationDistanceKey, String>(
+                        new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                location1, Collections.emptySet(),
+                Collections.singleton(location1), Collections.emptySet(),
                 ImmutableSet.of(location1, location2), 4000, maxDistanceStore,
                 store);
         try {

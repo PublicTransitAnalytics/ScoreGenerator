@@ -178,7 +178,7 @@ public class MovementPathTest {
     }
 
     @Test
-    public void testTiesBroken() {
+    public void testEquals() {
 
         final MovementPath aPath = new ForwardMovingPath()
                 .appendTransitRide(
@@ -188,6 +188,22 @@ public class MovementPathTest {
         final MovementPath otherPath = new ForwardMovingPath()
                 .appendTransitRide(
                         "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
+
+        Assert.assertTrue(aPath.compareTo(otherPath) == 0);
+    }
+
+    @Test
+    public void testTiesBroken() {
+
+        final MovementPath aPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripId", "1", "Somewhere via Elsewhere", ORIGIN_STOP,
+                        TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
+
+        final MovementPath otherPath = new ForwardMovingPath()
+                .appendTransitRide(
+                        "tripIdX", "1X", "Somewhere via Elsewhere", ORIGIN_STOP,
                         TIME_AT_ORIGIN, DESTINATION_STOP, TIME_AT_DESTINATION);
 
         Assert.assertFalse(aPath.compareTo(otherPath) == 0);

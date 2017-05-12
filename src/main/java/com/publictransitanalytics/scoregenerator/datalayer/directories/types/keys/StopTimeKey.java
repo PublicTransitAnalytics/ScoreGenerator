@@ -15,9 +15,13 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
+import com.bitvantage.bitvantagecaching.KeyMaterializer;
 import com.bitvantage.bitvantagecaching.RangedKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.NonNull;
 import lombok.Value;
 
@@ -27,7 +31,7 @@ import lombok.Value;
  * @author Public Transit Analytics
  */
 @Value
-public class StopTimeKey implements RangedKey<StopTimeKey> {
+public class StopTimeKey extends RangedKey<StopTimeKey> {
 
     @NonNull
     private final String stopId;
@@ -75,4 +79,24 @@ public class StopTimeKey implements RangedKey<StopTimeKey> {
         return getMaxKey(stopId, TransitTime.MAX_TRANSIT_TIME);
     }
 
+    public static class Materializer implements KeyMaterializer<StopTimeKey> {
+
+        final Pattern pattern = Pattern.compile("(.+)::(.+)::(.+)");
+
+        @Override
+        public StopTimeKey materialize(final String keyString)
+                throws BitvantageStoreException {
+            final Matcher matcher = pattern.matcher(keyString);
+            if (matcher.matches()) {
+                final String stopId = matcher.group(1);
+                final String transitTimeString = matcher.group(2);
+                final String uuidString = matcher.group(3);
+                return new StopTimeKey(
+                        stopId, TransitTime.parse(transitTimeString),
+                UUID.fromString(uuidString));
+            }
+            throw new BitvantageStoreException(String.format(
+                    "Key string %s could not be materialized", keyString));
+        }
+    }
 }

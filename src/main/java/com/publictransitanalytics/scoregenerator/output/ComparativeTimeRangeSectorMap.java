@@ -16,11 +16,13 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SortedSetMultimap;
 import com.google.common.collect.TreeMultimap;
 import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.Duration;
@@ -29,9 +31,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.Set;
+import java.util.SortedSet;
 import org.apache.commons.lang3.time.DurationFormatUtils;
-import org.opensextant.geodesy.Geodetic2DBounds;
 
 /**
  * A record for drawing a comparative time range probability map.
@@ -39,9 +40,6 @@ import org.opensextant.geodesy.Geodetic2DBounds;
  * @author Public Transit Analytics
  */
 public class ComparativeTimeRangeSectorMap {
-
-    private static final SortedSetMultimap EMPTY_MAP = Multimaps
-            .unmodifiableSortedSetMultimap(TreeMultimap.create());
 
     private final MapType mapType;
 
@@ -66,23 +64,20 @@ public class ComparativeTimeRangeSectorMap {
     private final String tripDuration;
 
     public ComparativeTimeRangeSectorMap(
-            final SectorTable baseSectorTable,
+            final SectorTable sectorTable,
             final LocalDate baseDate, final int baseScore,
-            final SectorTable trialSectorTable,
+            final String baseExperimentName,
             final LocalDate trialDate, final int trialScore,
-            final String startingPointString, final LocalTime startTime,
+            final String trialExperimentName,
+            final PointLocation centerPoint, final LocalTime startTime,
             final Duration span, final Duration samplingInterval,
-            final Duration tripDuration, final boolean backward, 
+            final Duration tripDuration, final boolean backward,
             final int buckets) {
         mapType = MapType.COMPARATIVE_TIME_RANGE_SECTOR;
 
         direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
 
-        if (!baseSectorTable.getBounds().equals(trialSectorTable.getBounds())) {
-            throw new IllegalArgumentException();
-        }
-
-        mapBounds = new Bounds(baseSectorTable);
+        mapBounds = new Bounds(sectorTable);
 
         this.baseScore = baseScore;
         this.baseStartTime = baseDate.atTime(startTime)
@@ -96,7 +91,7 @@ public class ComparativeTimeRangeSectorMap {
         this.trialEndTime = trialDate.atTime(startTime).plus(span)
                 .format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"));
 
-        this.startingPoint = startingPointString;
+        this.startingPoint = centerPoint.getCommonName();
 
         this.samplingInterval = DurationFormatUtils.formatDurationWords(
                 samplingInterval.toMillis(), true, true);
@@ -104,47 +99,63 @@ public class ComparativeTimeRangeSectorMap {
         this.tripDuration = DurationFormatUtils.formatDurationWords(
                 tripDuration.toMillis(), true, true);
 
-        final ImmutableMap.Builder<Bounds, DestinationProbabilityComparison> builder
+        final int samples = getSamples(span, samplingInterval);
+
+        final ImmutableMap.Builder<Bounds, DestinationProbabilityComparison> comparisonsBuilder
                 = ImmutableMap.builder();
-        final ImmutableSet.Builder<Geodetic2DBounds> baseBoundsBuilder
-                = ImmutableSet.builder();
-        for (final Sector sector : baseSectorTable.getSectors()) {
-            final SortedSetMultimap<LocalDateTime, MovementPath> basePaths
-                    = sector.getPaths();
-            if (!basePaths.isEmpty()) {
-                final Geodetic2DBounds bounds = sector.getBounds();
-                baseBoundsBuilder.add(bounds);
-                final Sector trialSector = trialSectorTable.getSector(bounds);
-                final SortedSetMultimap<LocalDateTime, MovementPath> trialPaths
-                        = (trialSector == null)
-                                ? EMPTY_MAP : trialSector.getPaths();
+        for (final Sector sector : sectorTable.getSectors()) {
+            final ImmutableMultiset.Builder<MovementPath> baseBestPathsBuilder
+                    = ImmutableMultiset.builder();
+            final ImmutableMultiset.Builder<MovementPath> trialBestPathsBuilder
+                    = ImmutableMultiset.builder();
+            final Map<TaskIdentifier, MovementPath> sectorPaths
+                    = sector.getBestPaths();
 
-                builder.put(new Bounds(sector),
-                            new DestinationProbabilityComparison(
-                                    basePaths, baseDate, trialPaths, trialDate,
-                                    startTime, span, samplingInterval,
-                                    buckets));
-            }
+            if (!sectorPaths.isEmpty()) {
+                LocalTime time = startTime;
+                int baseCount = 0;
+                int trialCount = 0;
+                while (time.isBefore(startTime.plus(span))) {
+                    final LocalDateTime baseTime = baseDate.atTime(time);
+                    final TaskIdentifier baseTask = new TaskIdentifier(
+                            baseTime, centerPoint, baseExperimentName);
+                    final MovementPath basePath
+                            = sectorPaths.get(baseTask);
+                    if (basePath != null) {
+                        baseCount++;
+                        baseBestPathsBuilder.add(basePath);
+                    }
 
-        }
-        final Set<Geodetic2DBounds> baseBounds = baseBoundsBuilder.build();
-
-        for (final Sector sector : trialSectorTable.getSectors()) {
-            final SortedSetMultimap<LocalDateTime, MovementPath> trialPaths
-                    = sector.getPaths();
-
-            if (!trialPaths.isEmpty()) {
-                final Geodetic2DBounds bounds = sector.getBounds();
-                if (!baseBounds.contains(bounds)) {
-                    builder.put(new Bounds(sector),
-                                new DestinationProbabilityComparison(
-                                        EMPTY_MAP, baseDate, trialPaths,
-                                        trialDate, startTime, span,
-                                        samplingInterval, buckets));
+                    final LocalDateTime trialTime = trialDate.atTime(time);
+                    final TaskIdentifier trialTask = new TaskIdentifier(
+                            trialTime, centerPoint, baseExperimentName);
+                    final MovementPath trialPaths
+                            = sectorPaths.get(trialTask);
+                    if (trialPaths != null) {
+                        trialCount++;
+                        trialBestPathsBuilder.add(trialPaths);
+                    }
                 }
+
+                final Bounds bounds = new Bounds(sector);
+                final DestinationProbabilityComparison comparison
+                        = new DestinationProbabilityComparison(
+                                baseCount, baseBestPathsBuilder.build(),
+                                trialCount, trialBestPathsBuilder.build(),
+                                samples, buckets);
+                        
+                
+                comparisonsBuilder.put(bounds, comparison);
+                       
             }
+
         }
-        sectors = builder.build();
+        sectors = comparisonsBuilder.build();
+    }
+
+    private static int getSamples(final Duration span,
+                                  final Duration samplingInterval) {
+        return (int) (span.getSeconds() / samplingInterval.getSeconds());
     }
 
 }

@@ -19,13 +19,16 @@ import com.bitvantage.bitvantagecaching.Cache;
 import com.bitvantage.bitvantagecaching.CachingStore;
 import com.bitvantage.bitvantagecaching.InMemoryHashStore;
 import com.bitvantage.bitvantagecaching.LmdbStore;
-import com.bitvantage.bitvantagecaching.RangedCachingStore;
+import com.bitvantage.bitvantagecaching.CachingRangedStore;
+import com.bitvantage.bitvantagecaching.InMemoryTreeStore;
+import com.bitvantage.bitvantagecaching.RangedCache;
 import com.bitvantage.bitvantagecaching.RangedLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.ReaderControlledRangedStore;
 import com.bitvantage.bitvantagecaching.ReaderControlledStore;
 import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.UnboundedCache;
+import com.bitvantage.bitvantagecaching.UnboundedRangedCache;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingRouteDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingStopDetailsDirectory;
@@ -99,10 +102,15 @@ import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.StopDetailsDirectory;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
 import com.publictransitanalytics.scoregenerator.output.ComparativeTimeRangeSectorMap;
+import com.publictransitanalytics.scoregenerator.output.NetworkUtilityMap;
 import com.publictransitanalytics.scoregenerator.output.TimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingEntryPoints;
@@ -117,6 +125,8 @@ import org.opensextant.geodesy.Geodetic2DBounds;
 import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collections;
+import java.util.SortedSet;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 
@@ -186,12 +196,19 @@ public class Main {
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
 
         final Subparsers subparsers = parser.addSubparsers().dest("command");
-        final Subparser generateParser = subparsers.addParser(
+
+        final Subparser generateNetworkUtilityParser = subparsers.addParser(
+                "generateNetworkUtility");
+        generateNetworkUtilityParser.addArgument("-a", "--startTime");
+        generateNetworkUtilityParser.addArgument("-s", "--span");
+        generateNetworkUtilityParser.addArgument("-f", "--files");
+
+        final Subparser generatePointUtilityParser = subparsers.addParser(
                 "generatePointUtility");
-        generateParser.addArgument("-s", "--startTime");
-        generateParser.addArgument("-e", "--endTime");
-        generateParser.addArgument("-f", "--files");
-        generateParser.addArgument("-c", "--coordinate");
+        generatePointUtilityParser.addArgument("-a", "--startTime");
+        generatePointUtilityParser.addArgument("-s", "--span");
+        generatePointUtilityParser.addArgument("-f", "--files");
+        generatePointUtilityParser.addArgument("-c", "--coordinate");
 
         final Subparser compareParser = subparsers.addParser(
                 "comparePointUtility");
@@ -215,7 +232,7 @@ public class Main {
         }
 
         final String baseDirectoryString = namespace.get("baseDirectory");
-        final Path baseDirectory = Paths.get(baseDirectoryString);
+        final Path root = Paths.get(baseDirectoryString);
 
         final String key = namespace.get("apiKey");
 
@@ -233,188 +250,582 @@ public class Main {
 
         final ReachedSectorScoreGenerator scoreGenerator
                 = new ReachedSectorScoreGenerator();
-        final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
         final LocalFilePublisher publisher = new LocalFilePublisher();
 
         final DistanceClient distanceClient
-                = buildDistanceClient(baseDirectory, key);
+                = buildDistanceClient(root, key);
 
         final ForkJoinPool pool = new ForkJoinPool();
         final WorkAllocator workAllocator
-                = new ForkJoinWorkAllocator(20);
-                
+                = new ForkJoinWorkAllocator(4);
+
+        final SectorTable sectorTable = generateSectors();
+
         try {
             if ("generatePointUtility".equals(command)) {
-                final String files = namespace.get("files");
-                final LocalDateTime startTime
-                        = LocalDateTime.parse(namespace.get("startTime"));
-
-                final String endTimeString = namespace.get("endTime");
-
-                final LocalDateTime endTime = (endTimeString != null)
-                        ? LocalDateTime.
-                        parse(endTimeString) : null;
-
-                final String coordinateString
-                        = namespace.get("coordinate");
-                final Geodetic2DPoint startingCoordinate
-                        = (coordinateString == null)
-                                ? null : new Geodetic2DPoint(coordinateString);
-
-                final Solution solution = generateSolution(
-                        baseDirectory, files, durations, backward, startTime,
-                        endTime, startingCoordinate,
-                        distanceClient, samplingInterval, pool, workAllocator);
-                final SectorTable sectorTable = solution.getSectorTable();
-                final PointLocation startLocation = solution.getStartLocation();
-
-                if (endTime == null && durations.size() == 1) {
-                    final int score = scoreGenerator.getScore(
-                            sectorTable, startTime);
-                    final SingleTimeSectorMap map = new SingleTimeSectorMap(
-                            sectorTable, startLocation, startTime,
-                            durations.first(), backward, score);
-
-                    final String output = gson.toJson(map);
-                    publisher.publish(output);
-                } else if (durations.size() == 1) {
-
-                    final int score = scoreGenerator.getScore(
-                            sectorTable, startTime, endTime, samplingInterval);
-                    final TimeRangeSectorMap map = new TimeRangeSectorMap(
-                            sectorTable, startLocation, startTime, endTime,
-                            samplingInterval, durations.first(), backward,
-                            score, NUM_BUCKETS);
-
-                    final String output = gson.toJson(map);
-                    publisher.publish(output);
-                } else {
-                    throw new UnsupportedOperationException("Unknown problem.");
-                }
+                generatePointUtility(namespace, root, sectorTable, backward,
+                                     samplingInterval, durations,
+                                     distanceClient, pool, workAllocator,
+                                     scoreGenerator, publisher, serializer);
             } else if ("comparePointUtility".equals(command)) {
-                final LocalTime startTime
-                        = LocalTime.parse(namespace.get("startTime"));
-                final Duration span
-                        = Duration.parse(namespace.get("span"));
-
-                final String baseFiles = namespace.get("baseFiles");
-
-                final LocalDate baseDate
-                        = LocalDate.parse(namespace.get("baseDate"));
-
-                final String coordinateString
-                        = namespace.get("coordinate");
-                final Geodetic2DPoint startingCoordinate = new Geodetic2DPoint(
-                        coordinateString);
-
-                final String trialFiles = namespace.get("trialFiles");
-                final LocalDate trialDate
-                        = LocalDate.parse(namespace.get("trialDate"));
-
-                final LocalDateTime baseStartDateTime
-                        = baseDate.atTime(startTime);
-                final LocalDateTime baseEndDateTime
-                        = baseStartDateTime.plus(span);
-
-                final Solution baseSolution = generateSolution(
-                        baseDirectory, baseFiles, durations, backward,
-                        baseStartDateTime, baseEndDateTime, startingCoordinate,
-                        distanceClient, samplingInterval, pool, workAllocator);
-
-                final int baseScore = scoreGenerator.getScore(
-                        baseSolution.getSectorTable(), baseStartDateTime,
-                        baseEndDateTime, samplingInterval);
-
-                final LocalDateTime trialStartDateTime
-                        = trialDate.atTime(startTime);
-                final LocalDateTime trialEndDateTime
-                        = trialStartDateTime.plus(span);
-
-                final Solution trialSolution = generateSolution(
-                        baseDirectory, trialFiles, durations, backward,
-                        trialStartDateTime, trialEndDateTime,
-                        startingCoordinate, distanceClient, samplingInterval,
-                        pool, workAllocator);
-
-                final int trialScore = scoreGenerator.getScore(
-                        trialSolution.getSectorTable(), trialStartDateTime,
-                        trialEndDateTime, samplingInterval);
-
-                final ComparativeTimeRangeSectorMap map
-                        = new ComparativeTimeRangeSectorMap(
-                                baseSolution.getSectorTable(), baseDate,
-                                baseScore, trialSolution.getSectorTable(),
-                                trialDate, trialScore, coordinateString,
-                                startTime, span, samplingInterval,
-                                durations.first(), backward, NUM_BUCKETS);
-                final String output = gson.toJson(map);
-                publisher.publish(output);
+                comparePointUtility(namespace, root, sectorTable, backward,
+                                    samplingInterval, durations,
+                                    distanceClient, pool, workAllocator,
+                                    scoreGenerator, publisher, serializer);
+            } else if ("generateNetworkUtility".equals(command)) {
+                generateNetworkUtility(namespace, root, sectorTable, backward,
+                                       samplingInterval, durations,
+                                       distanceClient, pool, workAllocator,
+                                       scoreGenerator, publisher, serializer);
             }
         } finally {
-            distanceClient.close();
+
         }
 
     }
 
-    private static Solution generateSolution(
-            final Path baseDirectory, final String revision,
-            final NavigableSet<Duration> durations, final boolean backward,
-            final LocalDateTime startTime, final LocalDateTime endTime,
-            final Geodetic2DPoint startingCoordinate,
-            final DistanceClient distanceClient,
-            final Duration samplingInterval, final ForkJoinPool pool,
-            final WorkAllocator workAllocator)
-            throws IOException, ExecutionException, InterruptedException {
-
-        final Store<StopIdKey, StopDetails> stopDetailsBackingStore
-                = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
-                        STOP_DETAILS_STORE), StopDetails.class);
-        final Cache<StopIdKey, StopDetails> stopDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<StopIdKey, StopDetails> stopDetailsStore = new CachingStore(
-                stopDetailsBackingStore, stopDetailsCache);
-
-        final Reader stopDetailsReader = new FileReader(
-                baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
-                STOPS_FILE).toFile());
-
-        final GTFSReadingStopDetailsDirectory stopDetailsDirectory
-                = new GTFSReadingStopDetailsDirectory(stopDetailsStore,
-                                                      stopDetailsReader);
-
+    private static LocalDateTime getEarliestTime(
+            final LocalDateTime startTime, final Duration maxDuration,
+            final boolean backward) {
         final LocalDateTime earliestTime;
         if (backward) {
-            earliestTime = startTime.minus(durations.last());
+            earliestTime = startTime.minus(maxDuration);
         } else {
             earliestTime = startTime;
         }
+        return earliestTime;
+    }
 
+    private static LocalDateTime getLatestTime(
+            final LocalDateTime startTime, final LocalDateTime endTime,
+            final Duration maxDuration, final boolean backward) {
         final LocalDateTime latestTime;
         if (endTime != null) {
             if (backward) {
                 latestTime = endTime;
             } else {
-                latestTime = endTime.plus(durations.last());
+                latestTime = endTime.plus(maxDuration);
             }
         } else if (backward) {
             latestTime = startTime;
         } else {
-            latestTime = startTime.plus(durations.last());
+            latestTime = startTime.plus(maxDuration);
+        }
+        return latestTime;
+    }
+
+    private static void generateNetworkUtility(
+            final Namespace namespace, final Path root,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
+            final SortedSet<Duration> durations,
+            final DistanceClient distanceClient, final ForkJoinPool pool,
+            final WorkAllocator workAllocator,
+            final ReachedSectorScoreGenerator scoreGenerator,
+            final LocalFilePublisher publisher, final Gson serializer)
+            throws IOException, InterruptedException, ExecutionException {
+
+        final String files = namespace.get("files");
+        final LocalDateTime startTime
+                = LocalDateTime.parse(namespace.get("startTime"));
+
+        final Duration span = Duration.parse(namespace.get("span"));
+
+        final LocalDateTime endTime = startTime.plus(span);
+
+        final LocalDateTime earliestTime = getEarliestTime(
+                startTime, durations.last(), backward);
+        final LocalDateTime latestTime = getLatestTime(
+                startTime, endTime, durations.last(), backward);
+
+        final StopDetailsDirectory stopDetailsDirectory
+                = buildStopDetailsDirectory(root, files);
+
+        final ImmutableBiMap<String, TransitStop> stopIdMap
+                = buildTransitStopIdMap(sectorTable, stopDetailsDirectory);
+
+        final ServiceTypeCalendar serviceTypeCalendar
+                = buildServiceTypeCalendar(root, files);
+        final TripDetailsDirectory tripDetailsDirectory
+                = buildTripDetailsDirectory(root, files);
+        final RouteDetailsDirectory routeDetailsDirectory
+                = buildRouteDetailsDirectory(root, files);
+        final StopTimesDirectory stopTimesDirectory
+                = buildStopTimesDirectory(root, files);
+
+//        final Geodetic2DPoint initialPoint = new Geodetic2DPoint(
+//                "47.66439,-122.3254157");
+//
+//        final Sector homeSector = sectorTable.findSector(initialPoint);
+//
+//        final ImmutableSet.Builder<Sector> measuredSectorsBuilder
+//                = ImmutableSet.builder();
+//        measuredSectorsBuilder.add(homeSector);
+//        measuredSectorsBuilder.add(sectorTable.northSector(homeSector));
+//        measuredSectorsBuilder.add(sectorTable.southSector(homeSector));
+//        measuredSectorsBuilder.add(sectorTable.eastSector(homeSector));
+//        measuredSectorsBuilder.add(sectorTable.westSector(homeSector));
+
+        final ImmutableSet<Sector> measuredSectors = sectorTable.getSectors();
+
+        final ImmutableSet.Builder<PointLocation> centerPointsBuilder
+                = ImmutableSet.builder();
+        for (final Sector sector : measuredSectors) {
+            final Landmark centerPoint
+                    = new Landmark(sector, sector.getCanonicalPoint());
+            centerPointsBuilder.add(centerPoint);
+        }
+        final Set<PointLocation> centerPoints = centerPointsBuilder.build();
+
+        final ImmutableBiMap<String, PointLocation> pointIdMap
+                = buildPointIdMap(centerPoints, stopIdMap);
+        final ImmutableBiMap<String, VisitableLocation> locationIdMap
+                = buildLocationIdMap(pointIdMap, sectorTable);
+        final EntryPoints entryPoints = buildEntryPoints(
+                earliestTime, latestTime, serviceTypeCalendar,
+                tripDetailsDirectory, routeDetailsDirectory,
+                stopTimesDirectory,
+                stopIdMap);
+
+        final RiderBehaviorFactory riderFactory;
+        final TimeTracker timeTracker;
+        final DistanceFilter distanceFilter;
+        final MovementPath basePath;
+        if (!backward) {
+            riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
+            timeTracker = new ForwardTimeTracker();
+            distanceFilter = new ManyDestinationsDistanceFilter(
+                    distanceClient);
+            basePath = new ForwardMovingPath(ImmutableList.of());
+        } else {
+            riderFactory = new RetrospectiveRiderBehaviorFactory(
+                    entryPoints);
+            timeTracker = new BackwardTimeTracker();
+            distanceFilter = new ManyOriginsDistanceFilter(
+                    distanceClient);
+            basePath = new RetrospectivePath(ImmutableList.of());
         }
 
-        SectorTable sectorTable = new SectorTable(
+        final DistanceEstimator distanceEstimator
+                = buildDistanceEstimator(
+                        sectorTable, centerPoints, pointIdMap,
+                        durations.last(), root, files);
+
+        final ReachabilityClient reachabilityClient
+                = buildReachabilityClient(
+                        distanceFilter, distanceEstimator, timeTracker,
+                        locationIdMap);
+        try {
+            final Workflow workflow = new Workflow(timeTracker, basePath,
+                                                   pool, workAllocator);
+            final Set<VisitorFactory> visitorFactories
+                    = buildVisitorFactories(
+                            riderFactory, reachabilityClient, timeTracker,
+                            workAllocator);
+
+            final ImmutableSet.Builder<TaskIdentifier> tasksBuilder
+                    = ImmutableSet.builder();
+
+            for (final PointLocation centerPoint : centerPoints) {
+                LocalDateTime time = startTime;
+                while (time.isBefore(endTime)) {
+                    tasksBuilder.add(new TaskIdentifier(time, centerPoint,
+                                                        "generatePointUtility"));
+                    time = time.plus(samplingInterval);
+                }
+            }
+            final Set<TaskIdentifier> tasks = tasksBuilder.build();
+            workflow.getPathsForTasks(durations.last(), visitorFactories,
+                                      tasks);
+
+            final int score = scoreGenerator.getScore(sectorTable, tasks);
+            final NetworkUtilityMap map = new NetworkUtilityMap(
+                    tasks, sectorTable, centerPoints, startTime, endTime,
+                    durations.last(), samplingInterval, backward,
+                    NUM_BUCKETS, score);
+            publisher.publish(serializer.toJson(map));
+
+        } finally {
+            distanceEstimator.close();
+            distanceClient.close();
+        }
+    }
+
+    private static void comparePointUtility(
+            final Namespace namespace, final Path root,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
+            final SortedSet<Duration> durations,
+            final DistanceClient distanceClient, final ForkJoinPool pool,
+            final WorkAllocator workAllocator,
+            final ReachedSectorScoreGenerator scoreGenerator,
+            final LocalFilePublisher publisher, final Gson serializer)
+            throws IOException, InterruptedException, ExecutionException {
+        try {
+            final String coordinateString
+                    = namespace.get("coordinate");
+            final Geodetic2DPoint centerCoordinate
+                    = (coordinateString == null)
+                            ? null : new Geodetic2DPoint(coordinateString);
+            final Landmark centerPoint = buildCenterPoint(
+                    sectorTable, centerCoordinate);
+
+            final TimeTracker timeTracker;
+            final DistanceFilter distanceFilter;
+            final MovementPath basePath;
+            if (!backward) {
+                timeTracker = new ForwardTimeTracker();
+                distanceFilter = new ManyDestinationsDistanceFilter(
+                        distanceClient);
+                basePath = new ForwardMovingPath(ImmutableList.of());
+            } else {
+                timeTracker = new BackwardTimeTracker();
+                distanceFilter = new ManyOriginsDistanceFilter(distanceClient);
+                basePath = new RetrospectivePath(ImmutableList.of());
+            }
+
+            final Workflow workflow = new Workflow(timeTracker, basePath, pool,
+                                                   workAllocator);
+
+            final LocalTime startTime
+                    = LocalTime.parse(namespace.get("startTime"));
+            final Duration span
+                    = Duration.parse(namespace.get("span"));
+
+            final String baseFiles = namespace.get("baseFiles");
+
+            final LocalDate baseDate
+                    = LocalDate.parse(namespace.get("baseDate"));
+
+            final String baseExperimentName = "baseline";
+
+            final LocalDateTime baseStartDateTime = baseDate.atTime(startTime);
+            final LocalDateTime baseEndDateTime = baseStartDateTime.plus(span);
+
+            final LocalDateTime baseEarliestTime = getEarliestTime(
+                    baseStartDateTime, durations.last(), backward);
+            final LocalDateTime baseLatestTime = getLatestTime(
+                    baseStartDateTime, baseEndDateTime, durations.last(),
+                    backward);
+
+            final StopDetailsDirectory baseStopDetailsDirectory
+                    = buildStopDetailsDirectory(root, baseFiles);
+
+            final ServiceTypeCalendar baseServiceTypeCalendar
+                    = buildServiceTypeCalendar(root, baseFiles);
+            final TripDetailsDirectory baseTripDetailsDirectory
+                    = buildTripDetailsDirectory(root, baseFiles);
+            final RouteDetailsDirectory baseRouteDetailsDirectory
+                    = buildRouteDetailsDirectory(root, baseFiles);
+            final StopTimesDirectory baseStopTimesDirectory
+                    = buildStopTimesDirectory(root, baseFiles);
+
+            final ImmutableBiMap<String, TransitStop> baseStopIdMap
+                    = buildTransitStopIdMap(sectorTable,
+                                            baseStopDetailsDirectory);
+            final ImmutableBiMap<String, PointLocation> basePointIdMap
+                    = buildPointIdMap(Collections.singleton(centerPoint),
+                                      baseStopIdMap);
+            final ImmutableBiMap<String, VisitableLocation> baseLocationIdMap
+                    = buildLocationIdMap(basePointIdMap, sectorTable);
+
+            final EntryPoints baseEntryPoints = buildEntryPoints(
+                    baseEarliestTime, baseLatestTime, baseServiceTypeCalendar,
+                    baseTripDetailsDirectory, baseRouteDetailsDirectory,
+                    baseStopTimesDirectory, baseStopIdMap);
+
+            final RiderBehaviorFactory baseRiderFactory;
+            if (!backward) {
+                baseRiderFactory = new ForwardRiderBehaviorFactory(
+                        baseEntryPoints);
+            } else {
+                baseRiderFactory = new RetrospectiveRiderBehaviorFactory(
+                        baseEntryPoints);
+            }
+
+            final DistanceEstimator baseDistanceEstimator
+                    = buildDistanceEstimator(
+                            sectorTable, Collections.singleton(centerPoint),
+                            basePointIdMap, durations.last(), root, baseFiles);
+
+            final ReachabilityClient baseReachabilityClient
+                    = buildReachabilityClient(
+                            distanceFilter, baseDistanceEstimator, timeTracker,
+                            baseLocationIdMap);
+
+            final Set<VisitorFactory> baseVisitorFactories
+                    = buildVisitorFactories(
+                            baseRiderFactory, baseReachabilityClient,
+                            timeTracker,
+                            workAllocator);
+
+            final ImmutableSet.Builder<TaskIdentifier> baseTasksBuilder
+                    = ImmutableSet.builder();
+            LocalDateTime baseTime = baseStartDateTime;
+            while (baseTime.isBefore(baseEndDateTime)) {
+                baseTime = baseTime.plus(samplingInterval);
+                baseTasksBuilder.add(new TaskIdentifier(baseTime, centerPoint,
+                                                        baseExperimentName));
+            }
+
+            final Set<TaskIdentifier> baseTasks = baseTasksBuilder.build();
+
+            workflow.getPathsForTasks(durations.last(),
+                                      baseVisitorFactories, baseTasks);
+            final int baseScore = scoreGenerator
+                    .getScore(sectorTable, baseTasks);
+
+            final String trialFiles = namespace.get("trialFiles");
+            final LocalDate trialDate
+                    = LocalDate.parse(namespace.get("trialDate"));
+
+            final String trialExperimentName = "trial";
+
+            final LocalDateTime trialStartDateTime = trialDate.atTime(startTime);
+            final LocalDateTime trialEndDateTime = trialStartDateTime.plus(span);
+
+            final LocalDateTime trialEarliestTime = getEarliestTime(
+                    trialStartDateTime, durations.last(), backward);
+            final LocalDateTime trialLatestTime = getLatestTime(
+                    trialStartDateTime, trialEndDateTime, durations.last(),
+                    backward);
+
+            final StopDetailsDirectory trialStopDetailsDirectory
+                    = buildStopDetailsDirectory(root, trialFiles);
+
+            final ServiceTypeCalendar trialServiceTypeCalendar
+                    = buildServiceTypeCalendar(root, trialFiles);
+            final TripDetailsDirectory trialTripDetailsDirectory
+                    = buildTripDetailsDirectory(root, trialFiles);
+            final RouteDetailsDirectory trialRouteDetailsDirectory
+                    = buildRouteDetailsDirectory(root, trialFiles);
+            final StopTimesDirectory trialStopTimesDirectory
+                    = buildStopTimesDirectory(root, trialFiles);
+
+            final ImmutableBiMap<String, TransitStop> trialStopIdMap
+                    = buildTransitStopIdMap(sectorTable,
+                                            trialStopDetailsDirectory);
+            final ImmutableBiMap<String, PointLocation> trialPointIdMap
+                    = buildPointIdMap(Collections.singleton(centerPoint),
+                                      trialStopIdMap);
+            final ImmutableBiMap<String, VisitableLocation> trialLocationIdMap
+                    = buildLocationIdMap(trialPointIdMap, sectorTable);
+
+            final EntryPoints trialEntryPoints = buildEntryPoints(
+                    trialEarliestTime, trialLatestTime, trialServiceTypeCalendar,
+                    trialTripDetailsDirectory, trialRouteDetailsDirectory,
+                    trialStopTimesDirectory, trialStopIdMap);
+
+            final RiderBehaviorFactory trialRiderFactory;
+            if (!backward) {
+                trialRiderFactory
+                        = new ForwardRiderBehaviorFactory(trialEntryPoints);
+            } else {
+                trialRiderFactory = new RetrospectiveRiderBehaviorFactory(
+                        trialEntryPoints);
+            }
+
+            final DistanceEstimator trialDistanceEstimator
+                    = buildDistanceEstimator(
+                            sectorTable, Collections.singleton(centerPoint),
+                            trialPointIdMap, durations.last(), root,
+                            trialFiles);
+
+            final ReachabilityClient trialReachabilityClient
+                    = buildReachabilityClient(
+                            distanceFilter, trialDistanceEstimator, timeTracker,
+                            trialLocationIdMap);
+
+            final Set<VisitorFactory> trialVisitorFactories
+                    = buildVisitorFactories(
+                            trialRiderFactory, trialReachabilityClient,
+                            timeTracker,
+                            workAllocator);
+
+            final ImmutableSet.Builder<TaskIdentifier> trialTasksBuilder
+                    = ImmutableSet.builder();
+            LocalDateTime trialTime = trialStartDateTime;
+            while (trialTime.isBefore(trialEndDateTime)) {
+                trialTime = trialTime.plus(samplingInterval);
+                trialTasksBuilder.add(new TaskIdentifier(trialTime, centerPoint,
+                                                         trialExperimentName));
+            }
+
+            final Set<TaskIdentifier> trialTasks = trialTasksBuilder.build();
+
+            workflow.getPathsForTasks(durations.last(),
+                                      trialVisitorFactories, trialTasks);
+            final int trialScore = scoreGenerator.getScore(sectorTable,
+                                                           trialTasks);
+
+            final ComparativeTimeRangeSectorMap map
+                    = new ComparativeTimeRangeSectorMap(
+                            sectorTable, baseDate, baseScore,
+                            baseExperimentName, trialDate, trialScore,
+                            trialExperimentName, centerPoint, startTime, span,
+                            samplingInterval, durations.first(), backward,
+                            NUM_BUCKETS);
+            final String output = serializer.toJson(map);
+            publisher.publish(output);
+        } finally {
+            distanceClient.close();
+
+        }
+    }
+
+    private static void generatePointUtility(
+            final Namespace namespace, final Path root,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
+            final SortedSet<Duration> durations,
+            final DistanceClient distanceClient, final ForkJoinPool pool,
+            final WorkAllocator workAllocator,
+            final ReachedSectorScoreGenerator scoreGenerator,
+            final LocalFilePublisher publisher, final Gson serializer)
+            throws IOException, InterruptedException, ExecutionException {
+
+        final String experimentName = "generatePointUtility";
+
+        final String coordinateString
+                = namespace.get("coordinate");
+        final Geodetic2DPoint centerCoordinate
+                = (coordinateString == null)
+                        ? null : new Geodetic2DPoint(coordinateString);
+        final Landmark centerPoint = buildCenterPoint(
+                sectorTable, centerCoordinate);
+
+        final String files = namespace.get("files");
+        final LocalDateTime startTime
+                = LocalDateTime.parse(namespace.get("startTime"));
+
+        final String spanString = namespace.get("span");
+
+        final Duration span = (spanString == null) ? null : Duration.parse(
+                spanString);
+
+        final LocalDateTime endTime
+                = (span == null) ? null : startTime.plus(span);
+
+        final LocalDateTime earliestTime = getEarliestTime(
+                startTime, durations.last(), backward);
+        final LocalDateTime latestTime = getLatestTime(
+                startTime, endTime, durations.last(), backward);
+
+        final StopDetailsDirectory stopDetailsDirectory
+                = buildStopDetailsDirectory(root, files);
+
+        final ImmutableBiMap<String, TransitStop> stopIdMap
+                = buildTransitStopIdMap(sectorTable, stopDetailsDirectory);
+        final ImmutableBiMap<String, PointLocation> pointIdMap
+                = buildPointIdMap(Collections.singleton(centerPoint),
+                                  stopIdMap);
+        final ImmutableBiMap<String, VisitableLocation> locationIdMap
+                = buildLocationIdMap(pointIdMap, sectorTable);
+
+        final ServiceTypeCalendar serviceTypeCalendar
+                = buildServiceTypeCalendar(root, files);
+        final TripDetailsDirectory tripDetailsDirectory
+                = buildTripDetailsDirectory(root, files);
+        final RouteDetailsDirectory routeDetailsDirectory
+                = buildRouteDetailsDirectory(root, files);
+        final StopTimesDirectory stopTimesDirectory
+                = buildStopTimesDirectory(root, files);
+
+        final EntryPoints entryPoints = buildEntryPoints(
+                earliestTime, latestTime, serviceTypeCalendar,
+                tripDetailsDirectory, routeDetailsDirectory,
+                stopTimesDirectory,
+                stopIdMap);
+
+        final RiderBehaviorFactory riderFactory;
+        final TimeTracker timeTracker;
+        final DistanceFilter distanceFilter;
+        final MovementPath basePath;
+        if (!backward) {
+            riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
+            timeTracker = new ForwardTimeTracker();
+            distanceFilter = new ManyDestinationsDistanceFilter(
+                    distanceClient);
+            basePath = new ForwardMovingPath(ImmutableList.of());
+        } else {
+            riderFactory = new RetrospectiveRiderBehaviorFactory(
+                    entryPoints);
+            timeTracker = new BackwardTimeTracker();
+            distanceFilter = new ManyOriginsDistanceFilter(distanceClient);
+            basePath = new RetrospectivePath(ImmutableList.of());
+        }
+
+        final DistanceEstimator distanceEstimator = buildDistanceEstimator(
+                sectorTable, Collections.singleton(centerPoint), pointIdMap,
+                durations.last(), root, files);
+
+        final ReachabilityClient reachabilityClient
+                = buildReachabilityClient(
+                        distanceFilter, distanceEstimator, timeTracker,
+                        locationIdMap);
+
+        final Workflow workflow = new Workflow(timeTracker, basePath, pool,
+                                               workAllocator);
+        final Set<VisitorFactory> visitorFactories = buildVisitorFactories(
+                riderFactory, reachabilityClient, timeTracker,
+                workAllocator);
+        try {
+            final Set<TaskIdentifier> tasks;
+            if (endTime == null && durations.size() == 1) {
+                final TaskIdentifier task = new TaskIdentifier(
+                        startTime, centerPoint, experimentName);
+                tasks = Collections.singleton(task);
+            } else if (durations.size() == 1) {
+                final ImmutableSet.Builder<TaskIdentifier> tasksBuilder
+                        = ImmutableSet.builder();
+                LocalDateTime time = startTime;
+                while (time.isBefore(endTime)) {
+                    time = time.plus(samplingInterval);
+                    tasksBuilder.add(new TaskIdentifier(
+                            time, centerPoint, "generatePointUtility"));
+                }
+                tasks = tasksBuilder.build();
+            } else {
+                throw new UnsupportedOperationException(
+                        "Cannot handle request.");
+            }
+            workflow.getPathsForTasks(durations.last(), visitorFactories,
+                                      tasks);
+
+            final int score = scoreGenerator.getScore(sectorTable, tasks);
+            if (tasks.size() == 1) {
+                final SingleTimeSectorMap map = new SingleTimeSectorMap(
+                        sectorTable, centerPoint, startTime, experimentName,
+                        durations.first(), backward, score);
+                final String output = serializer.toJson(map);
+                publisher.publish(output);
+            } else {
+                final TimeRangeSectorMap map = new TimeRangeSectorMap(
+                        sectorTable, centerPoint, startTime, endTime,
+                        samplingInterval, experimentName, durations.first(),
+                        backward, score, NUM_BUCKETS);
+                final String output = serializer.toJson(map);
+                publisher.publish(output);
+            }
+        } finally {
+            distanceClient.close();
+            distanceEstimator.close();
+        }
+    }
+
+    private static SectorTable generateSectors() {
+        final SectorTable sectorTable = new SectorTable(
                 SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS);
-        final ImmutableBiMap.Builder<String, VisitableLocation> locationMapBuilder
-                = ImmutableBiMap.builder();
-        final ImmutableBiMap.Builder<String, PointLocation> pointMapBuilder
-                = ImmutableBiMap.builder();
+        return sectorTable;
+    }
+
+    private static ImmutableBiMap<String, TransitStop> buildTransitStopIdMap(
+            final SectorTable sectorTable,
+            final StopDetailsDirectory stopDetailsDirectory)
+            throws InterruptedException {
         final ImmutableBiMap.Builder<String, TransitStop> stopMapBuilder
                 = ImmutableBiMap.builder();
-
-        for (final Sector sector : sectorTable.getSectors()) {
-            locationMapBuilder.put(sector.getIdentifier(), sector);
-        }
-
         for (final StopDetails stopDetails : stopDetailsDirectory
                 .getAllStopDetails()) {
             final Geodetic2DPoint location = new Geodetic2DPoint(
@@ -428,233 +839,101 @@ public class Main {
                 final TransitStop stop = new TransitStop(
                         containingSector, stopDetails.getStopId(),
                         stopDetails.getStopName(), location);
-                locationMapBuilder.put(stop.getIdentifier(), stop);
-                pointMapBuilder.put(stop.getIdentifier(), stop);
                 stopMapBuilder.put(stop.getIdentifier(), stop);
             } else {
-                log.warn(String.format(
-                        "Stop at %s location %s was skipped because it was not in the sector table.",
-                        stopDetails, location));
+                log.warn(
+                        "Stop at {} location {} was skipped because it was not in the sector table.",
+                        stopDetails, location);
             }
         }
+        return stopMapBuilder.build();
+    }
 
+    private static Set<VisitorFactory> buildVisitorFactories(
+            final RiderBehaviorFactory riderFactory,
+            final ReachabilityClient reachabilityClient,
+            final TimeTracker timeTracker, final WorkAllocator workAllocator) {
+        final Set<VisitorFactory> visitorFactories = ImmutableSet.of(
+                new TransitRideVisitorFactory(MAX_DEPTH, riderFactory,
+                                              workAllocator),
+                new WalkVisitorFactory(
+                        MAX_DEPTH, reachabilityClient, timeTracker,
+                        workAllocator));
+        return visitorFactories;
+    }
+
+    private static Landmark buildCenterPoint(
+            final SectorTable sectorTable,
+            final Geodetic2DPoint centerCoordinate) {
         final Sector containingSector = sectorTable.findSector(
-                startingCoordinate);
+                centerCoordinate);
 
         if (containingSector == null) {
             throw new ScoreGeneratorFatalException(String.format(
                     "Starting location %s was not in the SectorTable",
-                    startingCoordinate));
+                    centerCoordinate));
         }
+        final Landmark centerPoint = new Landmark(containingSector,
+                                                  centerCoordinate);
+        return centerPoint;
+    }
 
-        final Landmark startingPoint = new Landmark(containingSector,
-                                                    startingCoordinate);
-        final PointLocation startLocation = startingPoint;
-        locationMapBuilder.put(startingPoint.getIdentifier(),
-                               startingPoint);
-        pointMapBuilder.put(startingPoint.getIdentifier(), startingPoint);
-        final ImmutableBiMap<String, VisitableLocation> locationIdMap
-                = locationMapBuilder.build();
-        final ImmutableBiMap<String, PointLocation> pointIdMap = pointMapBuilder
-                .build();
-        final ImmutableBiMap<String, TransitStop> stopIdMap
-                = stopMapBuilder.build();
+    private static ImmutableBiMap<String, PointLocation> buildPointIdMap(
+            final Set<PointLocation> centerPoints,
+            final ImmutableBiMap<String, TransitStop> transitStops) {
+        final ImmutableBiMap.Builder<String, PointLocation> pointMapBuilder
+                = ImmutableBiMap.builder();
+        pointMapBuilder.putAll(transitStops);
 
-        final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
-                = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
-                        TRIP_DETAILS_STORE), TripDetails.class);
-        final Cache<TripGroupKey, TripDetails> tripDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        Store<TripGroupKey, TripDetails> tripDetailsStore
-                = new CachingStore(tripDetailsBackingStore, tripDetailsCache);
-
-        final Reader tripReader = new FileReader(baseDirectory.resolve(revision)
-                .resolve(GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
-        final TripDetailsDirectory tripDetailsDirectory
-                = new GTFSReadingTripDetailsDirectory(tripDetailsStore,
-                                                      tripReader);
-
-        final RangedStore<TripSequenceKey, TripStop> tripSequenceBackingStore
-                = new RangedLmdbStore<>(baseDirectory.resolve(revision).resolve(
-                        TRIP_SEQUENCE_STORE), TripStop.class);
-        final Cache<TripSequenceKey, TripStop> tripSequenceCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = new RangedCachingStore<>(tripSequenceBackingStore,
-                                           tripSequenceCache);
-
-        final RangedStore<StopTimeKey, TripStop> stopTimesBackingStore
-                = new RangedLmdbStore<>(
-                        baseDirectory.resolve(revision)
-                        .resolve(STOP_TIMES_STORE), TripStop.class);
-        final Cache<StopTimeKey, TripStop> stopTimesCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = new RangedCachingStore<>(stopTimesBackingStore,
-                                           stopTimesCache);
-
-        final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
-                baseDirectory.resolve(revision).resolve(TRIPS_STORE),
-                TripId.class);
-        final Cache<TripIdKey, TripId> tripsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<TripIdKey, TripId> tripsStore
-                = new CachingStore<>(tripsBackingStore, tripsCache);
-
-        final Path frequenciesPath = baseDirectory.resolve(revision).resolve(
-                GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
-        final Reader frequenciesReader;
-        if (Files.exists(frequenciesPath)) {
-            frequenciesReader = new FileReader(frequenciesPath.toFile());
-        } else {
-            frequenciesReader = new StringReader("");
+        for (final PointLocation centerPoint : centerPoints) {
+            pointMapBuilder.put(centerPoint.getIdentifier(),
+                                centerPoint);
         }
-        final Reader stopTimesReader = new FileReader(baseDirectory.resolve(
-                revision).
-                resolve(GTFS_DIRECTORY).resolve(STOP_TIMES_FILE).toFile());
-
-        final GTFSReadingStopTimesDirectory stopTimesDirectory
-                = new GTFSReadingStopTimesDirectory(
-                        tripSequenceStore, stopTimesStore, tripsStore,
-                        frequenciesReader, stopTimesReader);
-
-        final Store<DateKey, ServiceSet> serviceTypesBackingStore
-                = new LmdbStore<>(
-                        baseDirectory.resolve(revision).resolve(
-                        SERVICE_TYPES_STORE), ServiceSet.class);
-
-        final Cache<DateKey, ServiceSet> serviceTypesCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<DateKey, ServiceSet> serviceTypesStore
-                = new CachingStore<>(serviceTypesBackingStore,
-                                     serviceTypesCache);
-
-        final Reader calendarReader = new FileReader(
-                baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).
-                resolve(CALENDAR_FILE).toFile());
-        final Reader calendarDatesReader = new FileReader(baseDirectory.
-                resolve(revision).resolve(GTFS_DIRECTORY).
-                resolve(CALENDAR_DATES_FILE).toFile());
-
-        final GTFSReadingServiceTypeCalendar serviceTypeCalendar
-                = new GTFSReadingServiceTypeCalendar(
-                        serviceTypesStore, calendarReader, calendarDatesReader);
-
-        final Store<RouteIdKey, RouteDetails> routeDetailsBackingStore
-                = new LmdbStore<>(
-                        baseDirectory.resolve(revision).resolve(
-                        ROUTE_DETAILS_STORE), RouteDetails.class);
-        final Cache<RouteIdKey, RouteDetails> routeDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<RouteIdKey, RouteDetails> routeDetailsStore
-                = new CachingStore(routeDetailsBackingStore,
-                                   routeDetailsCache);
-        final Reader routeReader = new FileReader(baseDirectory
-                .resolve(revision).resolve(GTFS_DIRECTORY)
-                .resolve(ROUTES_FILE).toFile());
-
-        final RouteDetailsDirectory routeDetailsDirectory
-                = new GTFSReadingRouteDetailsDirectory(
-                        routeDetailsStore, routeReader);
-
-        final EntryPoints entryPoints = new DirectoryReadingEntryPoints(
-                earliestTime, latestTime, stopTimesDirectory,
-                routeDetailsDirectory, tripDetailsDirectory,
-                serviceTypeCalendar, stopIdMap);
-
-        final Path candidateDistancesStorePath = baseDirectory.resolve(revision)
-                .resolve(CANDIDATE_STOP_DISTANCES_STORE);
-        final RangedStore<LocationDistanceKey, String> candidateStopDistancesBackingStore
-                = new RangedLmdbStore<>(candidateDistancesStorePath,
-                                        String.class);
-        final ReaderControlledRangedStore<LocationDistanceKey, String> limitedAccessCandidateStopDistancesStore
-                = new ReaderControlledRangedStore(
-                        candidateStopDistancesBackingStore, 126);
-        final Cache<LocationDistanceKey, String> candidateStopDistancesCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final RangedStore<LocationDistanceKey, String> candidateDistancesStore
-                = new RangedCachingStore<>(
-                        limitedAccessCandidateStopDistancesStore,
-                        candidateStopDistancesCache);
-
-        final Path maxCandidateDistanceStorePath = baseDirectory.resolve(
-                revision).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
-        final Store<LocationKey, Double> maxCandidateDistancesBackingStore
-                = new LmdbStore<>(maxCandidateDistanceStorePath, Double.class);
-        final Cache<LocationKey, Double> maxCandidateDistanceCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<LocationKey, Double> maxCandidateDistanceStore
-                = new CachingStore<>(maxCandidateDistancesBackingStore,
-                                     maxCandidateDistanceCache);
-
-        final ImmutableBiMap<String, PointLocation> pointMap
+        final ImmutableBiMap<String, PointLocation> pointIdMap
                 = pointMapBuilder.build();
+        return pointIdMap;
+    }
 
-        final double maxWalkingDistance
-                = ESTIMATE_WALK_METERS_PER_SECOND * durations.last()
-                .getSeconds();
-
-        final DistanceEstimator distanceEstimator
-                = new StoredDistanceEstimator(
-                        startLocation, sectorTable.getSectors(),
-                        pointMap.values(), maxWalkingDistance,
-                        maxCandidateDistanceStore,
-                        candidateDistancesStore);
-
-        final RiderBehaviorFactory riderFactory;
-        final TimeTracker timeTracker;
-        final DistanceFilter distanceFilter;
-        final MovementPath basePath;
-        if (!backward) {
-            riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
-            timeTracker = new ForwardTimeTracker();
-            distanceFilter = new ManyDestinationsDistanceFilter(
-                    distanceClient);
-            basePath = new ForwardMovingPath(ImmutableList.of());
-        } else {
-            riderFactory = new RetrospectiveRiderBehaviorFactory(entryPoints);
-            timeTracker = new BackwardTimeTracker();
-            distanceFilter = new ManyOriginsDistanceFilter(distanceClient);
-            basePath = new RetrospectivePath(ImmutableList.of());
+    private static ImmutableBiMap<String, VisitableLocation> buildLocationIdMap(
+            final ImmutableBiMap<String, PointLocation> pointIdMap,
+            final SectorTable sectorTable) {
+        final ImmutableBiMap.Builder<String, VisitableLocation> locationMapBuilder
+                = ImmutableBiMap.builder();
+        locationMapBuilder.putAll(pointIdMap);
+        for (final Sector sector : sectorTable.getSectors()) {
+            locationMapBuilder.put(sector.getIdentifier(), sector);
         }
-        try {
-            final ReachabilityClient reachabilityClient
-                    = new EstimateRefiningReachabilityClient(
-                            distanceFilter, distanceEstimator, timeTracker,
-                            ESTIMATE_WALK_METERS_PER_SECOND, locationIdMap);
+        return locationMapBuilder.build();
+    }
 
-            final Set<VisitorFactory> visitorFactories = ImmutableSet.of(
-                    new TransitRideVisitorFactory(MAX_DEPTH, riderFactory,
-                                                  workAllocator),
-                    new WalkVisitorFactory(
-                            MAX_DEPTH, reachabilityClient, timeTracker,
-                            workAllocator));
+    private static StopDetailsDirectory buildStopDetailsDirectory(
+            final Path baseDirectory, final String revision)
+            throws InterruptedException, IOException {
+        final Store<StopIdKey, StopDetails> stopDetailsBackingStore
+                = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
+                        STOP_DETAILS_STORE), StopDetails.class
+                );
+        final Cache<StopIdKey, StopDetails> stopDetailsCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<StopIdKey, StopDetails> stopDetailsStore = new CachingStore(
+                stopDetailsBackingStore, stopDetailsCache);
 
-            final Workflow workflow
-                    = new Workflow(timeTracker, basePath, visitorFactories,
-                                   pool, workAllocator);
-            if (endTime == null && durations.size() == 1) {
-                workflow.getPathsAtTime(
-                        durations.first(), startTime, startLocation);
-            } else if (durations.size() == 1) {
-                workflow.getPathsOverRange(
-                        startLocation, durations.first(), startTime,
-                        endTime, samplingInterval);
-            } else {
-                throw new UnsupportedOperationException("No problem to solve.");
-            }
-            return new Solution(sectorTable, startLocation);
-        } finally {
-            candidateDistancesStore.close();
-        }
+        final Reader stopDetailsReader = new FileReader(
+                baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
+                STOPS_FILE).toFile());
 
+        final GTFSReadingStopDetailsDirectory stopDetailsDirectory
+                = new GTFSReadingStopDetailsDirectory(stopDetailsStore,
+                                                      stopDetailsReader);
+        return stopDetailsDirectory;
     }
 
     private static DistanceClient buildDistanceClient(final Path baseDirectory,
                                                       final String key) {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
                 = new LmdbStore(baseDirectory.resolve(WALKING_DISTANCE_STORE),
-                                WalkingDistanceMeasurement.class);
+                                WalkingDistanceMeasurement.class
+                );
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> limitedAccessWalkingDistanceStore
                 = new ReaderControlledStore(walkingDistanceBackingStore, 126);
         final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceMemoryCache
@@ -669,5 +948,205 @@ public class Main {
                 walkingDistanceCache, new GoogleDistanceClient(key));
 
         return distanceClient;
+    }
+
+    private static ReachabilityClient buildReachabilityClient(
+            final DistanceFilter distanceFilter,
+            final DistanceEstimator distanceEstimator,
+            final TimeTracker timeTracker,
+            final ImmutableBiMap<String, VisitableLocation> locationIdMap) {
+        final ReachabilityClient reachabilityClient
+                = new EstimateRefiningReachabilityClient(
+                        distanceFilter, distanceEstimator, timeTracker,
+                        ESTIMATE_WALK_METERS_PER_SECOND, locationIdMap);
+        return reachabilityClient;
+    }
+
+    private static DistanceEstimator buildDistanceEstimator(
+            final SectorTable sectorTable,
+            final Set<PointLocation> centerPoints,
+            final ImmutableBiMap<String, PointLocation> pointIdMap,
+            final Duration maxDuration, final Path baseDirectory,
+            final String revision) throws InterruptedException {
+        final Path candidateDistancesStorePath = baseDirectory.resolve(revision)
+                .resolve(CANDIDATE_STOP_DISTANCES_STORE);
+        final RangedStore<LocationDistanceKey, String> candidateStopDistancesBackingStore
+                = new RangedLmdbStore<>(candidateDistancesStorePath,
+                                        new LocationDistanceKey.Materializer(),
+                                        String.class);
+        final ReaderControlledRangedStore<LocationDistanceKey, String> limitedAccessCandidateStopDistancesStore
+                = new ReaderControlledRangedStore(
+                        candidateStopDistancesBackingStore, 126);
+        final RangedCache<LocationDistanceKey, String> candidateStopDistancesCache
+                = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
+        final RangedStore<LocationDistanceKey, String> candidateDistancesStore
+                = new CachingRangedStore<>(
+                        limitedAccessCandidateStopDistancesStore,
+                        candidateStopDistancesCache);
+
+        final Path maxCandidateDistanceStorePath = baseDirectory.resolve(
+                revision).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
+        final Store<LocationKey, Double> maxCandidateDistancesBackingStore
+                = new LmdbStore<>(maxCandidateDistanceStorePath, Double.class
+                );
+        final Cache<LocationKey, Double> maxCandidateDistanceCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<LocationKey, Double> maxCandidateDistanceStore
+                = new CachingStore<>(maxCandidateDistancesBackingStore,
+                                     maxCandidateDistanceCache);
+
+        final double maxWalkingDistance
+                = ESTIMATE_WALK_METERS_PER_SECOND * maxDuration.getSeconds();
+
+        final DistanceEstimator distanceEstimator = new StoredDistanceEstimator(
+                centerPoints, sectorTable.getSectors(), pointIdMap.values(),
+                maxWalkingDistance, maxCandidateDistanceStore,
+                candidateDistancesStore);
+        return distanceEstimator;
+    }
+
+    private static ServiceTypeCalendar buildServiceTypeCalendar(
+            final Path root, final String revision)
+            throws IOException, InterruptedException {
+        final Store<DateKey, ServiceSet> serviceTypesBackingStore
+                = new LmdbStore<>(
+                        root.resolve(revision).resolve(
+                        SERVICE_TYPES_STORE), ServiceSet.class
+                );
+
+        final Cache<DateKey, ServiceSet> serviceTypesCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<DateKey, ServiceSet> serviceTypesStore
+                = new CachingStore<>(serviceTypesBackingStore,
+                                     serviceTypesCache);
+
+        final Reader calendarReader = new FileReader(
+                root.resolve(revision).resolve(GTFS_DIRECTORY).
+                resolve(CALENDAR_FILE).toFile());
+        final Reader calendarDatesReader = new FileReader(root.
+                resolve(revision).resolve(GTFS_DIRECTORY).
+                resolve(CALENDAR_DATES_FILE).toFile());
+
+        final GTFSReadingServiceTypeCalendar serviceTypeCalendar
+                = new GTFSReadingServiceTypeCalendar(
+                        serviceTypesStore, calendarReader, calendarDatesReader);
+        return serviceTypeCalendar;
+    }
+
+    private static TripDetailsDirectory buildTripDetailsDirectory(
+            final Path root, final String revision)
+            throws IOException, InterruptedException {
+        final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
+                = new LmdbStore<>(root.resolve(revision).resolve(
+                        TRIP_DETAILS_STORE), TripDetails.class
+                );
+        final Cache<TripGroupKey, TripDetails> tripDetailsCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        Store<TripGroupKey, TripDetails> tripDetailsStore
+                = new CachingStore(tripDetailsBackingStore, tripDetailsCache);
+
+        final Reader tripReader = new FileReader(root.resolve(revision)
+                .resolve(GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
+        final TripDetailsDirectory tripDetailsDirectory
+                = new GTFSReadingTripDetailsDirectory(tripDetailsStore,
+                                                      tripReader);
+        return tripDetailsDirectory;
+    }
+
+    private static StopTimesDirectory buildStopTimesDirectory(
+            final Path root, final String revision)
+            throws IOException, InterruptedException {
+        final Path tripSequenceStorePath
+                = root.resolve(revision).resolve(TRIP_SEQUENCE_STORE);
+        final RangedStore<TripSequenceKey, TripStop> tripSequenceBackingStore
+                = new RangedLmdbStore<>(tripSequenceStorePath,
+                                        new TripSequenceKey.Materializer(),
+                                        TripStop.class
+                );
+        final RangedCache<TripSequenceKey, TripStop> tripSequenceCache
+                = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
+        final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
+                = new CachingRangedStore<>(tripSequenceBackingStore,
+                                           tripSequenceCache);
+
+        final Path stopTimesStorePath = root.resolve(revision)
+                .resolve(STOP_TIMES_STORE);
+        final RangedStore<StopTimeKey, TripStop> stopTimesBackingStore
+                = new RangedLmdbStore<>(stopTimesStorePath,
+                                        new StopTimeKey.Materializer(),
+                                        TripStop.class
+                );
+        final RangedCache<StopTimeKey, TripStop> stopTimesCache
+                = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
+        final RangedStore<StopTimeKey, TripStop> stopTimesStore
+                = new CachingRangedStore<>(stopTimesBackingStore,
+                                           stopTimesCache);
+
+        final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
+                root.resolve(revision).resolve(TRIPS_STORE),
+                TripId.class
+        );
+        final Cache<TripIdKey, TripId> tripsCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<TripIdKey, TripId> tripsStore
+                = new CachingStore<>(tripsBackingStore, tripsCache);
+
+        final Path frequenciesPath = root.resolve(revision).resolve(
+                GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
+        final Reader frequenciesReader;
+        if (Files.exists(frequenciesPath)) {
+            frequenciesReader = new FileReader(frequenciesPath.toFile());
+        } else {
+            frequenciesReader = new StringReader("");
+        }
+        final Reader stopTimesReader = new FileReader(root.resolve(
+                revision).
+                resolve(GTFS_DIRECTORY).resolve(STOP_TIMES_FILE).toFile());
+
+        final GTFSReadingStopTimesDirectory stopTimesDirectory
+                = new GTFSReadingStopTimesDirectory(
+                        tripSequenceStore, stopTimesStore, tripsStore,
+                        frequenciesReader, stopTimesReader);
+        return stopTimesDirectory;
+    }
+
+    private static RouteDetailsDirectory buildRouteDetailsDirectory(
+            final Path root, final String revision)
+            throws IOException, InterruptedException {
+        final Store<RouteIdKey, RouteDetails> routeDetailsBackingStore
+                = new LmdbStore<>(
+                        root.resolve(revision).resolve(
+                        ROUTE_DETAILS_STORE), RouteDetails.class
+                );
+        final Cache<RouteIdKey, RouteDetails> routeDetailsCache
+                = new UnboundedCache<>(new InMemoryHashStore<>());
+        final Store<RouteIdKey, RouteDetails> routeDetailsStore
+                = new CachingStore(routeDetailsBackingStore,
+                                   routeDetailsCache);
+        final Reader routeReader = new FileReader(root
+                .resolve(revision).resolve(GTFS_DIRECTORY)
+                .resolve(ROUTES_FILE).toFile());
+
+        final RouteDetailsDirectory routeDetailsDirectory
+                = new GTFSReadingRouteDetailsDirectory(
+                        routeDetailsStore, routeReader);
+        return routeDetailsDirectory;
+    }
+
+    private static EntryPoints buildEntryPoints(
+            final LocalDateTime earliestTime, final LocalDateTime latestTime,
+            final ServiceTypeCalendar serviceTypeCalendar,
+            final TripDetailsDirectory tripDetailsDirectory,
+            final RouteDetailsDirectory routeDetailsDirectory,
+            final StopTimesDirectory stopTimesDirectory,
+            final ImmutableMap<String, TransitStop> stopIdMap
+    )
+            throws IOException, InterruptedException {
+
+        final EntryPoints entryPoints = new DirectoryReadingEntryPoints(
+                earliestTime, latestTime, stopTimesDirectory,
+                routeDetailsDirectory, tripDetailsDirectory,
+                serviceTypeCalendar, stopIdMap);
+        return entryPoints;
     }
 }

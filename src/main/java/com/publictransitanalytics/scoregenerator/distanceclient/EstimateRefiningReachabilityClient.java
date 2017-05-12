@@ -80,5 +80,6 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
         return distanceFilter.getFilteredDistances(location, candidateLocations,
                                                    currentTime, cutoffTime);
     }
+    
 
 }

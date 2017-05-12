@@ -18,6 +18,7 @@ package com.publictransitanalytics.scoregenerator.location;
 import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -52,18 +53,18 @@ public class VisitableLocationTest {
             new Longitude(-122.3196685, Longitude.DEGREES), new Latitude(
                     47.5489238, Latitude.DEGREES));
 
-    private final LocalDateTime TIME = LocalDateTime
-            .of(1987, Month.MARCH, 8, 16, 39);
+    private final LocalDateTime TIME 
+            = LocalDateTime.of(1987, Month.MARCH, 8, 16, 39);
+    private final TaskIdentifier TASK = new TaskIdentifier(
+            TIME, new Landmark(SECTOR, ORIGIN_POINT), "TEST");
 
     @Test
-    public void testAddPath() {
+    public void testReplacesPath() {
         final VisitableLocation location = new Landmark(SECTOR, POINT);
 
         final MovementPath path = new ForwardMovingPath(ImmutableList.of());
-        location.addPath(TIME, path);
-        Assert.assertNotNull(location.getPaths().get(TIME));
-        Assert.assertEquals(1, location.getPaths().get(TIME).size());
-        Assert.assertTrue(location.getPaths().get(TIME).contains(path));
+        location.replacePath(TASK, path);
+        Assert.assertEquals(path, location.getBestPaths().get(TASK));
     }
 
     @Test
@@ -71,16 +72,16 @@ public class VisitableLocationTest {
         final VisitableLocation location = new Landmark(SECTOR, POINT);
 
         final MovementPath path = new ForwardMovingPath(ImmutableList.of());
-        Assert.assertTrue(location.hasNoBetterPath(TIME, path));
+        Assert.assertTrue(location.hasNoBetterPath(TASK, path));
     }
 
     @Test
     public void testSamePathNotBetter() {
         final VisitableLocation location = new Landmark(SECTOR, POINT);
-        location.addPath(TIME, new ForwardMovingPath(ImmutableList.of()));
+        location.replacePath(TASK, new ForwardMovingPath(ImmutableList.of()));
 
         final MovementPath path = new ForwardMovingPath(ImmutableList.of());
-        Assert.assertFalse(location.hasNoBetterPath(TIME, path));
+        Assert.assertFalse(location.hasNoBetterPath(TASK, path));
     }
 
     @Test
@@ -88,11 +89,11 @@ public class VisitableLocationTest {
         final VisitableLocation location = new Landmark(SECTOR, POINT);
         final Landmark origin = new Landmark(SECTOR, POINT);
 
-        location.addPath(TIME, new ForwardMovingPath().appendWalk(
+        location.replacePath(TASK, new ForwardMovingPath().appendWalk(
                         origin, TIME, location, TIME,
                         new WalkingCosts(Duration.ZERO, 0)));
 
         final MovementPath path = new ForwardMovingPath();
-        Assert.assertTrue(location.hasNoBetterPath(TIME, path));
+        Assert.assertTrue(location.hasNoBetterPath(TASK, path));
     }
 }

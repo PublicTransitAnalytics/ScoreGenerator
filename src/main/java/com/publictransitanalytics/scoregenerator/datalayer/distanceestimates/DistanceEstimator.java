@@ -28,5 +28,7 @@ public interface DistanceEstimator {
     Set<String> getReachableLocations(String originStopId,
                                       double distanceMeters)
             throws InterruptedException;
+    
+    void close();
 
 }

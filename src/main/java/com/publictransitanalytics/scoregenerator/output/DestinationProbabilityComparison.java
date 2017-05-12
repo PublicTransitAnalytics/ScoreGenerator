@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMultiset;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
 import com.google.common.collect.SortedSetMultimap;
@@ -42,43 +43,34 @@ public class DestinationProbabilityComparison {
     private final SimplePath trialModePath;
 
     public DestinationProbabilityComparison(
-            final SortedSetMultimap<LocalDateTime, MovementPath> basePaths,
-            final LocalDate baseDate,
-            final SortedSetMultimap<LocalDateTime, MovementPath> trialPaths,
-            final LocalDate trialDate, final LocalTime startTime,
-            final Duration span, final Duration samplingInterval,
-            final int buckets) {
+            final int baseCount, final Multiset<MovementPath> baseBestPaths,
+            final int trialCount, final Multiset<MovementPath> trialBestPaths,
+            final int samples, final int buckets) {
 
-        final int samples = getSamples(span, samplingInterval);
         final int bucketSize = samples / buckets;
 
-        final Multiset<SimplePath> basePathsMultiset = getPathsMultiset(
-                startTime, span, baseDate, basePaths, samplingInterval);
-
-        baseReachCount = basePathsMultiset.size();
-        if (baseReachCount > 0) {
-            baseModePath = Multisets.copyHighestCountFirst(basePathsMultiset)
-                    .iterator().next();
+        
+        if (baseCount > 0) {
+            baseModePath = new SimplePath(Multisets.copyHighestCountFirst(
+                    baseBestPaths).iterator().next());
         } else {
             baseModePath = null;
         }
-        baseReachPercentage = getReachPercentage(baseReachCount, samples);
-        int baseBucket = ((baseReachCount + bucketSize - 1) * buckets)
+        baseReachPercentage = getReachPercentage(baseCount, samples);
+        int baseBucket = ((baseCount + bucketSize - 1) * buckets)
                                  / samples;
+        baseReachCount = baseCount;
 
-        final Multiset<SimplePath> trialPathsMultiset = getPathsMultiset(
-                startTime, span, trialDate, trialPaths, samplingInterval);
-
-        trialReachCount = trialPathsMultiset.size();
-        if (trialReachCount > 0) {
-            trialModePath = Multisets.copyHighestCountFirst(
-                    trialPathsMultiset).iterator().next();
+        if (trialCount > 0) {
+            trialModePath = new SimplePath(Multisets.copyHighestCountFirst(
+                    trialBestPaths).iterator().next());
         } else {
             trialModePath = null;
         }
-        trialReachPercentage = getReachPercentage(trialReachCount, samples);
-        int trialBucket = ((trialReachCount + bucketSize - 1) * buckets)
+        trialReachPercentage = getReachPercentage(trialCount, samples);
+        int trialBucket = ((trialCount + bucketSize - 1) * buckets)
                                   / samples;
+        trialReachCount = trialCount;
 
         reachBucket = trialBucket - baseBucket;
     }
@@ -86,30 +78,6 @@ public class DestinationProbabilityComparison {
     private static String getReachPercentage(
             final int count, final int samples) {
         return String.format("%.1f%%", ((double) count * 100) / samples);
-    }
-
-    private static int getSamples(final Duration span,
-                                  final Duration samplingInterval) {
-        return (int) (span.getSeconds() / samplingInterval.getSeconds());
-    }
-
-    private static Multiset<SimplePath> getPathsMultiset(
-            final LocalTime startTime, final Duration span,
-            final LocalDate date,
-            final SortedSetMultimap<LocalDateTime, MovementPath> sectorPaths,
-            final Duration samplingInterval) {
-        final ImmutableMultiset.Builder<SimplePath> builder
-                = ImmutableMultiset.builder();
-        LocalDateTime time = date.atTime(startTime);
-        final LocalDateTime endDateTime = time.plus(span);
-        int count = 0;
-        while (!time.isAfter(endDateTime)) {
-            if (sectorPaths.containsKey(time)) {
-                builder.add(new SimplePath(sectorPaths.get(time).first()));
-            }
-            time = time.plus(samplingInterval);
-        }
-        return builder.build();
     }
 
 }

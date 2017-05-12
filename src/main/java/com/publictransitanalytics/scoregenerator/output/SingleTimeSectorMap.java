@@ -20,6 +20,7 @@ import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableMap;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,7 +36,7 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 public class SingleTimeSectorMap {
 
     private final MapType mapType;
-    
+
     private final Direction direction;
 
     private final Bounds mapBounds;
@@ -49,16 +50,17 @@ public class SingleTimeSectorMap {
     private final String tripDuration;
 
     private final int score;
-    
+
     public SingleTimeSectorMap(
             final SectorTable sectorTable, final PointLocation startPoint,
-            final LocalDateTime time, final Duration tripDuration, 
-            final boolean backward, int score) {
+            final LocalDateTime startTime, final String experimentName,
+            final Duration tripDuration, final boolean backward,
+            final int score) {
         mapType = MapType.SINGLE_TIME_SECTOR;
         direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
         mapBounds = new Bounds(sectorTable);
         startingPoint = new Point(startPoint);
-        this.time = time.format(DateTimeFormatter.ofPattern(
+        this.time = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
 
         this.tripDuration = DurationFormatUtils.formatDurationWords(
@@ -66,14 +68,18 @@ public class SingleTimeSectorMap {
         this.score = score;
         final ImmutableMap.Builder<Bounds, DestinationInformation> builder
                 = ImmutableMap.builder();
+
+        final TaskIdentifier task = new TaskIdentifier(startTime, startPoint,
+                                                       experimentName);
+
         for (final Sector sector : sectorTable.getSectors()) {
-            final SortedSet<MovementPath> sectorPaths = sector
-                    .getPaths().get(time);
-            if (!sectorPaths.isEmpty()) {
+            final MovementPath sectorPath
+                    = sector.getBestPaths().get(task);
+            if (sectorPath != null) {
                 final Bounds sectorBounds = new Bounds(sector);
 
-                builder.put(sectorBounds,
-                            new DestinationInformation(sectorPaths.first()));
+                builder.put(sectorBounds, 
+                            new DestinationInformation(sectorPath));
             }
         }
         sectors = builder.build();

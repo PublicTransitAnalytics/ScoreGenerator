@@ -30,6 +30,7 @@ import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.testhelpers.SerialWorkAllocator;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -63,9 +64,11 @@ public class WalkVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
@@ -74,8 +77,7 @@ public class WalkVisitorTest {
 
         visitor.visit(sector);
 
-        Assert.assertEquals(Collections.singleton(PATH), sector.getPaths().get(
-                            START_TIME));
+        Assert.assertEquals(PATH, sector.getBestPaths().get(task));
     }
 
     @Test
@@ -91,9 +93,11 @@ public class WalkVisitorTest {
                 sector, new Geodetic2DPoint(
                         new Longitude(-122.355188, Longitude.DEGREES),
                         new Latitude(47.6256076, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
@@ -102,8 +106,7 @@ public class WalkVisitorTest {
 
         visitor.visit(landmark);
 
-        Assert.assertEquals(Collections.singleton(PATH),
-                            sector.getPaths().get(START_TIME));
+        Assert.assertEquals(PATH, sector.getBestPaths().get(task));
     }
 
     @Test
@@ -119,9 +122,11 @@ public class WalkVisitorTest {
                 sector, new Geodetic2DPoint(
                         new Longitude(-122.355188, Longitude.DEGREES),
                         new Latitude(47.6256076, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
@@ -130,8 +135,7 @@ public class WalkVisitorTest {
 
         visitor.visit(landmark);
 
-        Assert.assertEquals(Collections.singleton(PATH),
-                            landmark.getPaths().get(START_TIME));
+        Assert.assertEquals(PATH, landmark.getBestPaths().get(task));
     }
 
     @Test
@@ -147,9 +151,11 @@ public class WalkVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 0, 5,
                 new PreloadedReachabilityClient(Collections.emptyMap()),
@@ -158,8 +164,7 @@ public class WalkVisitorTest {
 
         visitor.visit(stop);
 
-        Assert.assertEquals(Collections.singleton(PATH),
-                            stop.getPaths().get(START_TIME));
+        Assert.assertEquals(PATH, stop.getBestPaths().get(task));
     }
 
     @Test
@@ -179,12 +184,14 @@ public class WalkVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 1, 5,
                 new PreloadedReachabilityClient(ImmutableMap.of(
@@ -218,12 +225,14 @@ public class WalkVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 1, 5,
                 new PreloadedReachabilityClient(ImmutableMap.of(
@@ -255,12 +264,14 @@ public class WalkVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 5, 5,
                 new PreloadedReachabilityClient(ImmutableMap.of(
@@ -292,12 +303,14 @@ public class WalkVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.WALKING, null, PATH, 1, 5,
                 new PreloadedReachabilityClient(ImmutableMap.of(
@@ -329,14 +342,16 @@ public class WalkVisitorTest {
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
-        stop.addPath(START_TIME, PATH);
+        final TaskIdentifier task = new TaskIdentifier(
+                START_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
+        stop.replacePath(task, PATH);
 
         final CountingVisitorFactory visitorFactory
                 = new CountingVisitorFactory();
 
         final WalkVisitor visitor = new WalkVisitor(
-                START_TIME,
-                LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
+                task, LocalDateTime.of(2017, Month.JANUARY, 21, 10, 45, 0),
                 LocalDateTime.of(2017, Month.JANUARY, 21, 10, 50, 0),
                 Mode.NONE, null, PATH, 1, 5,
                 new PreloadedReachabilityClient(ImmutableMap.of(

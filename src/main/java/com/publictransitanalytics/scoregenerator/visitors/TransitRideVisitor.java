@@ -24,6 +24,7 @@ import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.WorkAllocator;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -42,7 +43,7 @@ import com.publictransitanalytics.scoregenerator.schedule.Trip;
 @RequiredArgsConstructor
 public class TransitRideVisitor implements Visitor {
 
-    private final LocalDateTime keyTime;
+    private final TaskIdentifier task;
     final private LocalDateTime cutoffTime;
     private final LocalDateTime currentTime;
     private final MovementPath currentPath;
@@ -55,7 +56,7 @@ public class TransitRideVisitor implements Visitor {
 
     @Override
     public void visit(Sector sector) {
-        sector.addPath(keyTime, currentPath);
+        sector.replacePath(task, currentPath);
     }
 
     @Override
@@ -64,10 +65,10 @@ public class TransitRideVisitor implements Visitor {
         final Sector sector = transitStop.getContainingSector();
         sector.accept(this);
 
-        transitStop.addPath(keyTime, currentPath);
+        transitStop.replacePath(task, currentPath);
 
         if (currentDepth < maxDepth) {
-            final ScheduleReader reader = riderFactory.getNewReader();
+            final ScheduleReader reader = riderFactory.getScheduleReader();
             final Set<EntryPoint> entryPoints = reader
                     .getEntryPoints(transitStop, currentTime, cutoffTime);
 
@@ -97,14 +98,14 @@ public class TransitRideVisitor implements Visitor {
                                         trip.getRouteNumber(), transitStop,
                                         entryPoint.getTime(), newStop, newTime);
 
-                        if (newStop.hasNoBetterPath(keyTime, newPath)) {
+                        if (newStop.hasNoBetterPath(task, newPath)) {
 
                             for (final VisitorFactory visitorFactory
                                          : visitorFactories) {
 
                                 final Visitor visitor
                                         = visitorFactory.getVisitor(
-                                                keyTime, cutoffTime, newTime,
+                                                task, cutoffTime, newTime,
                                                 Mode.TRANSIT,
                                                 entryPoint.getTrip()
                                                 .getTripId(), newPath,

@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.Mode;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
@@ -43,7 +44,7 @@ public class CountingVisitorFactory implements VisitorFactory {
 
     @Override
     public Visitor getVisitor(
-            final LocalDateTime startTime, final LocalDateTime cutoffTime,
+            final TaskIdentifier task, final LocalDateTime cutoffTime,
             final LocalDateTime currentTime, final Mode lastMode,
             final TripId lastTrip, final MovementPath currentPath, 
             final int currentDepth, 

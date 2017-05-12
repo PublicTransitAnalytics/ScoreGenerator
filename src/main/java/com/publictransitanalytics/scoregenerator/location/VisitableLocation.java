@@ -17,10 +17,9 @@ package com.publictransitanalytics.scoregenerator.location;
 
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SortedSetMultimap;
-import com.google.common.collect.TreeMultimap;
-import java.time.LocalDateTime;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
@@ -32,24 +31,25 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 public abstract class VisitableLocation {
 
     @Getter
-    private final SortedSetMultimap<LocalDateTime, MovementPath> paths;
+    private final Map<TaskIdentifier, MovementPath> bestPaths;
 
     public VisitableLocation() {
-        paths = Multimaps.synchronizedSortedSetMultimap(TreeMultimap.create());
+        bestPaths = new ConcurrentHashMap<>();
     }
 
-    public boolean hasNoBetterPath(final LocalDateTime startTime,
+    public boolean hasNoBetterPath(final TaskIdentifier task,
                                    final MovementPath path) {
-        if (!paths.containsKey(startTime)) {
+        if (!bestPaths.containsKey(task)) {
             return true;
         }
-        final MovementPath bestPath = paths.get(startTime).first();
+        final MovementPath bestPath = bestPaths.get(task);
+
 
         return path.compareTo(bestPath) < 0;
     }
 
-    public void addPath(final LocalDateTime startTime, final MovementPath path) {
-        paths.put(startTime, path);
+    public void replacePath(final TaskIdentifier task, final MovementPath path) {
+        bestPaths.put(task, path);
     }
 
     public abstract Geodetic2DPoint getNearestPoint(

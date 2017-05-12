@@ -15,8 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
-import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingStopTimesDirectory;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.mocks.MapRangedStore;
@@ -44,9 +42,10 @@ public class GTFSReadingStopTimesDirectoryTest {
     @Test
     public void testGetsAllStopsAtStopWithoutFrequencies() throws Exception {
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<TripSequenceKey, TripStop>(
+                        new TreeMap<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<StopTimeKey, TripStop>(new TreeMap<>());
         final Store<TripIdKey, TripId> tripsStore
                 = new MapStore<>(new HashMap<>());
 
@@ -69,9 +68,10 @@ public class GTFSReadingStopTimesDirectoryTest {
     @Test
     public void testGetsAllStopsOnTripWithoutFrequencies() throws Exception {
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<TripSequenceKey, TripStop>(
+                        new TreeMap<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<StopTimeKey, TripStop>(new TreeMap<>());
         final Store<TripIdKey, TripId> tripsStore
                 = new MapStore<>(new HashMap<>());
 
@@ -95,9 +95,10 @@ public class GTFSReadingStopTimesDirectoryTest {
     @Test
     public void testGetsStopsOnTripWithFrequencies() throws Exception {
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<TripSequenceKey, TripStop>(
+                        new TreeMap<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<StopTimeKey, TripStop>(new TreeMap<>());
         final Store<TripIdKey, TripId> tripsStore
                 = new MapStore<>(new HashMap<>());
 
@@ -125,9 +126,10 @@ public class GTFSReadingStopTimesDirectoryTest {
     @Test
     public void testGetsStopsAtStopWithFrequencies() throws Exception {
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<TripSequenceKey, TripStop>(
+                        new TreeMap<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = new MapRangedStore<>(new TreeMap<>());
+                = new MapRangedStore<StopTimeKey, TripStop>(new TreeMap<>());
         final Store<TripIdKey, TripId> tripsStore
                 = new MapStore<>(new HashMap<>());
 

@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.publictransitanalytics.scoregenerator.Mode;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.LocalDateTime;
@@ -29,7 +30,7 @@ import java.util.Set;
 public interface VisitorFactory {
 
     Visitor getVisitor(
-            final LocalDateTime keyTime, final LocalDateTime cutoffTime,
+            final TaskIdentifier task, final LocalDateTime cutoffTime,
             final LocalDateTime currentTime, final Mode lastMode, 
             final TripId lastTrip, final MovementPath currentPath, 
             final int currentDepth, final Set<VisitorFactory> visitorFactories);

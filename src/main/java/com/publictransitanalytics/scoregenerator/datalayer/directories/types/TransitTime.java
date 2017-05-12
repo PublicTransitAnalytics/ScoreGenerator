@@ -42,6 +42,8 @@ public class TransitTime implements Comparable<TransitTime> {
 
     public static final TransitTime MAX_TRANSIT_TIME
             = new TransitTime(47, 59, 59);
+    
+    private final String stringRepresentation; 
 
     /**
      * Create a transit time from an ordinary time.
@@ -93,6 +95,8 @@ public class TransitTime implements Comparable<TransitTime> {
         this.hours = hours;
         this.minutes = minutes;
         this.seconds = seconds;
+        stringRepresentation = String.format(
+                "%02d:%02d:%02d", hours, minutes, seconds);
     }
 
     /**
@@ -177,7 +181,7 @@ public class TransitTime implements Comparable<TransitTime> {
 
     @Override
     public String toString() {
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        return stringRepresentation;
     }
 
 }

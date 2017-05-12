@@ -19,6 +19,7 @@ import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.FrequencyRecord;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.Store;
+import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RawTripStop;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
@@ -84,9 +85,9 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
             final String stopId, final TransitTime startTime,
             final TransitTime endTime) throws InterruptedException {
         try {
-            return stopTimesStore.getValuesInRange(
+            return ImmutableList.copyOf(stopTimesStore.getValuesInRange(
                     StopTimeKey.getMinKey(stopId, startTime),
-                    StopTimeKey.getMaxKey(stopId, endTime));
+                    StopTimeKey.getMaxKey(stopId, endTime)).values());
         } catch (final BitvantageStoreException e) {
             throw new ScoreGeneratorFatalException(e);
         }
@@ -99,9 +100,10 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
         final TripIdKey baseKey = new TripIdKey(tripId.getRawTripId(), tripId
                                                 .getQualifier());
         try {
-            return tripSequenceStore.getValuesInRange(
+            return ImmutableList.copyOf(tripSequenceStore.getValuesInRange(
                     new TripSequenceKey(baseKey, startTime, 0),
-                    new TripSequenceKey(baseKey, endTime, Integer.MAX_VALUE));
+                    new TripSequenceKey(baseKey, endTime, Integer.MAX_VALUE))
+                    .values());
         } catch (final BitvantageStoreException e) {
             throw new ScoreGeneratorFatalException(e);
         }

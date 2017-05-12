@@ -15,22 +15,28 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
 
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
+import com.bitvantage.bitvantagecaching.KeyMaterializer;
 import com.bitvantage.bitvantagecaching.RangedKey;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.NonNull;
-import lombok.Value;
 
 /**
- * A key containing a base location and a distance. Uses a UUID to avoid collisions, and thus is
- * only useful for ranged queries. Maps to corresponding values.
- * 
+ * A key containing a base location and a distance. Uses a UUID to avoid
+ * collisions, and thus is only useful for ranged queries. Maps to corresponding
+ * values.
+ *
  * @author Public Transit Analytics
  */
-@Value
-public class LocationDistanceKey implements RangedKey<LocationDistanceKey> {
+public class LocationDistanceKey extends RangedKey<LocationDistanceKey> {
 
     // Max distance we allow, based on the antipodal distance of earth.
     private static final double MAX_DISTANCE_METERS = 20000000;
+
+    private static final UUID MIN_UUID = new UUID(0, 0);
+    private static final UUID MAX_UUID = new UUID((long) - 1, (long) - 1);
 
     @NonNull
     private final String locationId;
@@ -38,32 +44,40 @@ public class LocationDistanceKey implements RangedKey<LocationDistanceKey> {
     @NonNull
     private final UUID uuid;
 
-    public static LocationDistanceKey getWriteKey(final String locationId, final double distance) {
-        return new LocationDistanceKey(locationId, distance, UUID.randomUUID());
-    }
+    private final String keyString;
 
-    public static LocationDistanceKey getMinKey(final String locationId, final double distance) {
-        return new LocationDistanceKey(locationId, distance, new UUID(0, 0));
-    }
-
-    public static LocationDistanceKey getMaxKey(final String locationId, final double distance) {
-        return new LocationDistanceKey(locationId, distance,
-                                       new UUID((long) - 1, (long) - 1));
-    }
-
-    private LocationDistanceKey(final String locationId, final double distanceMeters,
+    private LocationDistanceKey(final String locationId,
+                                final double distanceMeters,
                                 final UUID uuid) {
         if (distanceMeters > MAX_DISTANCE_METERS) {
             throw new IllegalArgumentException(String.format(
-                "Distance %f is greater than the max distance.", distanceMeters));
+                    "Distance %f is greater than the max distance.",
+                    distanceMeters));
         }
         if (distanceMeters < 0) {
             throw new IllegalArgumentException(String.format(
-                "Distance %f is less than the min distance.", distanceMeters));
+                    "Distance %f is less than the min distance.", distanceMeters));
         }
         this.locationId = locationId;
         this.distanceMeters = distanceMeters;
         this.uuid = uuid;
+        keyString = String.format("%s::%015.6f::%s", locationId, distanceMeters,
+                                  uuid.toString());
+    }
+
+    public static LocationDistanceKey getWriteKey(final String locationId,
+                                                  final double distance) {
+        return new LocationDistanceKey(locationId, distance, UUID.randomUUID());
+    }
+
+    public static LocationDistanceKey getMinKey(final String locationId,
+                                                final double distance) {
+        return new LocationDistanceKey(locationId, distance, MIN_UUID);
+    }
+
+    public static LocationDistanceKey getMaxKey(final String locationId,
+                                                final double distance) {
+        return new LocationDistanceKey(locationId, distance, MAX_UUID);
     }
 
     @Override
@@ -78,8 +92,29 @@ public class LocationDistanceKey implements RangedKey<LocationDistanceKey> {
 
     @Override
     public String getKeyString() {
-        return String.format("%s::%015.6f::%s", locationId, distanceMeters, uuid.toString());
+        return keyString;
     }
 
+    public static class Materializer implements
+            KeyMaterializer<LocationDistanceKey> {
 
+        final Pattern pattern = Pattern.compile(
+                "(.+)::(\\d{8}\\.\\d{6})::(.+)");
+
+        @Override
+        public LocationDistanceKey materialize(final String keyString)
+                throws BitvantageStoreException {
+            final Matcher matcher = pattern.matcher(keyString);
+            if (matcher.matches()) {
+                final String locationId = matcher.group(1);
+                final String distanceString = matcher.group(2);
+                final String uuidString = matcher.group(3);
+                return new LocationDistanceKey(
+                        locationId, Double.valueOf(distanceString),
+                        UUID.fromString(uuidString));
+            }
+            throw new BitvantageStoreException(String.format(
+                    "Key string %s could not be materialized", keyString));
+        }
+    }
 }

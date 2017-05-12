@@ -23,8 +23,9 @@ import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.google.common.collect.ImmutableSet;
-import java.util.List;
+import edu.emory.mathcs.backport.java.util.Collections;
 import java.util.Set;
+import java.util.SortedMap;
 import lombok.extern.slf4j.Slf4j;
 import org.opensextant.geodesy.Geodetic2DArc;
 import org.opensextant.geodesy.Geodetic2DPoint;
@@ -39,18 +40,16 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 public class StoredDistanceEstimator implements DistanceEstimator {
 
     private final RangedStore<LocationDistanceKey, String> candidateDistancesStore;
-    private final Store<LocationKey, Double> maxCandidateDistanceStore;
 
     private final double maxDistanceMeters;
 
     public StoredDistanceEstimator(
-            final PointLocation center, final Set<Sector> sectors,
+            final Set<PointLocation> centers, final Set<Sector> sectors,
             final Set<PointLocation> points, final double maxDistanceMeters,
             final Store<LocationKey, Double> maxCandidateDistanceStore,
             final RangedStore<LocationDistanceKey, String> candidateDistancesStore)
             throws InterruptedException {
 
-        this.maxCandidateDistanceStore = maxCandidateDistanceStore;
         this.candidateDistancesStore = candidateDistancesStore;
         this.maxDistanceMeters = maxDistanceMeters;
 
@@ -61,24 +60,24 @@ public class StoredDistanceEstimator implements DistanceEstimator {
         final Set<VisitableLocation> terminals = builder.build();
 
         try {
-            if (candidateDistancesStore.isEmpty()
-                        || maxCandidateDistanceStore.isEmpty()) {
+            if (candidateDistancesStore.isEmpty()) {
                 generateEstimates(terminals, points, maxDistanceMeters,
                                   candidateDistancesStore);
-                maxCandidateDistanceStore.put(
-                        new LocationKey(center.getIdentifier()),
-                        maxDistanceMeters);
-            } else {
+            }
+
+            for (final PointLocation center : centers) {
                 final Double max = maxCandidateDistanceStore.get(
                         new LocationKey(center.getIdentifier()));
                 if (max == null || max < maxDistanceMeters) {
-                    generateEstimates(terminals, points, maxDistanceMeters,
+                    generateEstimates(terminals, Collections.singleton(center),
+                                      maxDistanceMeters, 
                                       candidateDistancesStore);
                     maxCandidateDistanceStore.put(
                             new LocationKey(center.getIdentifier()),
                             maxDistanceMeters);
                 }
             }
+
         } catch (final BitvantageStoreException e) {
             throw new ScoreGeneratorFatalException(e);
         }
@@ -99,12 +98,18 @@ public class StoredDistanceEstimator implements DistanceEstimator {
                 originLocationId, distanceMeters);
 
         try {
-            final List<String> reachableLocations = candidateDistancesStore
-                    .getValuesBelow(key);
-            return ImmutableSet.copyOf(reachableLocations);
+            final SortedMap<LocationDistanceKey, String> reachableLocations
+                    = candidateDistancesStore.getValuesBelow(key);
+            return ImmutableSet.copyOf(reachableLocations.values());
         } catch (final BitvantageStoreException e) {
             throw new ScoreGeneratorFatalException(e);
         }
+    }
+
+    @Override
+    public void close() {
+        candidateDistancesStore.close();
+
     }
 
     private static void generateEstimates(

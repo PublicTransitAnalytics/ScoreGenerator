@@ -16,8 +16,8 @@
 package com.publictransitanalytics.scoregenerator.scoring;
 
 import com.publictransitanalytics.scoregenerator.SectorTable;
-import java.time.Duration;
-import java.time.LocalDateTime;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
+import java.util.Set;
 
 /**
  * Score generator for counting the number of sectors reached.
@@ -27,32 +27,27 @@ import java.time.LocalDateTime;
 public class ReachedSectorScoreGenerator {
 
     public int getScore(final SectorTable sectorTable,
-                        final LocalDateTime time) {
+                        final TaskIdentifier task) {
         int totalSectors = sectorTable.getSectors().size();
         int reachedSectors = (int) sectorTable.getSectors().stream().filter(
-                sector -> !sector.getPaths().get(time).isEmpty()).count();
+                sector -> sector.getBestPaths().get(task) == null).count();
 
         return (reachedSectors * 1000) / totalSectors;
     }
 
     public int getScore(
-            final SectorTable sectorTable, final LocalDateTime startTime,
-            final LocalDateTime endTime, final Duration samplingInterval) {
-        int totalSectors = sectorTable.getSectors().size();
+            final SectorTable sectorTable, final Set<TaskIdentifier> tasks) {
+        long totalSectors = sectorTable.getSectors().size();
 
-        LocalDateTime time = startTime;
-        int samples = 0;
-        int totalReachedSectors = 0;
-        while (time.isBefore(endTime)) {
-            final LocalDateTime currentTime = time;
-            totalReachedSectors += (int) sectorTable.getSectors().stream()
-                    .filter(sector -> !sector.getPaths().get(currentTime)
-                            .isEmpty()).count();
-            time = time.plus(samplingInterval);
-            samples++;
+        long totalReachedSectors = 0;
+        for (final TaskIdentifier task : tasks) {
+            totalReachedSectors += sectorTable.getSectors().stream()
+                    .filter(sector -> sector.getBestPaths().get(task) != null)
+                    .count();
         }
 
-        return (totalReachedSectors * 1000) / (totalSectors * samples);
+        return (int) ((totalReachedSectors * 1000) / (totalSectors * tasks
+                                                      .size()));
     }
 
 }

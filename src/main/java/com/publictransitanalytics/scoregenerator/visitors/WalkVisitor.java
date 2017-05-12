@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.WorkAllocator;
 
 /**
@@ -48,7 +49,7 @@ import com.publictransitanalytics.scoregenerator.WorkAllocator;
 @RequiredArgsConstructor
 public class WalkVisitor implements Visitor {
 
-    private final LocalDateTime keyTime;
+    private final TaskIdentifier task;
     private final LocalDateTime cutoffTime;
     private final LocalDateTime currentTime;
     private final Mode lastMode;
@@ -63,7 +64,7 @@ public class WalkVisitor implements Visitor {
 
     @Override
     public void visit(final Sector sector) {
-        sector.addPath(keyTime, currentPath);
+        sector.replacePath(task, currentPath);
     }
 
     @Override
@@ -82,7 +83,7 @@ public class WalkVisitor implements Visitor {
         final Sector sector = location.getContainingSector();
         sector.accept(this);
 
-        location.addPath(keyTime, currentPath);
+        location.replacePath(task, currentPath);
 
         if (currentDepth < maxDepth && !lastMode.equals(Mode.WALKING)) {
 
@@ -107,11 +108,11 @@ public class WalkVisitor implements Visitor {
                             costs);
 
                     if (walkableLocation.hasNoBetterPath(
-                            keyTime, newPath)) {
+                            task, newPath)) {
                         for (final VisitorFactory visitorFactory
                                      : visitorFactories) {
                             final Visitor visitor = visitorFactory.getVisitor(
-                                    keyTime, cutoffTime, newTime, Mode.WALKING,
+                                    task, cutoffTime, newTime, Mode.WALKING,
                                     lastTrip, newPath, currentDepth + 1,
                                     visitorFactories);
                             final Visitation visitation = new Visitation(

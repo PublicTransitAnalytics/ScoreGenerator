@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
  */
 public interface RiderBehaviorFactory {
 
-    public ScheduleReader getNewReader();
+    public ScheduleReader getScheduleReader();
 
     public Rider getNewRider(TransitStop stop, LocalDateTime initialTime,
                              LocalDateTime cutoffTime, Trip trip);

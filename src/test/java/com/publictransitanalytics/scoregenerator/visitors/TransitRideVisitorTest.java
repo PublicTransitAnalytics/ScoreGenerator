@@ -28,13 +28,13 @@ import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleRe
 import com.publictransitanalytics.scoregenerator.tracking.ForwardMovingPath;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.testhelpers.SerialWorkAllocator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Collections;
-import java.util.concurrent.ForkJoinPool;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -72,8 +72,11 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
+                task, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
@@ -81,8 +84,7 @@ public class TransitRideVisitorTest {
 
         visitor.visit(sector);
 
-        Assert.assertEquals(Collections.singleton(PATH), sector.getPaths().get(
-                            KEY_TIME));
+        Assert.assertEquals(PATH, sector.getBestPaths().get(task));
     }
 
     @Test
@@ -94,12 +96,15 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
+                task, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
@@ -107,8 +112,7 @@ public class TransitRideVisitorTest {
 
         visitor.visit(stop);
 
-        Assert.assertEquals(Collections.singleton(PATH),
-                            sector.getPaths().get(KEY_TIME));
+        Assert.assertEquals(PATH, sector.getBestPaths().get(task));
     }
 
     @Test
@@ -120,12 +124,15 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
                         new Latitude(47.63411, Latitude.DEGREES)));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
+                task, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
@@ -133,8 +140,7 @@ public class TransitRideVisitorTest {
 
         visitor.visit(stop);
 
-        Assert.assertEquals(Collections.singleton(PATH),
-                            stop.getPaths().get(KEY_TIME));
+        Assert.assertEquals(PATH, stop.getBestPaths().get(task));
     }
 
     @Test
@@ -146,19 +152,22 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final Landmark landmark = new Landmark(
                 sector, new Geodetic2DPoint(
                         new Longitude(-122.355188, Longitude.DEGREES),
                         new Latitude(47.6256076, Latitude.DEGREES)));
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
+                task, CURRENT_TIME, CUTOFF_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(
                         new PreloadedScheduleReader(Collections.emptySet()),
                         new PreloadedRider(Collections.emptyList())),
                 Collections.emptySet(), new SerialWorkAllocator());
 
         visitor.visit(landmark);
-        Assert.assertTrue(landmark.getPaths().isEmpty());
+        Assert.assertTrue(landmark.getBestPaths().isEmpty());
     }
 
     @Test
@@ -170,6 +179,9 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
@@ -193,7 +205,7 @@ public class TransitRideVisitorTest {
                 = new CountingVisitorFactory();
 
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
+                task, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
                 Collections.singleton(visitorFactory),
                 new SerialWorkAllocator());
@@ -213,6 +225,9 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
@@ -236,7 +251,7 @@ public class TransitRideVisitorTest {
                 = new CountingVisitorFactory();
 
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 5, 5,
+                task, CUTOFF_TIME, CURRENT_TIME, PATH, null, 5, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
                 Collections.singleton(visitorFactory),
                 new SerialWorkAllocator());
@@ -255,6 +270,9 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
@@ -272,7 +290,7 @@ public class TransitRideVisitorTest {
                 = new CountingVisitorFactory();
 
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
+                task, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
                 Collections.singleton(visitorFactory),
                 new SerialWorkAllocator());
@@ -291,6 +309,9 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
@@ -304,7 +325,7 @@ public class TransitRideVisitorTest {
                 = new CountingVisitorFactory();
 
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
+                task, CUTOFF_TIME, CURRENT_TIME, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
                 Collections.singleton(visitorFactory),
                 new SerialWorkAllocator());
@@ -323,6 +344,9 @@ public class TransitRideVisitorTest {
                 new Geodetic2DPoint(
                         new Longitude(-122.224433, Longitude.DEGREES),
                         new Latitude(47.48172, Latitude.DEGREES))));
+        final TaskIdentifier task = new TaskIdentifier(
+                KEY_TIME, new Landmark(sector, sector.getCanonicalPoint()),
+                "test");
         final TransitStop stop = new TransitStop(
                 sector, "1", "Somewhere", new Geodetic2DPoint(
                         new Longitude(-122.325386, Longitude.DEGREES),
@@ -335,7 +359,7 @@ public class TransitRideVisitorTest {
                 sector, "2", "Elsewhere", new Geodetic2DPoint(
                         new Longitude(-122.3087554, Longitude.DEGREES),
                         new Latitude(47.6755263, Latitude.DEGREES)));
-        nextStop.addPath(KEY_TIME, PATH);
+        nextStop.replacePath(task, PATH);
 
         final PreloadedScheduleReader reader = new PreloadedScheduleReader(
                 Collections.singleton(new EntryPoint(trip, DUMMY_TIME)));
@@ -351,7 +375,7 @@ public class TransitRideVisitorTest {
                 2017, Month.JANUARY, 21, 10, 45);
 
         final TransitRideVisitor visitor = new TransitRideVisitor(
-                KEY_TIME, cutoffTime, currentTime, PATH, null, 0, 5,
+                task, cutoffTime, currentTime, PATH, null, 0, 5,
                 new PreloadedRiderBehaviorFactory(reader, rider),
                 Collections.singleton(visitorFactory),
                 new SerialWorkAllocator());

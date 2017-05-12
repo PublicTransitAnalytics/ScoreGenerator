@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator;
+
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import java.time.LocalDateTime;
+import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public enum MapType {
-    
-    SINGLE_TIME_SECTOR,
-    TIME_RANGE_SECTOR,
-    COMPARATIVE_TIME_RANGE_SECTOR,
-    NETWORK_UTILITY;
-    
+@Value
+public class TaskIdentifier {
+    private final LocalDateTime time;
+    private final PointLocation center;
+    private final String experimentName;
 }

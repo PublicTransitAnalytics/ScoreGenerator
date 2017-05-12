@@ -106,10 +106,14 @@ public abstract class MovementPath implements Comparable<MovementPath> {
                     != o.movements.size()) {
             return movements.size() - o.movements.size();
         }
+        
+        // Are they exactly the same?
+        if (movements.equals(o.movements)) {
+            return 0;
+        }
+              
         // Break ties arbitrarily.
-
-        return System.identityHashCode(
-                this) - System.identityHashCode(o);
+        return System.identityHashCode(this) - System.identityHashCode(o);
     }
 
 }

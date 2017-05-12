@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.publictransitanalytics.scoregenerator.Mode;
+import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.WorkAllocator;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
@@ -39,14 +40,14 @@ public class WalkVisitorFactory implements VisitorFactory {
     private final WorkAllocator workAllocator;
 
     @Override
-    public Visitor getVisitor(final LocalDateTime keyTime,
+    public Visitor getVisitor(final TaskIdentifier task,
                               final LocalDateTime cutoffTime,
                               final LocalDateTime currentTime,
                               final Mode lastMode, final TripId lastTrip,
                               final MovementPath currentPath,
                               final int currentDepth,
                               final Set<VisitorFactory> visitorFactories) {
-        return new WalkVisitor(keyTime, cutoffTime, currentTime, lastMode,
+        return new WalkVisitor(task, cutoffTime, currentTime, lastMode,
                                lastTrip, currentPath, currentDepth, maxDepth,
                                reachabilityClient, timeAdjuster,
                                visitorFactories, workAllocator);

@@ -18,8 +18,10 @@ package com.publictransitanalytics.scoregenerator;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.TreeBasedTable;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import lombok.Getter;
 import org.opensextant.geodesy.Angle;
@@ -90,8 +92,10 @@ public class SectorTable {
     }
 
     public Sector findSector(final Geodetic2DPoint location) {
-        final NavigableMap<Latitude, Map<Longitude, Sector>> latitudeMap
-                = new TreeMap<>(sectorTable.rowMap());
+//        final NavigableMap<Latitude, Map<Longitude, Sector>> latitudeMap
+//                = new TreeMap<>(sectorTable.rowMap());
+        final SortedMap<Latitude, Map<Longitude, Sector>> latitudeMap
+                = sectorTable.rowMap();
 
         final Angle maxLatitude = latitudeMap.lastKey().add(latitudeDelta);
         /* Include the equality test to ensure that floating point rounding
@@ -100,14 +104,30 @@ public class SectorTable {
                 .getLatitude().compareTo(maxLatitude) > 0) {
             return null;
         }
-        final Map.Entry<Latitude, Map<Longitude, Sector>> floorLatitudeEntry
-                = latitudeMap.floorEntry(location.getLatitude());
-        if (floorLatitudeEntry == null) {
-            return null;
-        }
 
+        final Map<Longitude, Sector> floorLatitudeValue;
+        if (latitudeMap.containsKey(location.getLatitude())) {
+            floorLatitudeValue = latitudeMap.get(location.getLatitude());
+        } else {
+            final SortedMap<Latitude, Map<Longitude, Sector>> headMap
+                    = latitudeMap.headMap(location.getLatitude());
+            if (headMap.isEmpty()) {
+                return null;
+            }
+
+            final Latitude floorLatitudeKey = headMap.lastKey();
+            floorLatitudeValue = latitudeMap.get(floorLatitudeKey);
+        }
+//        final Map.Entry<Latitude, Map<Longitude, Sector>> floorLatitudeEntry
+//                = latitudeMap.floorEntry(location.getLatitude());
+//        if (floorLatitudeEntry == null) {
+//            return null;
+//        }
+
+//        final NavigableMap<Longitude, Sector> longitudeMap = new TreeMap<>(
+//                floorLatitudeEntry.getValue());
         final NavigableMap<Longitude, Sector> longitudeMap = new TreeMap<>(
-                floorLatitudeEntry.getValue());
+                floorLatitudeValue);
 
         /* Include the equality test to ensure that floating point rounding
          * is not making point appear unequal. */
@@ -134,6 +154,48 @@ public class SectorTable {
     public ImmutableSet<Sector> getSectors() {
         return ImmutableSet.<Sector>builder().addAll(sectorTable.values())
                 .build();
+    }
+
+    public Sector northSector(final Sector center) {
+        final SortedMap<Latitude, Map<Longitude, Sector>> rowMap
+                = sectorTable.rowMap();
+        final Iterator<Latitude> iterator = rowMap.tailMap(center.getBounds()
+                .getSouthLat()).keySet().iterator();
+        iterator.next();
+        final Latitude nextLatitude = iterator.next();
+        return sectorTable.get(nextLatitude,
+                               center.getBounds().getWestLon());
+    }
+
+    public Sector southSector(final Sector center) {
+        final SortedMap<Latitude, Map<Longitude, Sector>> rowMap
+                = sectorTable.rowMap();
+        final Latitude previousLatitude = rowMap.headMap(center.getBounds()
+                .getSouthLat()).lastKey();
+        return sectorTable.get(previousLatitude,
+                               center.getBounds().getWestLon());
+    }
+
+    public Sector westSector(final Sector center) {
+        final SortedMap<Longitude, Sector> latitude = sectorTable.row(center
+                .getBounds().getSouthLat());
+        final Longitude previousLongitude
+                = latitude.headMap(center.getBounds().getWestLon()).lastKey();
+        return sectorTable.get(center.getBounds().getSouthLat(),
+                               previousLongitude);
+
+    }
+
+    public Sector eastSector(final Sector center) {
+        final SortedMap<Longitude, Sector> latitude = sectorTable.row(center
+                .getBounds().getSouthLat());
+        final Iterator<Longitude> iterator = latitude.tailMap(center.getBounds()
+                .getWestLon()).keySet().iterator();
+        iterator.next();
+        final Longitude nextLongitude = iterator.next();
+        return sectorTable.get(center.getBounds().getSouthLat(),
+                               nextLongitude);
+
     }
 
 }
