@@ -194,6 +194,8 @@ public class Main {
         parser.addArgument("-a", "--apiKey");
         parser.addArgument("-d", "--baseDirectory");
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
+        parser.addArgument("-p", "--poolSize");
+        parser.addArgument("-t", "--taskSize");
 
         final Subparsers subparsers = parser.addSubparsers().dest("command");
 
@@ -248,6 +250,10 @@ public class Main {
 
         final String command = namespace.get("command");
 
+        final int poolSize = Integer.valueOf(namespace.get("poolSize"));
+
+        final int taskSize = Integer.valueOf(namespace.get("taskSize"));
+
         final ReachedSectorScoreGenerator scoreGenerator
                 = new ReachedSectorScoreGenerator();
         final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
@@ -256,9 +262,9 @@ public class Main {
         final DistanceClient distanceClient
                 = buildDistanceClient(root, key);
 
-        final ForkJoinPool pool = new ForkJoinPool();
+        final ForkJoinPool pool = new ForkJoinPool(poolSize);
         final WorkAllocator workAllocator
-                = new ForkJoinWorkAllocator(4);
+                = new ForkJoinWorkAllocator(taskSize);
 
         final SectorTable sectorTable = generateSectors();
 
@@ -354,19 +360,6 @@ public class Main {
         final StopTimesDirectory stopTimesDirectory
                 = buildStopTimesDirectory(root, files);
 
-//        final Geodetic2DPoint initialPoint = new Geodetic2DPoint(
-//                "47.66439,-122.3254157");
-//
-//        final Sector homeSector = sectorTable.findSector(initialPoint);
-//
-//        final ImmutableSet.Builder<Sector> measuredSectorsBuilder
-//                = ImmutableSet.builder();
-//        measuredSectorsBuilder.add(homeSector);
-//        measuredSectorsBuilder.add(sectorTable.northSector(homeSector));
-//        measuredSectorsBuilder.add(sectorTable.southSector(homeSector));
-//        measuredSectorsBuilder.add(sectorTable.eastSector(homeSector));
-//        measuredSectorsBuilder.add(sectorTable.westSector(homeSector));
-
         final ImmutableSet<Sector> measuredSectors = sectorTable.getSectors();
 
         final ImmutableSet.Builder<PointLocation> centerPointsBuilder
@@ -430,8 +423,8 @@ public class Main {
             for (final PointLocation centerPoint : centerPoints) {
                 LocalDateTime time = startTime;
                 while (time.isBefore(endTime)) {
-                    tasksBuilder.add(new TaskIdentifier(time, centerPoint,
-                                                        "generatePointUtility"));
+                    tasksBuilder.add(new TaskIdentifier(
+                            time, centerPoint, "generatePointUtility"));
                     time = time.plus(samplingInterval);
                 }
             }
@@ -557,8 +550,7 @@ public class Main {
             final Set<VisitorFactory> baseVisitorFactories
                     = buildVisitorFactories(
                             baseRiderFactory, baseReachabilityClient,
-                            timeTracker,
-                            workAllocator);
+                            timeTracker, workAllocator);
 
             final ImmutableSet.Builder<TaskIdentifier> baseTasksBuilder
                     = ImmutableSet.builder();
@@ -582,8 +574,10 @@ public class Main {
 
             final String trialExperimentName = "trial";
 
-            final LocalDateTime trialStartDateTime = trialDate.atTime(startTime);
-            final LocalDateTime trialEndDateTime = trialStartDateTime.plus(span);
+            final LocalDateTime trialStartDateTime
+                    = trialDate.atTime(startTime);
+            final LocalDateTime trialEndDateTime
+                    = trialStartDateTime.plus(span);
 
             final LocalDateTime trialEarliestTime = getEarliestTime(
                     trialStartDateTime, durations.last(), backward);
@@ -613,9 +607,10 @@ public class Main {
                     = buildLocationIdMap(trialPointIdMap, sectorTable);
 
             final EntryPoints trialEntryPoints = buildEntryPoints(
-                    trialEarliestTime, trialLatestTime, trialServiceTypeCalendar,
-                    trialTripDetailsDirectory, trialRouteDetailsDirectory,
-                    trialStopTimesDirectory, trialStopIdMap);
+                    trialEarliestTime, trialLatestTime,
+                    trialServiceTypeCalendar, trialTripDetailsDirectory,
+                    trialRouteDetailsDirectory, trialStopTimesDirectory,
+                    trialStopIdMap);
 
             final RiderBehaviorFactory trialRiderFactory;
             if (!backward) {
@@ -640,8 +635,7 @@ public class Main {
             final Set<VisitorFactory> trialVisitorFactories
                     = buildVisitorFactories(
                             trialRiderFactory, trialReachabilityClient,
-                            timeTracker,
-                            workAllocator);
+                            timeTracker, workAllocator);
 
             final ImmutableSet.Builder<TaskIdentifier> trialTasksBuilder
                     = ImmutableSet.builder();
@@ -734,8 +728,7 @@ public class Main {
 
         final EntryPoints entryPoints = buildEntryPoints(
                 earliestTime, latestTime, serviceTypeCalendar,
-                tripDetailsDirectory, routeDetailsDirectory,
-                stopTimesDirectory,
+                tripDetailsDirectory, routeDetailsDirectory, stopTimesDirectory,
                 stopIdMap);
 
         final RiderBehaviorFactory riderFactory;
@@ -856,9 +849,8 @@ public class Main {
         final Set<VisitorFactory> visitorFactories = ImmutableSet.of(
                 new TransitRideVisitorFactory(MAX_DEPTH, riderFactory,
                                               workAllocator),
-                new WalkVisitorFactory(
-                        MAX_DEPTH, reachabilityClient, timeTracker,
-                        workAllocator));
+                new WalkVisitorFactory(MAX_DEPTH, reachabilityClient,
+                                       timeTracker, workAllocator));
         return visitorFactories;
     }
 
@@ -886,8 +878,7 @@ public class Main {
         pointMapBuilder.putAll(transitStops);
 
         for (final PointLocation centerPoint : centerPoints) {
-            pointMapBuilder.put(centerPoint.getIdentifier(),
-                                centerPoint);
+            pointMapBuilder.put(centerPoint.getIdentifier(), centerPoint);
         }
         final ImmutableBiMap<String, PointLocation> pointIdMap
                 = pointMapBuilder.build();
@@ -911,8 +902,7 @@ public class Main {
             throws InterruptedException, IOException {
         final Store<StopIdKey, StopDetails> stopDetailsBackingStore
                 = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
-                        STOP_DETAILS_STORE), StopDetails.class
-                );
+                        STOP_DETAILS_STORE), StopDetails.class);
         final Cache<StopIdKey, StopDetails> stopDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<StopIdKey, StopDetails> stopDetailsStore = new CachingStore(
@@ -932,8 +922,7 @@ public class Main {
                                                       final String key) {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
                 = new LmdbStore(baseDirectory.resolve(WALKING_DISTANCE_STORE),
-                                WalkingDistanceMeasurement.class
-                );
+                                WalkingDistanceMeasurement.class);
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> limitedAccessWalkingDistanceStore
                 = new ReaderControlledStore(walkingDistanceBackingStore, 126);
         final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceMemoryCache
@@ -1009,10 +998,8 @@ public class Main {
             final Path root, final String revision)
             throws IOException, InterruptedException {
         final Store<DateKey, ServiceSet> serviceTypesBackingStore
-                = new LmdbStore<>(
-                        root.resolve(revision).resolve(
-                        SERVICE_TYPES_STORE), ServiceSet.class
-                );
+                = new LmdbStore<>(root.resolve(revision).resolve(
+                        SERVICE_TYPES_STORE), ServiceSet.class);
 
         final Cache<DateKey, ServiceSet> serviceTypesCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
@@ -1061,8 +1048,7 @@ public class Main {
         final RangedStore<TripSequenceKey, TripStop> tripSequenceBackingStore
                 = new RangedLmdbStore<>(tripSequenceStorePath,
                                         new TripSequenceKey.Materializer(),
-                                        TripStop.class
-                );
+                                        TripStop.class);
         final RangedCache<TripSequenceKey, TripStop> tripSequenceCache
                 = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
@@ -1074,8 +1060,7 @@ public class Main {
         final RangedStore<StopTimeKey, TripStop> stopTimesBackingStore
                 = new RangedLmdbStore<>(stopTimesStorePath,
                                         new StopTimeKey.Materializer(),
-                                        TripStop.class
-                );
+                                        TripStop.class);
         final RangedCache<StopTimeKey, TripStop> stopTimesCache
                 = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
@@ -1116,8 +1101,7 @@ public class Main {
         final Store<RouteIdKey, RouteDetails> routeDetailsBackingStore
                 = new LmdbStore<>(
                         root.resolve(revision).resolve(
-                        ROUTE_DETAILS_STORE), RouteDetails.class
-                );
+                        ROUTE_DETAILS_STORE), RouteDetails.class);
         final Cache<RouteIdKey, RouteDetails> routeDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<RouteIdKey, RouteDetails> routeDetailsStore
