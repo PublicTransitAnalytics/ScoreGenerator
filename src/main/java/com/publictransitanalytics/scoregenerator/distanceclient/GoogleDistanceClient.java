@@ -29,6 +29,7 @@ import com.google.maps.model.DistanceMatrixRow;
 import com.google.maps.model.LatLng;
 import com.google.maps.model.TravelMode;
 import com.google.maps.model.Unit;
+import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -38,17 +39,20 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 /**
  * A DistanceClient that uses the GoogleDistanceMatrix API to get the distances
  * between the product of a set of origins and destinations.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Slf4j
 public class GoogleDistanceClient implements DistanceClient {
 
     private final GeoApiContext context;
+    private final WaterDetector waterDetector;
 
-    public GoogleDistanceClient(final String key) {
+    public GoogleDistanceClient(final String key,
+                                final WaterDetector waterDetector) {
         context = new GeoApiContext().setApiKey(key).setRetryTimeout(
                 0, TimeUnit.SECONDS);
+        this.waterDetector = waterDetector;
     }
 
     @Override
@@ -64,38 +68,44 @@ public class GoogleDistanceClient implements DistanceClient {
             for (final VisitableLocation destination : destinations) {
                 final Geodetic2DPoint originPoint = origin.getNearestPoint(
                         destination.getCanonicalPoint());
-
-                final LatLng originLatLng = new LatLng(
-                        originPoint.getLatitudeAsDegrees(),
-                        originPoint.getLongitudeAsDegrees());
-
                 final Geodetic2DPoint destinationPoint
                         = destination.getNearestPoint(
                                 origin.getCanonicalPoint());
-                final LatLng destinationLatLng = new LatLng(
-                        destinationPoint.getLatitudeAsDegrees(),
-                        destinationPoint.getLongitudeAsDegrees());
 
-                final DistanceMatrixApiRequest request = DistanceMatrixApi
-                        .newRequest(context);
+                if (!waterDetector.isOnWater(originPoint)
+                            && !waterDetector.isOnWater(destinationPoint)) {
 
-                request.origins(originLatLng);
-                request.destinations(destinationLatLng);
-                request.mode(TravelMode.WALKING);
-                request.units(Unit.METRIC);
-                try {
-                    final DistanceMatrix response = request.await();
-                    final DistanceMatrixRow row = response.rows[0];
-                    final DistanceMatrixElement element = row.elements[0];
+                    final LatLng originLatLng = new LatLng(
+                            originPoint.getLatitudeAsDegrees(),
+                            originPoint.getLongitudeAsDegrees());
 
-                    if (element.status.equals(DistanceMatrixElementStatus.OK)) {
-                        WalkingCosts measurement = new WalkingCosts(
-                                Duration.ofSeconds(element.duration.inSeconds),
-                                element.distance.inMeters);
-                        resultBuilder.put(origin, destination, measurement);
+                    final LatLng destinationLatLng = new LatLng(
+                            destinationPoint.getLatitudeAsDegrees(),
+                            destinationPoint.getLongitudeAsDegrees());
+
+                    final DistanceMatrixApiRequest request = DistanceMatrixApi
+                            .newRequest(context);
+
+                    request.origins(originLatLng);
+                    request.destinations(destinationLatLng);
+                    request.mode(TravelMode.WALKING);
+                    request.units(Unit.METRIC);
+                    try {
+                        final DistanceMatrix response = request.await();
+                        final DistanceMatrixRow row = response.rows[0];
+                        final DistanceMatrixElement element = row.elements[0];
+
+                        if (element.status
+                                .equals(DistanceMatrixElementStatus.OK)) {
+                            WalkingCosts measurement = new WalkingCosts(
+                                    Duration.ofSeconds(
+                                            element.duration.inSeconds),
+                                    element.distance.inMeters);
+                            resultBuilder.put(origin, destination, measurement);
+                        }
+                    } catch (Exception e) {
+                        throw new DistanceClientException(e);
                     }
-                } catch (Exception e) {
-                    throw new DistanceClientException(e);
                 }
             }
         }

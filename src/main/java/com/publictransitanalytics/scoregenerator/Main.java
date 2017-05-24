@@ -109,8 +109,12 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimes
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
+import com.publictransitanalytics.scoregenerator.geography.GeoJsonWaterDetector;
+import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
+import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import com.publictransitanalytics.scoregenerator.output.ComparativeTimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.output.NetworkUtilityMap;
+import com.publictransitanalytics.scoregenerator.output.SampledNetworkUtilityMap;
 import com.publictransitanalytics.scoregenerator.output.TimeRangeSectorMap;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingEntryPoints;
@@ -123,10 +127,15 @@ import java.nio.file.Files;
 import java.util.concurrent.ForkJoinPool;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
+import com.publictransitanalytics.scoregenerator.probability.JointProbabilityDistribution;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 
@@ -181,9 +190,11 @@ public class Main {
     private static final String TRIPS_FILE = "trips.txt";
     private static final String STOPS_FILE = "stops.txt";
 
+    private static final String WATER_BODIES_FILE = "water.json";
+
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
-            ExecutionException {
+            ExecutionException, WaterDetectorException {
 
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
                 "ScoreGenerator").defaultHelp(true)
@@ -204,6 +215,13 @@ public class Main {
         generateNetworkUtilityParser.addArgument("-a", "--startTime");
         generateNetworkUtilityParser.addArgument("-s", "--span");
         generateNetworkUtilityParser.addArgument("-f", "--files");
+
+        final Subparser generateSampledNetworkUtilityParser
+                = subparsers.addParser("generateSampledNetworkUtility");
+        generateSampledNetworkUtilityParser.addArgument("-a", "--startTime");
+        generateSampledNetworkUtilityParser.addArgument("-s", "--span");
+        generateSampledNetworkUtilityParser.addArgument("-f", "--files");
+        generateSampledNetworkUtilityParser.addArgument("-m", "--samples");
 
         final Subparser generatePointUtilityParser = subparsers.addParser(
                 "generatePointUtility");
@@ -259,8 +277,12 @@ public class Main {
         final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
         final LocalFilePublisher publisher = new LocalFilePublisher();
 
+        final Path waterFilePath = root.resolve(WATER_BODIES_FILE);
+        final WaterDetector waterDetector
+                = new GeoJsonWaterDetector(waterFilePath);
+
         final DistanceClient distanceClient
-                = buildDistanceClient(root, key);
+                = buildDistanceClient(root, key, waterDetector);
 
         final ForkJoinPool pool = new ForkJoinPool(poolSize);
         final WorkAllocator workAllocator
@@ -282,8 +304,15 @@ public class Main {
             } else if ("generateNetworkUtility".equals(command)) {
                 generateNetworkUtility(namespace, root, sectorTable, backward,
                                        samplingInterval, durations,
-                                       distanceClient, pool, workAllocator,
-                                       scoreGenerator, publisher, serializer);
+                                       waterDetector, distanceClient, pool,
+                                       workAllocator, scoreGenerator, publisher,
+                                       serializer);
+            } else if ("generateSampledNetworkUtility".equals(command)) {
+                generateSampledNetworkUtility(
+                        namespace, root, sectorTable, backward,
+                        samplingInterval, durations, waterDetector,
+                        distanceClient, pool, workAllocator, scoreGenerator,
+                        publisher, serializer);
             }
         } finally {
 
@@ -326,6 +355,7 @@ public class Main {
             final SectorTable sectorTable, final boolean backward,
             final Duration samplingInterval,
             final SortedSet<Duration> durations,
+            final WaterDetector waterDetector,
             final DistanceClient distanceClient, final ForkJoinPool pool,
             final WorkAllocator workAllocator,
             final ReachedSectorScoreGenerator scoreGenerator,
@@ -361,6 +391,140 @@ public class Main {
                 = buildStopTimesDirectory(root, files);
 
         final ImmutableSet<Sector> measuredSectors = sectorTable.getSectors();
+        final Set<Sector> filteredSectors = measuredSectors.stream()
+                .filter(sector -> !waterDetector.isOnWater(
+                        sector.getCanonicalPoint()))
+                .collect(Collectors.toSet());
+
+        final ImmutableSet.Builder<PointLocation> centerPointsBuilder
+                = ImmutableSet.builder();
+        for (final Sector sector : filteredSectors) {
+            final Landmark centerPoint
+                    = new Landmark(sector, sector.getCanonicalPoint());
+
+            centerPointsBuilder.add(centerPoint);
+        }
+        final Set<PointLocation> centerPoints = centerPointsBuilder.build();
+
+        final ImmutableBiMap<String, PointLocation> pointIdMap
+                = buildPointIdMap(centerPoints, stopIdMap);
+        final ImmutableBiMap<String, VisitableLocation> locationIdMap
+                = buildLocationIdMap(pointIdMap, sectorTable);
+        final EntryPoints entryPoints = buildEntryPoints(
+                earliestTime, latestTime, serviceTypeCalendar,
+                tripDetailsDirectory, routeDetailsDirectory, stopTimesDirectory,
+                stopIdMap);
+
+        final RiderBehaviorFactory riderFactory;
+        final TimeTracker timeTracker;
+        final DistanceFilter distanceFilter;
+        final MovementPath basePath;
+        if (!backward) {
+            riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
+            timeTracker = new ForwardTimeTracker();
+            distanceFilter = new ManyDestinationsDistanceFilter(distanceClient);
+            basePath = new ForwardMovingPath(ImmutableList.of());
+        } else {
+            riderFactory = new RetrospectiveRiderBehaviorFactory(entryPoints);
+            timeTracker = new BackwardTimeTracker();
+            distanceFilter = new ManyOriginsDistanceFilter(distanceClient);
+            basePath = new RetrospectivePath(ImmutableList.of());
+        }
+
+        final DistanceEstimator distanceEstimator
+                = buildDistanceEstimator(sectorTable, centerPoints, pointIdMap,
+                                         durations.last(), root, files);
+
+        final ReachabilityClient reachabilityClient
+                = buildReachabilityClient(distanceFilter, distanceEstimator,
+                                          timeTracker, locationIdMap);
+        try {
+            final Workflow workflow = new Workflow(timeTracker, basePath,
+                                                   pool, workAllocator);
+            final Set<VisitorFactory> visitorFactories
+                    = buildVisitorFactories(riderFactory, reachabilityClient,
+                                            timeTracker, workAllocator);
+
+            final ImmutableSet.Builder<TaskIdentifier> tasksBuilder
+                    = ImmutableSet.builder();
+
+            for (final PointLocation centerPoint : centerPoints) {
+                LocalDateTime time = startTime;
+                while (time.isBefore(endTime)) {
+                    tasksBuilder.add(new TaskIdentifier(
+                            time, centerPoint, "generatePointUtility"));
+                    time = time.plus(samplingInterval);
+                }
+            }
+            final Set<TaskIdentifier> tasks = tasksBuilder.build();
+            workflow.getPathsForTasks(durations.last(), visitorFactories,
+                                      tasks);
+
+            final int score = scoreGenerator.getScore(sectorTable, tasks);
+            final NetworkUtilityMap map = new NetworkUtilityMap(
+                    tasks, sectorTable, centerPoints, startTime, endTime,
+                    durations.last(), samplingInterval, backward,
+                    NUM_BUCKETS, score);
+            publisher.publish(serializer.toJson(map));
+
+        } finally {
+            distanceEstimator.close();
+            distanceClient.close();
+        }
+    }
+
+    private static void generateSampledNetworkUtility(
+            final Namespace namespace, final Path root,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
+            final SortedSet<Duration> durations,
+            final WaterDetector waterDetector,
+            final DistanceClient distanceClient, final ForkJoinPool pool,
+            final WorkAllocator workAllocator,
+            final ReachedSectorScoreGenerator scoreGenerator,
+            final LocalFilePublisher publisher, final Gson serializer)
+            throws IOException, InterruptedException, ExecutionException {
+
+        final String files = namespace.get("files");
+        final LocalDateTime startTime
+                = LocalDateTime.parse(namespace.get("startTime"));
+
+        final Duration span = Duration.parse(namespace.get("span"));
+
+        final int samples = Integer.valueOf(namespace.get("samples"));
+
+        final LocalDateTime endTime = startTime.plus(span);
+
+        final LocalDateTime earliestTime = getEarliestTime(
+                startTime, durations.last(), backward);
+        final LocalDateTime latestTime = getLatestTime(
+                startTime, endTime, durations.last(), backward);
+
+        final StopDetailsDirectory stopDetailsDirectory
+                = buildStopDetailsDirectory(root, files);
+
+        final ImmutableBiMap<String, TransitStop> stopIdMap
+                = buildTransitStopIdMap(sectorTable, stopDetailsDirectory);
+
+        final ServiceTypeCalendar serviceTypeCalendar
+                = buildServiceTypeCalendar(root, files);
+        final TripDetailsDirectory tripDetailsDirectory
+                = buildTripDetailsDirectory(root, files);
+        final RouteDetailsDirectory routeDetailsDirectory
+                = buildRouteDetailsDirectory(root, files);
+        final StopTimesDirectory stopTimesDirectory
+                = buildStopTimesDirectory(root, files);
+
+        final List<Sector> sectorList
+                = new ArrayList(sectorTable.getSectors().asList());
+        Collections.shuffle(sectorList);
+        final List<Sector> filteredList = sectorList.stream()
+                .filter(sector -> !waterDetector.isOnWater(
+                        sector.getCanonicalPoint()))
+                .collect(Collectors.toList());
+
+        final ImmutableSet<Sector> measuredSectors
+                = ImmutableSet.copyOf(filteredList.subList(0, samples));
 
         final ImmutableSet.Builder<PointLocation> centerPointsBuilder
                 = ImmutableSet.builder();
@@ -401,48 +565,93 @@ public class Main {
         }
 
         final DistanceEstimator distanceEstimator
-                = buildDistanceEstimator(
-                        sectorTable, centerPoints, pointIdMap,
-                        durations.last(), root, files);
+                = buildDistanceEstimator(sectorTable, centerPoints, pointIdMap,
+                                         durations.last(), root, files);
 
         final ReachabilityClient reachabilityClient
-                = buildReachabilityClient(
-                        distanceFilter, distanceEstimator, timeTracker,
-                        locationIdMap);
+                = buildReachabilityClient(distanceFilter, distanceEstimator,
+                                          timeTracker, locationIdMap);
         try {
             final Workflow workflow = new Workflow(timeTracker, basePath,
                                                    pool, workAllocator);
             final Set<VisitorFactory> visitorFactories
-                    = buildVisitorFactories(
-                            riderFactory, reachabilityClient, timeTracker,
-                            workAllocator);
+                    = buildVisitorFactories(riderFactory, reachabilityClient,
+                                            timeTracker, workAllocator);
+            final LinkedHashMap<PointLocation, Double> mutualInformationForPoint
+                    = new LinkedHashMap();
 
-            final ImmutableSet.Builder<TaskIdentifier> tasksBuilder
+            final ImmutableSet.Builder<TaskIdentifier> allTasksBuilder
                     = ImmutableSet.builder();
 
+            Map<Sector, Integer> previousCumulativeBuckets = null;
+            PointLocation firstPoint = null;
             for (final PointLocation centerPoint : centerPoints) {
+                final ImmutableSet.Builder<TaskIdentifier> sampleTasksBuilder
+                        = ImmutableSet.builder();
+
                 LocalDateTime time = startTime;
                 while (time.isBefore(endTime)) {
-                    tasksBuilder.add(new TaskIdentifier(
-                            time, centerPoint, "generatePointUtility"));
+                    final TaskIdentifier task = new TaskIdentifier(
+                            time, centerPoint, "generatePointUtility");
+                    sampleTasksBuilder.add(task);
+                    allTasksBuilder.add(task);
                     time = time.plus(samplingInterval);
                 }
-            }
-            final Set<TaskIdentifier> tasks = tasksBuilder.build();
-            workflow.getPathsForTasks(durations.last(), visitorFactories,
-                                      tasks);
+                final Set<TaskIdentifier> sampleTasks
+                        = sampleTasksBuilder.build();
+                workflow.getPathsForTasks(durations.last(), visitorFactories,
+                                          sampleTasks);
 
+                final ImmutableMap.Builder<Sector, Integer> cumulativeBucketsBuilder
+                        = ImmutableMap.builder();
+                for (final Sector sector : sectorTable.getSectors()) {
+                    final int sectorCumulativePaths
+                            = sector.getBestPaths().size();
+                    final int cumulativeBucket = getBucket(
+                            sectorCumulativePaths, NUM_BUCKETS,
+                            allTasksBuilder.build().size());
+                    cumulativeBucketsBuilder.put(sector, cumulativeBucket);
+                }
+                final Map<Sector, Integer> cumulativeBuckets
+                        = cumulativeBucketsBuilder.build();
+                if (previousCumulativeBuckets != null) {
+                    // Account for 0 being a valid bucket value in this context.
+                    final JointProbabilityDistribution<Sector> jointDistribution
+                            = new JointProbabilityDistribution(
+                                    cumulativeBuckets,
+                                    previousCumulativeBuckets, NUM_BUCKETS + 1);
+                    final double mutualInformation
+                            = jointDistribution.getMutualInformation();
+                    mutualInformationForPoint
+                            .put(centerPoint, mutualInformation);
+                    log.info(
+                            "Mutual info between previous cumulative and "
+                                    + "cumulative map = {} after adding {}.",
+                            mutualInformation, centerPoint.getLocation());
+                } else {
+                    firstPoint = centerPoint;
+                }
+                previousCumulativeBuckets = cumulativeBuckets;
+            }
+            final Set<TaskIdentifier> tasks = allTasksBuilder.build();
             final int score = scoreGenerator.getScore(sectorTable, tasks);
-            final NetworkUtilityMap map = new NetworkUtilityMap(
-                    tasks, sectorTable, centerPoints, startTime, endTime,
-                    durations.last(), samplingInterval, backward,
-                    NUM_BUCKETS, score);
+            final SampledNetworkUtilityMap map = new SampledNetworkUtilityMap(
+                    tasks, sectorTable, firstPoint, mutualInformationForPoint,
+                    startTime, endTime, durations.last(), samplingInterval,
+                    backward, NUM_BUCKETS, score);
             publisher.publish(serializer.toJson(map));
 
         } finally {
             distanceEstimator.close();
             distanceClient.close();
         }
+    }
+
+    private static int getBucket(final int count, final int buckets,
+                                 final int samples) {
+        final int bucketSize = samples / buckets;
+
+        return ((count + bucketSize - 1) * buckets) / samples;
     }
 
     private static void comparePointUtility(
@@ -456,11 +665,9 @@ public class Main {
             final LocalFilePublisher publisher, final Gson serializer)
             throws IOException, InterruptedException, ExecutionException {
         try {
-            final String coordinateString
-                    = namespace.get("coordinate");
-            final Geodetic2DPoint centerCoordinate
-                    = (coordinateString == null)
-                            ? null : new Geodetic2DPoint(coordinateString);
+            final String coordinateString = namespace.get("coordinate");
+            final Geodetic2DPoint centerCoordinate = (coordinateString == null)
+                    ? null : new Geodetic2DPoint(coordinateString);
             final Landmark centerPoint = buildCenterPoint(
                     sectorTable, centerCoordinate);
 
@@ -565,8 +772,8 @@ public class Main {
 
             workflow.getPathsForTasks(durations.last(),
                                       baseVisitorFactories, baseTasks);
-            final int baseScore = scoreGenerator
-                    .getScore(sectorTable, baseTasks);
+            final int baseScore = scoreGenerator.getScore(sectorTable,
+                                                          baseTasks);
 
             final String trialFiles = namespace.get("trialFiles");
             final LocalDate trialDate
@@ -614,8 +821,8 @@ public class Main {
 
             final RiderBehaviorFactory trialRiderFactory;
             if (!backward) {
-                trialRiderFactory
-                        = new ForwardRiderBehaviorFactory(trialEntryPoints);
+                trialRiderFactory = new ForwardRiderBehaviorFactory(
+                        trialEntryPoints);
             } else {
                 trialRiderFactory = new RetrospectiveRiderBehaviorFactory(
                         trialEntryPoints);
@@ -664,7 +871,6 @@ public class Main {
             publisher.publish(output);
         } finally {
             distanceClient.close();
-
         }
     }
 
@@ -681,11 +887,9 @@ public class Main {
 
         final String experimentName = "generatePointUtility";
 
-        final String coordinateString
-                = namespace.get("coordinate");
-        final Geodetic2DPoint centerCoordinate
-                = (coordinateString == null)
-                        ? null : new Geodetic2DPoint(coordinateString);
+        final String coordinateString = namespace.get("coordinate");
+        final Geodetic2DPoint centerCoordinate = (coordinateString == null)
+                ? null : new Geodetic2DPoint(coordinateString);
         final Landmark centerPoint = buildCenterPoint(
                 sectorTable, centerCoordinate);
 
@@ -754,15 +958,13 @@ public class Main {
                 durations.last(), root, files);
 
         final ReachabilityClient reachabilityClient
-                = buildReachabilityClient(
-                        distanceFilter, distanceEstimator, timeTracker,
-                        locationIdMap);
+                = buildReachabilityClient(distanceFilter, distanceEstimator,
+                                          timeTracker, locationIdMap);
 
         final Workflow workflow = new Workflow(timeTracker, basePath, pool,
                                                workAllocator);
         final Set<VisitorFactory> visitorFactories = buildVisitorFactories(
-                riderFactory, reachabilityClient, timeTracker,
-                workAllocator);
+                riderFactory, reachabilityClient, timeTracker, workAllocator);
         try {
             final Set<TaskIdentifier> tasks;
             if (endTime == null && durations.size() == 1) {
@@ -834,9 +1036,9 @@ public class Main {
                         stopDetails.getStopName(), location);
                 stopMapBuilder.put(stop.getIdentifier(), stop);
             } else {
-                log.warn(
-                        "Stop at {} location {} was skipped because it was not in the sector table.",
-                        stopDetails, location);
+                log.info("Stop at {} location {} was skipped because it was "
+                                 + "not in the sector table.", stopDetails,
+                         location);
             }
         }
         return stopMapBuilder.build();
@@ -918,8 +1120,9 @@ public class Main {
         return stopDetailsDirectory;
     }
 
-    private static DistanceClient buildDistanceClient(final Path baseDirectory,
-                                                      final String key) {
+    private static DistanceClient buildDistanceClient(
+            final Path baseDirectory, final String key,
+            final WaterDetector waterDetector) {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
                 = new LmdbStore(baseDirectory.resolve(WALKING_DISTANCE_STORE),
                                 WalkingDistanceMeasurement.class);
@@ -934,7 +1137,8 @@ public class Main {
                 = new UnboundedCache<>(walkingDistanceCacheStore);
 
         final DistanceClient distanceClient = new CachingDistanceClient(
-                walkingDistanceCache, new GoogleDistanceClient(key));
+                walkingDistanceCache, new GoogleDistanceClient(
+                        key, waterDetector));
 
         return distanceClient;
     }
@@ -976,8 +1180,7 @@ public class Main {
         final Path maxCandidateDistanceStorePath = baseDirectory.resolve(
                 revision).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
         final Store<LocationKey, Double> maxCandidateDistancesBackingStore
-                = new LmdbStore<>(maxCandidateDistanceStorePath, Double.class
-                );
+                = new LmdbStore<>(maxCandidateDistanceStorePath, Double.class);
         final Cache<LocationKey, Double> maxCandidateDistanceCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<LocationKey, Double> maxCandidateDistanceStore
@@ -1025,8 +1228,7 @@ public class Main {
             throws IOException, InterruptedException {
         final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
                 = new LmdbStore<>(root.resolve(revision).resolve(
-                        TRIP_DETAILS_STORE), TripDetails.class
-                );
+                        TRIP_DETAILS_STORE), TripDetails.class);
         final Cache<TripGroupKey, TripDetails> tripDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         Store<TripGroupKey, TripDetails> tripDetailsStore
@@ -1068,9 +1270,7 @@ public class Main {
                                            stopTimesCache);
 
         final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
-                root.resolve(revision).resolve(TRIPS_STORE),
-                TripId.class
-        );
+                root.resolve(revision).resolve(TRIPS_STORE), TripId.class);
         final Cache<TripIdKey, TripId> tripsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<TripIdKey, TripId> tripsStore
@@ -1084,9 +1284,8 @@ public class Main {
         } else {
             frequenciesReader = new StringReader("");
         }
-        final Reader stopTimesReader = new FileReader(root.resolve(
-                revision).
-                resolve(GTFS_DIRECTORY).resolve(STOP_TIMES_FILE).toFile());
+        final Reader stopTimesReader = new FileReader(root.resolve(revision)
+                .resolve(GTFS_DIRECTORY).resolve(STOP_TIMES_FILE).toFile());
 
         final GTFSReadingStopTimesDirectory stopTimesDirectory
                 = new GTFSReadingStopTimesDirectory(
@@ -1099,8 +1298,7 @@ public class Main {
             final Path root, final String revision)
             throws IOException, InterruptedException {
         final Store<RouteIdKey, RouteDetails> routeDetailsBackingStore
-                = new LmdbStore<>(
-                        root.resolve(revision).resolve(
+                = new LmdbStore<>(root.resolve(revision).resolve(
                         ROUTE_DETAILS_STORE), RouteDetails.class);
         final Cache<RouteIdKey, RouteDetails> routeDetailsCache
                 = new UnboundedCache<>(new InMemoryHashStore<>());
@@ -1123,10 +1321,8 @@ public class Main {
             final TripDetailsDirectory tripDetailsDirectory,
             final RouteDetailsDirectory routeDetailsDirectory,
             final StopTimesDirectory stopTimesDirectory,
-            final ImmutableMap<String, TransitStop> stopIdMap
-    )
+            final ImmutableMap<String, TransitStop> stopIdMap)
             throws IOException, InterruptedException {
-
         final EntryPoints entryPoints = new DirectoryReadingEntryPoints(
                 earliestTime, latestTime, stopTimesDirectory,
                 routeDetailsDirectory, tripDetailsDirectory,

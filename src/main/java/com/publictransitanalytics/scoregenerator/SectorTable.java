@@ -92,8 +92,6 @@ public class SectorTable {
     }
 
     public Sector findSector(final Geodetic2DPoint location) {
-//        final NavigableMap<Latitude, Map<Longitude, Sector>> latitudeMap
-//                = new TreeMap<>(sectorTable.rowMap());
         final SortedMap<Latitude, Map<Longitude, Sector>> latitudeMap
                 = sectorTable.rowMap();
 
@@ -118,14 +116,8 @@ public class SectorTable {
             final Latitude floorLatitudeKey = headMap.lastKey();
             floorLatitudeValue = latitudeMap.get(floorLatitudeKey);
         }
-//        final Map.Entry<Latitude, Map<Longitude, Sector>> floorLatitudeEntry
-//                = latitudeMap.floorEntry(location.getLatitude());
-//        if (floorLatitudeEntry == null) {
-//            return null;
-//        }
 
-//        final NavigableMap<Longitude, Sector> longitudeMap = new TreeMap<>(
-//                floorLatitudeEntry.getValue());
+        // TODO: Do not remake this map. Use the latitude key.
         final NavigableMap<Longitude, Sector> longitudeMap = new TreeMap<>(
                 floorLatitudeValue);
 

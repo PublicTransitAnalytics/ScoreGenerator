@@ -15,16 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
-import com.google.common.collect.ImmutableMultiset;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
-import com.google.common.collect.SortedSetMultimap;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 /**
  *

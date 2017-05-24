@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.geography;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public enum MapType {
+public class WaterDetectorException extends Exception {
+
+    public WaterDetectorException(final Exception e) {
+        super(e);
+    }
     
-    SINGLE_TIME_SECTOR,
-    TIME_RANGE_SECTOR,
-    COMPARATIVE_TIME_RANGE_SECTOR,
-    NETWORK_UTILITY, 
-    CUMULATIVE_POINT_UTILITY;    
 }

@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.HashMultiset;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multiset;
 import com.publictransitanalytics.scoregenerator.SectorTable;
@@ -26,16 +27,17 @@ import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public class NetworkUtilityMap {
+public class SampledNetworkUtilityMap {
 
     private final MapType mapType;
 
@@ -45,7 +47,9 @@ public class NetworkUtilityMap {
 
     private final Map<Bounds, DestinationProbabilityInformation> sectors;
 
-    private final Set<Point> centerPoints;
+    private final List<MutualInformationMeasurement> centerPointMutualInformation;
+
+    private final Point firstPoint;
 
     private final String startTime;
 
@@ -57,16 +61,17 @@ public class NetworkUtilityMap {
 
     private final int score;
 
-    public NetworkUtilityMap(final Set<TaskIdentifier> tasks,
-                             final SectorTable sectorTable,
-                             final Set<PointLocation> centerPoints,
-                             final LocalDateTime startTime,
-                             final LocalDateTime endTime,
-                             final Duration tripDuration,
-                             final Duration samplingInterval,
-                             final boolean backward,
-                             final int buckets, final int score) {
-        mapType = MapType.NETWORK_UTILITY;
+    public SampledNetworkUtilityMap(final Set<TaskIdentifier> tasks,
+                                    final SectorTable sectorTable,
+                                    final PointLocation firstPoint,
+                                    final LinkedHashMap<PointLocation, Double> centerPointMutualInformation,
+                                    final LocalDateTime startTime,
+                                    final LocalDateTime endTime,
+                                    final Duration tripDuration,
+                                    final Duration samplingInterval,
+                                    final boolean backward,
+                                    final int buckets, final int score) {
+        mapType = MapType.CUMULATIVE_POINT_UTILITY;
 
         direction = backward ? Direction.TO_POINT : Direction.FROM_POINT;
         mapBounds = new Bounds(sectorTable);
@@ -106,7 +111,15 @@ public class NetworkUtilityMap {
             informationBuilder.put(bounds, information);
         }
         sectors = informationBuilder.build();
-        this.centerPoints = centerPoints.stream().map(
-                point -> new Point(point)).collect(Collectors.toSet());
+
+        final ImmutableList.Builder<MutualInformationMeasurement> builder
+                = ImmutableList.builder();
+        for (final Map.Entry<PointLocation, Double> entry
+             : centerPointMutualInformation.entrySet()) {
+            builder.add(new MutualInformationMeasurement(
+                    new Point(entry.getKey()), entry.getValue()));
+        }
+        this.centerPointMutualInformation = builder.build();
+        this.firstPoint = new Point(firstPoint);
     }
 }

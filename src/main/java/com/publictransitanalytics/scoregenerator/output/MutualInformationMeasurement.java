@@ -15,15 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import lombok.Value;
+
 /**
  *
  * @author Public Transit Analytics
  */
-public enum MapType {
-    
-    SINGLE_TIME_SECTOR,
-    TIME_RANGE_SECTOR,
-    COMPARATIVE_TIME_RANGE_SECTOR,
-    NETWORK_UTILITY, 
-    CUMULATIVE_POINT_UTILITY;    
+@Value
+public class MutualInformationMeasurement {
+    private final Point point;
+    private final double mutualInformation;
 }
