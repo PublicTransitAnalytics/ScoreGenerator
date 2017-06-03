@@ -109,6 +109,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimes
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
+import com.publictransitanalytics.scoregenerator.distanceclient.GraphhopperLocalDistanceClient;
 import com.publictransitanalytics.scoregenerator.geography.GeoJsonWaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
@@ -160,7 +161,7 @@ public class Main {
     private static final int NUM_LATITUDE_SECTORS = 100;
     private static final int NUM_LONGITUDE_SECTORS = 100;
 
-    private static final double ESTIMATE_WALK_METERS_PER_SECOND = 1.1;
+    private static final double ESTIMATE_WALK_METERS_PER_SECOND = 1.4;
 
     private static final int MAX_DEPTH = 6;
 
@@ -192,6 +193,9 @@ public class Main {
 
     private static final String WATER_BODIES_FILE = "water.json";
 
+    private static final String SEATTLE_OSM_FILE = "washington-latest.osm.pbf";
+    private static final String GRAPHHOPPER_DIRECTORY = "graphhopper_files";
+
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
             ExecutionException, WaterDetectorException {
@@ -202,7 +206,6 @@ public class Main {
 
         parser.addArgument("-l", "--tripLengths").action(Arguments.append());
         parser.addArgument("-i", "--samplingInterval");
-        parser.addArgument("-a", "--apiKey");
         parser.addArgument("-d", "--baseDirectory");
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
         parser.addArgument("-p", "--poolSize");
@@ -288,7 +291,7 @@ public class Main {
         final WorkAllocator workAllocator
                 = new ForkJoinWorkAllocator(taskSize);
 
-        final SectorTable sectorTable = generateSectors();
+        final SectorTable sectorTable = generateSectors(waterDetector);
 
         try {
             if ("generatePointUtility".equals(command)) {
@@ -390,15 +393,11 @@ public class Main {
         final StopTimesDirectory stopTimesDirectory
                 = buildStopTimesDirectory(root, files);
 
-        final ImmutableSet<Sector> measuredSectors = sectorTable.getSectors();
-        final Set<Sector> filteredSectors = measuredSectors.stream()
-                .filter(sector -> !waterDetector.isOnWater(
-                        sector.getCanonicalPoint()))
-                .collect(Collectors.toSet());
+        final Set<Sector> measuredSectors = sectorTable.getSectors();
 
         final ImmutableSet.Builder<PointLocation> centerPointsBuilder
                 = ImmutableSet.builder();
-        for (final Sector sector : filteredSectors) {
+        for (final Sector sector : measuredSectors) {
             final Landmark centerPoint
                     = new Landmark(sector, sector.getCanonicalPoint());
 
@@ -516,7 +515,7 @@ public class Main {
                 = buildStopTimesDirectory(root, files);
 
         final List<Sector> sectorList
-                = new ArrayList(sectorTable.getSectors().asList());
+                = new ArrayList(sectorTable.getSectors());
         Collections.shuffle(sectorList);
         final List<Sector> filteredList = sectorList.stream()
                 .filter(sector -> !waterDetector.isOnWater(
@@ -582,6 +581,7 @@ public class Main {
 
             final ImmutableSet.Builder<TaskIdentifier> allTasksBuilder
                     = ImmutableSet.builder();
+            int completedTasks = 0;
 
             Map<Sector, Integer> previousCumulativeBuckets = null;
             PointLocation firstPoint = null;
@@ -601,6 +601,7 @@ public class Main {
                         = sampleTasksBuilder.build();
                 workflow.getPathsForTasks(durations.last(), visitorFactories,
                                           sampleTasks);
+                completedTasks++;
 
                 final ImmutableMap.Builder<Sector, Integer> cumulativeBucketsBuilder
                         = ImmutableMap.builder();
@@ -608,8 +609,7 @@ public class Main {
                     final int sectorCumulativePaths
                             = sector.getBestPaths().size();
                     final int cumulativeBucket = getBucket(
-                            sectorCumulativePaths, NUM_BUCKETS,
-                            allTasksBuilder.build().size());
+                            sectorCumulativePaths, NUM_BUCKETS, completedTasks);
                     cumulativeBucketsBuilder.put(sector, cumulativeBucket);
                 }
                 final Map<Sector, Integer> cumulativeBuckets
@@ -1009,9 +1009,11 @@ public class Main {
         }
     }
 
-    private static SectorTable generateSectors() {
+    private static SectorTable generateSectors(
+            final WaterDetector waterDetector) {
         final SectorTable sectorTable = new SectorTable(
-                SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS);
+                SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS,
+                waterDetector);
         return sectorTable;
     }
 
@@ -1136,9 +1138,14 @@ public class Main {
         final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCache
                 = new UnboundedCache<>(walkingDistanceCacheStore);
 
+        final GoogleDistanceClient googleDistanceClient
+                = new GoogleDistanceClient(key, waterDetector);
+        final GraphhopperLocalDistanceClient graphhopperDistanceClient
+                = new GraphhopperLocalDistanceClient(
+                        baseDirectory.resolve(SEATTLE_OSM_FILE),
+                        baseDirectory.resolve(GRAPHHOPPER_DIRECTORY));
         final DistanceClient distanceClient = new CachingDistanceClient(
-                walkingDistanceCache, new GoogleDistanceClient(
-                        key, waterDetector));
+                walkingDistanceCache, graphhopperDistanceClient);
 
         return distanceClient;
     }

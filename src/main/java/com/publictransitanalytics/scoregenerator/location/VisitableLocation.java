@@ -21,6 +21,7 @@ import com.publictransitanalytics.scoregenerator.TaskIdentifier;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
+import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
@@ -62,4 +63,6 @@ public abstract class VisitableLocation {
     public abstract void accept(Visitor visitor) throws InterruptedException;
 
     public abstract Geodetic2DPoint getCanonicalPoint();
+    
+    public abstract Geodetic2DBounds getBounds();
 }

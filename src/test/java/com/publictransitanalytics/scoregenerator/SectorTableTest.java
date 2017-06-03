@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator;
 
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.testhelpers.AllLandWaterDetector;
 import junit.framework.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -36,7 +37,8 @@ public class SectorTableTest {
                             new Latitude(60, Latitude.DEGREES)),
                     new Geodetic2DPoint(
                             new Longitude(-100, Longitude.DEGREES),
-                            new Latitude(40, Latitude.DEGREES))), 2, 3);
+                            new Latitude(40, Latitude.DEGREES))), 2, 3,
+            new AllLandWaterDetector());
 
     @Test
     public void testGeneratesSectors() {

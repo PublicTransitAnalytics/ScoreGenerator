@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
+import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.GeoJsonImportFlags;
 import com.esri.core.geometry.Geometry;
 import com.esri.core.geometry.GeometryEngine;
@@ -23,6 +24,7 @@ import com.esri.core.geometry.OperatorImportFromGeoJson;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.SpatialReference;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.SectorTable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -32,7 +34,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.stream.Stream;
 import org.json.JSONException;
+import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
+import org.opensextant.geodesy.Latitude;
+import org.opensextant.geodesy.Longitude;
 
 /**
  * Uses a GeoJson file of water polygons to detect water. Naively does a linear
@@ -87,18 +92,46 @@ public class GeoJsonWaterDetector implements WaterDetector {
         return false;
     }
 
+    @Override
+    public boolean isEntirelyWater(Geodetic2DBounds bounds) {
+        final Envelope envelope = new Envelope(
+                bounds.getSouthLat().inDegrees(),
+                bounds.getEastLon().inDegrees(),
+                bounds.getNorthLat().inDegrees(),
+                bounds.getWestLon().inDegrees());
+
+        for (final Geometry featureGeometry : waterGeometry) {
+            if (GeometryEngine.contains(featureGeometry, envelope,
+                                        MERCATOR_PROJECTION)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final Geodetic2DBounds SEATTLE_BOUNDS
+            = new Geodetic2DBounds(
+                    new Geodetic2DPoint(
+                            new Longitude(-122.459696, Longitude.DEGREES),
+                            new Latitude(47.734145, Latitude.DEGREES)),
+                    new Geodetic2DPoint(
+                            new Longitude(-122.224433, Longitude.DEGREES),
+                            new Latitude(47.48172, Latitude.DEGREES)));
+
+    private static final int NUM_LATITUDE_SECTORS = 100;
+    private static final int NUM_LONGITUDE_SECTORS = 100;
+
     public static void main(final String[] args) throws IOException,
             WaterDetectorException {
-        final Path path = Paths.get("/Users/matt/output3.json");
+        final Path path = Paths.get(
+                "/Users/matt/score_generator_files_no_google_cache/water.json");
         final GeoJsonWaterDetector waterDetector
                 = new GeoJsonWaterDetector(path);
-        System.err.println(waterDetector.isOnWater(new Geodetic2DPoint(
-                "47.392253, -122.222952")));
-        System.err.println(waterDetector.isOnWater(new Geodetic2DPoint(
-                "47.714027, -122.391239")));
-        System.err.println(waterDetector.isOnWater(new Geodetic2DPoint(
-                "47.676089,-122.341894")));
 
+        final SectorTable sectorTable = new SectorTable(
+                SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS,
+                waterDetector);
+        
     }
 
 }

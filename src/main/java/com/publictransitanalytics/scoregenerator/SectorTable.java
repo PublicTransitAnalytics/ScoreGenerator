@@ -18,11 +18,12 @@ package com.publictransitanalytics.scoregenerator;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.TreeBasedTable;
+import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.NavigableMap;
+import java.util.Set;
 import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.opensextant.geodesy.Angle;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -42,10 +43,12 @@ public class SectorTable {
     private final Angle latitudeDelta;
     private final Angle longitudeDelta;
     private final TreeBasedTable<Latitude, Longitude, Sector> sectorTable;
+    private final Set<Sector> blacklist;
 
     public SectorTable(final Geodetic2DBounds bounds,
                        final int numLatitudeSectors,
-                       final int numLongitudeSectors) {
+                       final int numLongitudeSectors,
+                       final WaterDetector waterDetector) {
         sectorTable = TreeBasedTable.create();
         this.bounds = bounds;
 
@@ -61,6 +64,8 @@ public class SectorTable {
                                                      / numLongitudeSectors;
         longitudeDelta = new Angle(longitudeDeltaDegrees, Longitude.DEGREES);
 
+        final ImmutableSet.Builder<Sector> blacklistBuilder
+                = ImmutableSet.builder();
         // work south to north
         Angle latitude = new Latitude(bounds.getSouthLat());
         for (int i = 0; i < numLatitudeSectors; i++) {
@@ -83,12 +88,16 @@ public class SectorTable {
                 final Latitude indexLatitude = new Latitude(latitude);
                 final Longitude indexLongitude = new Longitude(longitude);
 
-                sectorTable.put(indexLatitude, indexLongitude, new Sector(
-                                sectorBounds));
+                final Sector sector = new Sector(sectorBounds);
+                if (waterDetector.isEntirelyWater(sector.getBounds())) {
+                    blacklistBuilder.add(sector);
+                }
+                sectorTable.put(indexLatitude, indexLongitude, sector);
                 longitude = nextLongitude;
             }
             latitude = nextLatitude;
         }
+        blacklist = blacklistBuilder.build();
     }
 
     public Sector findSector(final Geodetic2DPoint location) {
@@ -103,9 +112,9 @@ public class SectorTable {
             return null;
         }
 
-        final Map<Longitude, Sector> floorLatitudeValue;
+        final Latitude floorLatitudeKey;
         if (latitudeMap.containsKey(location.getLatitude())) {
-            floorLatitudeValue = latitudeMap.get(location.getLatitude());
+            floorLatitudeKey = location.getLatitude();
         } else {
             final SortedMap<Latitude, Map<Longitude, Sector>> headMap
                     = latitudeMap.headMap(location.getLatitude());
@@ -113,13 +122,11 @@ public class SectorTable {
                 return null;
             }
 
-            final Latitude floorLatitudeKey = headMap.lastKey();
-            floorLatitudeValue = latitudeMap.get(floorLatitudeKey);
+            floorLatitudeKey = headMap.lastKey();
         }
 
-        // TODO: Do not remake this map. Use the latitude key.
-        final NavigableMap<Longitude, Sector> longitudeMap = new TreeMap<>(
-                floorLatitudeValue);
+        final SortedMap<Longitude, Sector> longitudeMap
+                = sectorTable.row(floorLatitudeKey);
 
         /* Include the equality test to ensure that floating point rounding
          * is not making point appear unequal. */
@@ -128,24 +135,34 @@ public class SectorTable {
                 .getLongitude().compareTo(maxLongitude) > 0) {
             return null;
         }
-        final Map.Entry<Longitude, Sector> floorLongitudeEntry
-                = longitudeMap.floorEntry(location.getLongitude());
-        if (floorLongitudeEntry == null) {
-            return null;
+        final Sector floorLongitudeValue;
+
+        if (longitudeMap.containsKey(location.getLongitude())) {
+            floorLongitudeValue = longitudeMap.get(location.getLongitude());
+        } else {
+            final SortedMap<Longitude, Sector> headMap
+                    = longitudeMap.headMap(location.getLongitude());
+            if (headMap.isEmpty()) {
+                return null;
+            }
+            final Longitude lastKey = headMap.lastKey();
+            floorLongitudeValue = headMap.get(lastKey);
         }
 
-        final Sector sector = floorLongitudeEntry.getValue();
-
-        return sector;
+        return blacklist.contains(floorLongitudeValue) ? null
+                : floorLongitudeValue;
     }
 
     public Sector getSector(final Geodetic2DBounds bounds) {
-        return sectorTable.get(bounds.getSouthLat(), bounds.getWestLon());
+        final Sector sector
+                = sectorTable.get(bounds.getSouthLat(), bounds.getWestLon());
+        return blacklist.contains(sector) ? null : sector;
     }
 
-    public ImmutableSet<Sector> getSectors() {
-        return ImmutableSet.<Sector>builder().addAll(sectorTable.values())
-                .build();
+    public Set<Sector> getSectors() {
+        return sectorTable.values().stream()
+                .filter(sector -> !blacklist.contains(sector))
+                .collect(Collectors.toSet());
     }
 
     public Sector northSector(final Sector center) {

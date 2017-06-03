@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.location;
 
 import lombok.Getter;
+import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
@@ -44,6 +45,11 @@ public abstract class PointLocation extends VisitableLocation {
     @Override
     public Geodetic2DPoint getCanonicalPoint() {
         return location;
+    }
+    
+    @Override
+    public Geodetic2DBounds getBounds() {
+        return new Geodetic2DBounds(location, location); 
     }
 
 }

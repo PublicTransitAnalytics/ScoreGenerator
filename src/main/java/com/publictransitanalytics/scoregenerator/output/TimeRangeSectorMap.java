@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultiset;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SortedSetMultimap;
 import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.TaskIdentifier;
@@ -89,8 +90,8 @@ public class TimeRangeSectorMap {
             final Map<TaskIdentifier, MovementPath> sectorPaths
                     = sector.getBestPaths();
             if (!sectorPaths.isEmpty()) {
-                final ImmutableMultiset.Builder<MovementPath> bestPathsBuilder
-                        = ImmutableMultiset.builder();
+                final ImmutableSet.Builder<MovementPath> bestPathsBuilder
+                        = ImmutableSet.builder();
 
                 int count = 0;
                 LocalDateTime time = startTime;

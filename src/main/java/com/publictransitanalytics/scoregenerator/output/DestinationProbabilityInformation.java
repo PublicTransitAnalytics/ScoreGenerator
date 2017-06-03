@@ -15,12 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.TreeMultimap;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Set;
 
 /**
  * Describes the information pertaining to the rider's arrival at a Sector over
@@ -36,7 +38,7 @@ public class DestinationProbabilityInformation {
     final Map<SimplePath, String> pathPercentage;
 
     DestinationProbabilityInformation(
-            final Multiset<MovementPath> bestPaths, final int samples,
+            final Set<MovementPath> bestPaths, final int samples,
             final int count, final int buckets) {
 
         final int bucketSize = samples / buckets;
@@ -51,8 +53,16 @@ public class DestinationProbabilityInformation {
                         (p1, p2) -> p1.toString().compareTo(p2.toString()));
 
         if (bestPaths != null) {
-            for (MovementPath path : bestPaths.elementSet()) {
-                frequencyMap.put(bestPaths.count(path), new SimplePath(path));
+            final ImmutableMultiset.Builder<SimplePath> bestSimplePathsBuilder
+                    = ImmutableMultiset.builder();
+            for (final MovementPath bestPath : bestPaths) {
+                bestSimplePathsBuilder.add(new SimplePath(bestPath));
+            }
+            final ImmutableMultiset<SimplePath> bestSimplePaths 
+                    = bestSimplePathsBuilder.build();
+
+            for (final SimplePath path : bestSimplePaths.elementSet()) {
+                frequencyMap.put(bestSimplePaths.count(path), path);
             }
 
             pathPercentage = new LinkedHashMap<>();
@@ -69,7 +79,7 @@ public class DestinationProbabilityInformation {
         } else {
             pathPercentage = null;
         }
-       
+
     }
 
 }

@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
+import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
@@ -24,5 +25,7 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 public interface WaterDetector {
 
     boolean isOnWater(final Geodetic2DPoint point);
-    
+
+    boolean isEntirelyWater(final Geodetic2DBounds bounds);
+
 }

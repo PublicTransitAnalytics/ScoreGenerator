@@ -13,21 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.distanceclient;
+package com.publictransitanalytics.scoregenerator.testhelpers;
+
+import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
+import org.opensextant.geodesy.Geodetic2DBounds;
+import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
- * Wrapper exception indicating any problem with the DistanceClient.
  *
  * @author Public Transit Analytics
  */
-public class DistanceClientException extends Exception {
+public class AllLandWaterDetector implements WaterDetector {
 
-    public DistanceClientException(final Exception e) {
-        super(e);
+    @Override
+    public boolean isOnWater(final Geodetic2DPoint point) {
+        return false;
     }
 
-    public DistanceClientException(final String message) {
-        super(message);
+    @Override
+    public boolean isEntirelyWater(final Geodetic2DBounds bounds) {
+        return false;
     }
-
+    
 }
