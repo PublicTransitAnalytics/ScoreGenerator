@@ -15,20 +15,19 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 import lombok.Getter;
 import lombok.ToString;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
 import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
+import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
  * A Sector is a portion of the grid overlayed on the service region.
  *
  * @author Public Transit Analytics
  */
-@ToString
 public class Sector extends VisitableLocation {
 
     @Getter
@@ -93,6 +92,11 @@ public class Sector extends VisitableLocation {
     @Override
     public void accept(Visitor visitor) throws InterruptedException {
         visitor.visit(this);
+    }
+    
+    @Override
+    public String toString() {
+        return "Sector";
     }
 
 }

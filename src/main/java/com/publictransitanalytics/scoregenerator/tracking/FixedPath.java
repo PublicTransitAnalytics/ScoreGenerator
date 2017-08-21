@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.tracking;
+
+import com.google.common.collect.ImmutableList;
 
 /**
- *
+ * A path that is constructed all at once.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
+public class FixedPath extends MovementPath {
     
-    OUTBOUND,
-    INBOUND
+    public FixedPath(ImmutableList<Movement> movements) {
+        super(movements);
+    }
     
 }

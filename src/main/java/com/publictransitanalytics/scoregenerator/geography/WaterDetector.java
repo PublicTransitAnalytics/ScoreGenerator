@@ -19,7 +19,8 @@ import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
- *
+ * Detects whether points or regions are on water.
+ * 
  * @author Public Transit Analytics
  */
 public interface WaterDetector {

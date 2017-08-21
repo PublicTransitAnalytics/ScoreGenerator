@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
-import com.publictransitanalytics.scoregenerator.tracking.WalkMovement;
+import com.publictransitanalytics.scoregenerator.location.Landmark;
 import java.time.LocalDateTime;
 import java.time.Month;
 import org.junit.Assert;
@@ -30,18 +30,18 @@ import org.opensextant.geodesy.Longitude;
  */
 public class WalkMovementTest {
 
+    private static final Landmark POINT = new Landmark(
+            null, new Geodetic2DPoint(
+                    new Longitude(-122.319523, Longitude.DEGREES),
+                    new Latitude(47.5459458, Latitude.DEGREES)));
+
     @Test
-    public void testShortName() {
+    public void testShortName() throws Exception {
         final WalkMovement movement = new WalkMovement(
-                LocalDateTime.of(2017, Month.JANUARY, 29, 15, 45, 0),
-                111.1, new Geodetic2DPoint(
-                        new Longitude(-122.319523, Longitude.DEGREES),
-                        new Latitude(47.5459458, Latitude.DEGREES)),
-                LocalDateTime.of(2017, Month.JANUARY, 29, 15, 55, 0),
-                new Geodetic2DPoint(
-                        new Longitude(-122.3194539, Longitude.DEGREES),
-                        new Latitude(47.5502334, Latitude.DEGREES)));
-                
+                LocalDateTime.of(2017, Month.JANUARY, 29, 15, 45, 0), 111.1,
+                POINT, LocalDateTime.of(2017, Month.JANUARY, 29, 15, 55, 0),
+                POINT);
+
         Assert.assertEquals("Walk", movement.getShortForm());
     }
 

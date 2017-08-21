@@ -15,13 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import java.util.stream.Collectors;
 import lombok.EqualsAndHashCode;
 
 /**
- *
+ * A path that abstracts away time, considering only the transit lines used.
+ * 
  * @author Public Transit Analytics
  */
 @EqualsAndHashCode
@@ -29,12 +30,15 @@ public class SimplePath {
 
     private final String pathString;
 
-    public SimplePath(final MovementPath path) {
-        pathString = String.join(
-                " => ", path.getMovements().stream().map(
-                        Movement::getShortForm).collect(
-                        Collectors.toList()));
+    public SimplePath(final MovementPath path)
+            throws InterruptedException {
+        final ImmutableList.Builder<String> builder = ImmutableList.builder();
 
+        for (final Movement movement : path.getMovements()) {
+            builder.add(movement.getShortForm());
+        }
+
+        pathString = String.join(" => ", builder.build());
     }
 
     @Override

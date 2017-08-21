@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
  * A visitable point of significance.
@@ -42,6 +42,11 @@ public class Landmark extends PointLocation {
 
     @Override
     public String getCommonName() {
+        return getLocation().toString();
+    }
+    
+    @Override
+    public String toString() {
         return getLocation().toString();
     }
 

@@ -15,39 +15,24 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import lombok.Getter;
-import com.publictransitanalytics.scoregenerator.visitors.Visitor;
+import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.geography.Endpoints;
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import lombok.RequiredArgsConstructor;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public class CountingVisitor implements Visitor {
+@RequiredArgsConstructor
+public class PreloadedEndpointDeterminer implements EndpointDeterminer {
 
-    @Getter
-    private int sectorCount;
-    @Getter
-    private int transitStopCount;
-    @Getter
-    private int landmarkCount;
-
-    
-    @Override
-    public void visit(Sector sector) {
-        sectorCount++;
-    }
+    private final Endpoints endpoints;
 
     @Override
-    public void visit(TransitStop transitStop) {
-        transitStopCount++;
-    }
-
-    @Override
-    public void visit(Landmark point) {
-        landmarkCount++;
+    public Endpoints getEndpoints(final VisitableLocation firstLocation,
+                                  final VisitableLocation secondLocation) {
+        return endpoints;
     }
 
 }

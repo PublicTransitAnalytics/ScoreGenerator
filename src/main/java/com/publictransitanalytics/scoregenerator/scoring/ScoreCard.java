@@ -13,15 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.scoring;
+
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 
 /**
- *
+ * A way of tracking reachability.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
-    
-    OUTBOUND,
-    INBOUND
-    
+public interface ScoreCard {
+
+    int getReachedCount(VisitableLocation location);
+
+    boolean hasPath(final VisitableLocation location);
+
+    void putPath(final VisitableLocation location, final TaskIdentifier task,
+                 final MovementPath path);
+
 }

@@ -16,17 +16,14 @@
 package com.publictransitanalytics.scoregenerator.tracking;
 
 import com.google.common.collect.ImmutableList;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- *
+ * A path of movements describing a trip a transit customer takes.
+ * 
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
@@ -44,18 +41,6 @@ public abstract class MovementPath implements Comparable<MovementPath> {
                 = movements.get(movements.size() - 1).getEndTime();
         return Duration.between(startTime, endTime);
     }
-
-    public abstract MovementPath appendWalk(
-            final PointLocation currentLocation,
-            final LocalDateTime timeAtCurrentLocation,
-            final VisitableLocation newLocation, 
-            final LocalDateTime timeAtNewLocation, final WalkingCosts costs);
-
-    public abstract MovementPath appendTransitRide(
-            final String tripId, final String routeNumber,
-            final String routeName, final TransitStop currentStop,
-            final LocalDateTime timeAtCurrentStop,
-            final TransitStop newStop, final LocalDateTime timeAtNewStop);
 
     private double getWalkingDistance() {
         double walkingDistance = 0;

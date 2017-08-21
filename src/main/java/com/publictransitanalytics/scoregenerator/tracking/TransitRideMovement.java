@@ -15,6 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 import lombok.Value;
 
@@ -26,15 +28,11 @@ import lombok.Value;
 @Value
 public class TransitRideMovement implements Movement {
 
-    String tripId;
-    String routeNumber;
-    String routeName;
-    String beginningStopId;
-    String beginningStopName;
-    LocalDateTime boardTime;
-    String endStopId;
-    String endStopName;
-    LocalDateTime deboardTime;
+    private final Trip trip;
+    private final VisitableLocation beginningStop;
+    private final LocalDateTime boardTime;
+    private final VisitableLocation endStop;
+    private final LocalDateTime deboardTime;
 
     @Override
     public LocalDateTime getStartTime() {
@@ -52,23 +50,25 @@ public class TransitRideMovement implements Movement {
     }
 
     @Override
-    public String getShortForm() {
-        return routeNumber;
+    public String getShortForm()
+            throws InterruptedException {
+        return trip.getRouteNumber();
     }
 
     @Override
-    public String getDestinationString() {
-        return String.format("%s (%s)", endStopName, endStopId);
+    public String getMediumString()
+            throws InterruptedException {
+        return String.format("%s (%s)", trip.getRouteNumber(),
+                             trip.getTripId());
     }
 
     @Override
-    public String getOriginString() {
-        return String.format("%s (%s)", beginningStopName, beginningStopId);
-    }
-
-    @Override
-    public String getMediumString() {
-        return String.format("%s - %s (%s)", routeNumber, routeName, tripId);
+    public String getLongForm()
+            throws InterruptedException {
+        return String.format(
+                "Take route %s from %s at %s arriving at %s at %s",
+                trip.getRouteNumber(), beginningStop.getCommonName(), boardTime,
+                endStop.getCommonName(), deboardTime);
     }
 
 }

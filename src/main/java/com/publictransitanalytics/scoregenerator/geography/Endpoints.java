@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.geography;
+
+import lombok.Value;
+import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
- *
+ * A set of points between which to measure.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
-    
-    OUTBOUND,
-    INBOUND
+@Value
+public class Endpoints {
+    private final Geodetic2DPoint firstEndpoint;
+    private final Geodetic2DPoint secondEndpoint;
     
 }

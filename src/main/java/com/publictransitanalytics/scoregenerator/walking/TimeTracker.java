@@ -20,17 +20,17 @@ import java.time.LocalDateTime;
 
 /**
  * Keeps track of time.
- * 
+ *
  * @author Public Transit Analytics
  */
 public interface TimeTracker {
 
     public LocalDateTime adjust(LocalDateTime time, Duration adjustment);
 
-    public boolean canAdjust(LocalDateTime currentTime, Duration adjustment,
+    public boolean canAdjust(LocalDateTime baseTime, Duration adjustment,
                              LocalDateTime cutoffTime);
-    
-    public Duration getDuration(LocalDateTime currentTime, 
-                                LocalDateTime cutoffTime);
+
+    public Duration getDuration(LocalDateTime baseTime,
+                                LocalDateTime otherTime);
 
 }

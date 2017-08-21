@@ -16,12 +16,14 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 /**
- *
+ * The Spontaneous Accessibility measurement to use.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
+public enum AccessibilityType {
     
-    OUTBOUND,
-    INBOUND
-    
+    TIME_QUALIFIED_POINT_ACCESSIBILITY,
+    POINT_ACCESSIBILITY,
+    NETWORK_ACCESSIBILITY, 
+    SAMPLED_NETWORK_ACCESSIBILITY;    
 }

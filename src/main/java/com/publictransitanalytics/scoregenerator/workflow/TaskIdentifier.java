@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.workflow;
+
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import java.time.LocalDateTime;
+import lombok.Value;
 
 /**
- *
+ * The identifying information for passing to workflows.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
-    
-    OUTBOUND,
-    INBOUND
-    
+@Value
+public class TaskIdentifier {
+    private final LocalDateTime time;
+    private final PointLocation center;
+    private final String experimentName;
 }

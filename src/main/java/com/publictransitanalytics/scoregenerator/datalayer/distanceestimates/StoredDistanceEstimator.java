@@ -23,6 +23,8 @@ import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.geography.Endpoints;
 import edu.emory.mathcs.backport.java.util.Collections;
 import java.util.Set;
 import java.util.SortedMap;
@@ -47,7 +49,8 @@ public class StoredDistanceEstimator implements DistanceEstimator {
             final Set<PointLocation> centers, final Set<Sector> sectors,
             final Set<PointLocation> points, final double maxDistanceMeters,
             final Store<LocationKey, Double> maxCandidateDistanceStore,
-            final RangedStore<LocationDistanceKey, String> candidateDistancesStore)
+            final RangedStore<LocationDistanceKey, String> candidateDistancesStore,
+            final EndpointDeterminer endpointDeterminer)
             throws InterruptedException {
 
         this.candidateDistancesStore = candidateDistancesStore;
@@ -62,7 +65,7 @@ public class StoredDistanceEstimator implements DistanceEstimator {
         try {
             if (candidateDistancesStore.isEmpty()) {
                 generateEstimates(terminals, points, maxDistanceMeters,
-                                  candidateDistancesStore);
+                                  endpointDeterminer, candidateDistancesStore);
             }
 
             for (final PointLocation center : centers) {
@@ -70,7 +73,7 @@ public class StoredDistanceEstimator implements DistanceEstimator {
                         new LocationKey(center.getIdentifier()));
                 if (max == null || max < maxDistanceMeters) {
                     generateEstimates(terminals, Collections.singleton(center),
-                                      maxDistanceMeters, 
+                                      maxDistanceMeters, endpointDeterminer,
                                       candidateDistancesStore);
                     maxCandidateDistanceStore.put(
                             new LocationKey(center.getIdentifier()),
@@ -114,25 +117,31 @@ public class StoredDistanceEstimator implements DistanceEstimator {
 
     private static void generateEstimates(
             final Set<VisitableLocation> terminals,
-            final Set<PointLocation> points,
-            final double maxDistanceMeters,
+            final Set<PointLocation> points, final double maxDistanceMeters,
+            final EndpointDeterminer endpointDeterminer,
             final RangedStore<LocationDistanceKey, String> candidateDistancesStore)
             throws InterruptedException {
         for (final PointLocation location : points) {
             for (final VisitableLocation secondLocation : terminals) {
-                final double distanceMeters = estimateDistanceMeters(
-                        location.getCanonicalPoint(),
-                        secondLocation.getCanonicalPoint());
+                final Endpoints endpoints = endpointDeterminer.
+                        getEndpoints(location, secondLocation);
 
-                if (distanceMeters <= maxDistanceMeters) {
-                    final LocationDistanceKey key = LocationDistanceKey
-                            .getWriteKey(location.getIdentifier(),
-                                         distanceMeters);
-                    try {
-                        candidateDistancesStore.put(
-                                key, secondLocation.getIdentifier());
-                    } catch (final BitvantageStoreException e) {
-                        throw new ScoreGeneratorFatalException(e);
+                if (!location.equals(secondLocation)) {
+
+                    final double distanceMeters = estimateDistanceMeters(
+                            endpoints.getFirstEndpoint(),
+                            endpoints.getSecondEndpoint());
+
+                    if (distanceMeters <= maxDistanceMeters) {
+                        final LocationDistanceKey key = LocationDistanceKey
+                                .getWriteKey(location.getIdentifier(),
+                                             distanceMeters);
+                        try {
+                            candidateDistancesStore.put(
+                                    key, secondLocation.getIdentifier());
+                        } catch (final BitvantageStoreException e) {
+                            throw new ScoreGeneratorFatalException(e);
+                        }
                     }
                 }
             }

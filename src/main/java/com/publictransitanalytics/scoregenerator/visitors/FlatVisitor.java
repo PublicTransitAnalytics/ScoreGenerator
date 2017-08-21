@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.visitors;
 
 /**
- *
+ * A non-recursing visitor that has output.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
+public interface FlatVisitor<T> extends Visitor {
     
-    OUTBOUND,
-    INBOUND
+    public T getOutput();
     
 }

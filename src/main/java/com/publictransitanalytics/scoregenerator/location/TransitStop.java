@@ -15,17 +15,15 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 import lombok.Getter;
-import lombok.ToString;
 import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
  * A location where public transit vehicles stop.
  *
  * @author Public Transit Analytics
  */
-@ToString
 public class TransitStop extends PointLocation {
 
     @Getter
@@ -52,6 +50,11 @@ public class TransitStop extends PointLocation {
 
     @Override
     public String getCommonName() {
+        return stopName;
+    }
+    
+    @Override
+    public String toString() {
         return stopName;
     }
 

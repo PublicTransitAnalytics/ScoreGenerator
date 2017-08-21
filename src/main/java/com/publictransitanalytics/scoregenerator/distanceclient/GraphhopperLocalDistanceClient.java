@@ -23,6 +23,8 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.PathWrapper;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.routing.util.EncodingManager;
+import com.publictransitanalytics.scoregenerator.geography.NearestPointEndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.geography.Endpoints;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.nio.file.Path;
@@ -33,16 +35,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
- *
+ * DistanceClient that uses Graphhopper.
+ * 
  * @author Public Transit Analytics
  */
 @Slf4j
 public class GraphhopperLocalDistanceClient implements DistanceClient {
 
     private final GraphHopper hopper;
+    private final NearestPointEndpointDeterminer endpointDeterminer;
 
     public GraphhopperLocalDistanceClient(
-            final Path osmFile, final Path graphFolder) {
+            final Path osmFile, final Path graphFolder,
+            final NearestPointEndpointDeterminer endpointDeterminer) {
         // create one GraphHopper instance
         hopper = new GraphHopperOSM().forServer();
         hopper.setDataReaderFile(osmFile.toString());
@@ -52,6 +57,8 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
         hopper.setElevation(true);
 
         hopper.importOrLoad();
+
+        this.endpointDeterminer = endpointDeterminer;
     }
 
     @Override
@@ -65,11 +72,13 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
 
         for (final VisitableLocation origin : origins) {
             for (final VisitableLocation destination : destinations) {
-                final Geodetic2DPoint originPoint = origin.getNearestPoint(
-                        destination.getCanonicalPoint());
+
+                final Endpoints endpoints = endpointDeterminer.getEndpoints(
+                        origin, destination);
+                final Geodetic2DPoint originPoint
+                        = endpoints.getFirstEndpoint();
                 final Geodetic2DPoint destinationPoint
-                        = destination.getNearestPoint(
-                                origin.getCanonicalPoint());
+                        = endpoints.getSecondEndpoint();
                 final GHRequest req = new GHRequest(
                         originPoint.getLatitudeAsDegrees(),
                         originPoint.getLongitudeAsDegrees(),
@@ -89,8 +98,8 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
 
                 double distance = path.getDistance();
                 long timeInMs = path.getTime();
-                log.info("Getting costs between {} and {}: {} m {} ms", 
-                         originPoint, destinationPoint, distance, timeInMs);
+                log.debug("Getting costs between {} and {}: {} m {} ms",
+                          originPoint, destinationPoint, distance, timeInMs);
 
                 final WalkingCosts costs = new WalkingCosts(
                         Duration.ofMillis(timeInMs), distance);

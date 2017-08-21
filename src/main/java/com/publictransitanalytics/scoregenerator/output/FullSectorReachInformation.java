@@ -15,13 +15,23 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+
 /**
+ * Describes the information pertaining to the rider's arrival to a Sector at a
+ * time.
  *
  * @author Public Transit Analytics
  */
-public enum Direction {
-    
-    OUTBOUND,
-    INBOUND
-    
+public class FullSectorReachInformation {
+
+    final SimplePath path;
+    final FullPath fullPath;
+
+    public FullSectorReachInformation(final MovementPath movements) 
+            throws InterruptedException {
+        path = new SimplePath(movements);
+        fullPath = new FullPath(movements);
+    }
+
 }

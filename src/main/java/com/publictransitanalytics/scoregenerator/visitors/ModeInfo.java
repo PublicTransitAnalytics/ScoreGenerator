@@ -13,15 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.visitors;
+
+import com.publictransitanalytics.scoregenerator.ModeType;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
+import lombok.NonNull;
+import lombok.Value;
 
 /**
- *
+ * The description of a trip taken.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
+@Value
+public class ModeInfo {
     
-    OUTBOUND,
-    INBOUND
+    public static final ModeInfo NONE = new ModeInfo(ModeType.NONE, null, null);
+    
+    @NonNull
+    private final ModeType type;
+    private final EntryPoint transitTrip;
+    private final WalkingCosts walkCosts;
     
 }

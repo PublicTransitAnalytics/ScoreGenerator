@@ -13,15 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.visitors;
+
+import com.publictransitanalytics.scoregenerator.ModeType;
+import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import java.time.LocalDateTime;
 
 /**
- *
+ * A Factor for FlatVisitors.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
+public interface FlatVisitorFactory<T> {
     
-    OUTBOUND,
-    INBOUND
+    FlatVisitor<T> getVisitor(
+            final TaskIdentifier task, final LocalDateTime cutoffTime,
+            final LocalDateTime currentTime, final ModeType lastMode, 
+            final int currentDepth);
     
 }

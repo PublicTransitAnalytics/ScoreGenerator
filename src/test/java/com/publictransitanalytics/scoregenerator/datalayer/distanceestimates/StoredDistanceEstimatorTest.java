@@ -23,6 +23,8 @@ import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.geography.Endpoints;
+import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedEndpointDeterminer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
@@ -66,17 +68,20 @@ public class StoredDistanceEstimatorTest {
                         new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
+        final PreloadedEndpointDeterminer endpointDeterminer
+                = new PreloadedEndpointDeterminer(
+                        new Endpoints(location1.getLocation(),
+                                      location2.getLocation()));
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
                 Collections.singleton(location1), Collections.emptySet(),
                 ImmutableSet.of(location1, location2), 6500, maxDistanceStore,
-                candidateDistancesStore);
+                candidateDistancesStore, endpointDeterminer);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 location1.getIdentifier(), 6500);
-        Assert.assertEquals(2, reachable.size());
-        Assert.assertEquals(ImmutableSet.of(
-                location1.getIdentifier(), location2.getIdentifier()),
+        Assert.assertEquals(1, reachable.size());
+        Assert.assertEquals(ImmutableSet.of(location2.getIdentifier()),
                             reachable);
     }
 
@@ -101,11 +106,15 @@ public class StoredDistanceEstimatorTest {
                         new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
+        final PreloadedEndpointDeterminer endpointDeterminer
+                = new PreloadedEndpointDeterminer(
+                        new Endpoints(location1.getLocation(),
+                                      sector.getCanonicalPoint()));
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
-                Collections.singleton(location1), ImmutableSet.of(sector), 
-                ImmutableSet.of(location1), 6500, maxDistanceStore, 
-                candidateDistanceStore);
+                Collections.singleton(location1), ImmutableSet.of(sector),
+                ImmutableSet.of(location1), 6500, maxDistanceStore,
+                candidateDistanceStore, endpointDeterminer);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 sector.getIdentifier(), 6500);
@@ -138,18 +147,17 @@ public class StoredDistanceEstimatorTest {
                         new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
-
+        final PreloadedEndpointDeterminer endpointDeterminer
+                = new PreloadedEndpointDeterminer(new Endpoints(
+                        location1.getLocation(), location2.getLocation()));
         final DistanceEstimator estimator = new StoredDistanceEstimator(
                 Collections.singleton(location1), Collections.emptySet(),
                 ImmutableSet.of(location1, location2), 6500, maxDistanceStore,
-                candidateDistanceStore);
+                candidateDistanceStore, endpointDeterminer);
 
         final Set<String> reachable = estimator.getReachableLocations(
                 location1.getIdentifier(), 5000);
-        Assert.assertEquals(1, reachable.size());
-        Assert.assertEquals(ImmutableSet.of(location1.getIdentifier()),
-                            reachable);
-
+        Assert.assertEquals(0, reachable.size());
     }
 
     @Test
@@ -178,11 +186,14 @@ public class StoredDistanceEstimatorTest {
                         new TreeMap<>());
         final Store<LocationKey, Double> maxDistanceStore = new MapStore<>(
                 new HashMap<>());
+        final PreloadedEndpointDeterminer endpointDeterminer
+                = new PreloadedEndpointDeterminer(new Endpoints(
+                        location1.getLocation(), location2.getLocation()));
 
         final DistanceEstimator estimator = new StoredDistanceEstimator(
                 Collections.singleton(location1), Collections.emptySet(),
                 ImmutableSet.of(location1, location2), 4000, maxDistanceStore,
-                store);
+                store, endpointDeterminer);
         try {
             estimator.getReachableLocations(location1.getIdentifier(), 5000);
             Assert.fail();

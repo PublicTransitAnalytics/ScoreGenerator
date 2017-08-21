@@ -16,7 +16,8 @@
 package com.publictransitanalytics.scoregenerator.geography;
 
 /**
- *
+ * Exception indicating a problem with a WaterDetector.
+ * 
  * @author Public Transit Analytics
  */
 public class WaterDetectorException extends Exception {

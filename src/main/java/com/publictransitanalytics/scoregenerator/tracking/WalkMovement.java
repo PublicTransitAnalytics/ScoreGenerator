@@ -15,9 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import java.time.LocalDateTime;
 import lombok.Value;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  * Tracks a move made by walking.
@@ -29,27 +29,40 @@ public class WalkMovement implements Movement {
 
     private final LocalDateTime startTime;
     private final double walkingDistance;
-    private final Geodetic2DPoint startLocation;
+    private final VisitableLocation startLocation;
     private final LocalDateTime endTime;
-    private final Geodetic2DPoint endLocation;
+    private final VisitableLocation endLocation;
+
+    public WalkMovement(
+            final LocalDateTime startTime, final double walkingDistance,
+            final VisitableLocation startLocation, final LocalDateTime endTime,
+            final VisitableLocation endLocation) {
+        this.startTime = startTime;
+        this.walkingDistance = walkingDistance;
+        this.startLocation = startLocation;
+        this.endTime = endTime;
+        this.endLocation = endLocation;
+    }
 
     @Override
-    public String getShortForm() {
+    public String getShortForm()
+            throws InterruptedException {
         return "Walk";
-    }
-
-    @Override
-    public String getDestinationString() {
-        return endLocation.toString();
-    }
-
-    @Override
-    public String getOriginString() {
-        return startLocation.toString();
     }
 
     @Override
     public String getMediumString() {
         return "Walk";
     }
+    
+     @Override
+    public String getLongForm()
+            throws InterruptedException {
+       
+        return String.format(
+                "Walk from %s at %s arriving at %s at %s",
+                startLocation.toString(), startTime, endLocation.toString(),
+                endTime);
+    }
+
 }

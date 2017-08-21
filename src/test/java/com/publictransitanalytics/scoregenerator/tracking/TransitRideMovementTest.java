@@ -15,9 +15,12 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
-import com.publictransitanalytics.scoregenerator.tracking.TransitRideMovement;
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.Collections;
 import junit.framework.Assert;
 import org.junit.Test;
 
@@ -27,48 +30,54 @@ import org.junit.Test;
  */
 public class TransitRideMovementTest {
 
+    private static final String TRIP_ID = "tripId";
+    private static final String ROUTE_NUMBER = "1";
+    private static final Trip TRIP = new Trip(
+            new TripId(TRIP_ID, null), "Somewhere via Elsewhere", ROUTE_NUMBER, 
+            Collections.emptySet());
+    private static final TransitStop BEGINNING_STOP 
+            = new TransitStop(null, "0", "Origin", null);
+        private static final TransitStop END_STOP 
+            = new TransitStop(null, "1", "Elsewhere", null);
+
     @Test
-    public void testShortName() {
+    public void testShortName() throws Exception {
         final TransitRideMovement movement = new TransitRideMovement(
-                "tripId", "1", "Somewhere via Esewhere", "10060", 
-                "NE 55th St & 27th Ave NE",
+                TRIP, BEGINNING_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 30, 0),
-                "10070", "NE 55th St & 25th Ave NE",
+                END_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 31, 0));
-        Assert.assertEquals("1", movement.getShortForm());
+        Assert.assertEquals(ROUTE_NUMBER, movement.getShortForm());
     }
 
     @Test
-    public void testWalkingDistance() {
+    public void testWalkingDistance() throws Exception {
         final TransitRideMovement movement = new TransitRideMovement(
-                "tripId", "1", "Somewhere via Esewhere", "10060", 
-                "NE 55th St & 27th Ave NE",
+                TRIP, BEGINNING_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 30, 0),
-                "10070", "NE 55th St & 25th Ave NE",
+                END_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 31, 0));
         Assert.assertEquals(0.0, movement.getWalkingDistance());
     }
 
     @Test
-    public void testStartTime() {
+    public void testStartTime() throws Exception {
         final TransitRideMovement movement = new TransitRideMovement(
-                "tripId", "1", "Somewhere via Esewhere", "10060", 
-                "NE 55th St & 27th Ave NE",
+                TRIP, BEGINNING_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 30, 0),
-                "10070", "NE 55th St & 25th Ave NE",
+                END_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 31, 0));
         Assert.assertEquals(
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 30, 0),
                 movement.getStartTime());
     }
-    
+
     @Test
-    public void testEndTime() {
+    public void testEndTime() throws Exception {
         final TransitRideMovement movement = new TransitRideMovement(
-                "tripId", "1", "Somewhere via Esewhere", "10060", 
-                "NE 55th St & 27th Ave NE",
+                TRIP, BEGINNING_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 30, 0),
-                "10070", "NE 55th St & 25th Ave NE",
+                END_STOP,
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 31, 0));
         Assert.assertEquals(
                 LocalDateTime.of(2017, Month.JANUARY, 29, 16, 31, 0),

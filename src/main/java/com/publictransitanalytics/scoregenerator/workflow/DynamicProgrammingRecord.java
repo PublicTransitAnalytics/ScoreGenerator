@@ -13,30 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.tracking;
+package com.publictransitanalytics.scoregenerator.workflow;
 
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.visitors.ModeInfo;
 import java.time.LocalDateTime;
+import lombok.NonNull;
+import lombok.Value;
 
 /**
- * Tracks the mechanism of getting from one place to another.
- *
+ * A record in a dynamic programming table for finding paths.
+ * 
  * @author Public Transit Analytics
  */
-public interface Movement {
+@Value
+public class DynamicProgrammingRecord
+        implements Comparable<DynamicProgrammingRecord> {
 
-    LocalDateTime getStartTime();
+    @NonNull
+    private LocalDateTime reachTime;
+    @NonNull
+    private ModeInfo mode;
+    private VisitableLocation predecessor;
 
-    LocalDateTime getEndTime();
-
-    double getWalkingDistance();
-
-    String getShortForm()
-            throws InterruptedException;
-
-    String getMediumString()
-            throws InterruptedException;
-
-    String getLongForm()
-            throws InterruptedException;
-
+    @Override
+    public int compareTo(DynamicProgrammingRecord other) {
+        return reachTime.compareTo(other.reachTime);
+    }
 }

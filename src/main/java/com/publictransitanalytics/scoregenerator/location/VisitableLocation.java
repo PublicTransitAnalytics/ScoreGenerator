@@ -15,14 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import com.publictransitanalytics.scoregenerator.visitors.Visitor;
-import com.publictransitanalytics.scoregenerator.TaskIdentifier;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import lombok.Getter;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
  * Describes a place, whether a point or region, that a person can reach.
@@ -30,28 +25,6 @@ import org.opensextant.geodesy.Geodetic2DPoint;
  * @author Public Transit Analytics
  */
 public abstract class VisitableLocation {
-
-    @Getter
-    private final Map<TaskIdentifier, MovementPath> bestPaths;
-
-    public VisitableLocation() {
-        bestPaths = new ConcurrentHashMap<>();
-    }
-
-    public boolean hasNoBetterPath(final TaskIdentifier task,
-                                   final MovementPath path) {
-        if (!bestPaths.containsKey(task)) {
-            return true;
-        }
-        final MovementPath bestPath = bestPaths.get(task);
-
-
-        return path.compareTo(bestPath) < 0;
-    }
-
-    public void replacePath(final TaskIdentifier task, final MovementPath path) {
-        bestPaths.put(task, path);
-    }
 
     public abstract Geodetic2DPoint getNearestPoint(
             final Geodetic2DPoint givenLocation);
@@ -63,6 +36,6 @@ public abstract class VisitableLocation {
     public abstract void accept(Visitor visitor) throws InterruptedException;
 
     public abstract Geodetic2DPoint getCanonicalPoint();
-    
+
     public abstract Geodetic2DBounds getBounds();
 }

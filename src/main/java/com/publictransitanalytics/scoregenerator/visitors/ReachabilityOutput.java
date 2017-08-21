@@ -13,15 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.output;
+package com.publictransitanalytics.scoregenerator.visitors;
+
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import java.time.LocalDateTime;
+import lombok.Value;
 
 /**
- *
+ * The output of a visitor.
+ * 
  * @author Public Transit Analytics
  */
-public enum Direction {
-    
-    OUTBOUND,
-    INBOUND
-    
+@Value
+public class ReachabilityOutput {
+    private final VisitableLocation location;
+    private final LocalDateTime reachTime;
+    private final LocalDateTime exitTime;
+    private final ModeInfo modeInfo;
 }

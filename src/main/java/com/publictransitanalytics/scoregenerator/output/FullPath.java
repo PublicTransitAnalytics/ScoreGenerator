@@ -15,28 +15,29 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.tracking.Movement;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- *
+ * A path that shows the full details of a journey.
+ * 
  * @author Public Transit Analytics
  */
 public class FullPath {
 
     private final List<String> pathLines;
 
-    public FullPath(final MovementPath path) {
-        pathLines =  path.getMovements().stream().map(
-                        movement -> String.format(
-                                "[%s] %s -- %s --> [%s] %s",
-                                movement.getStartTime(),
-                                movement.getOriginString(),
-                                movement.getMediumString(),
-                                movement.getEndTime(),
-                                movement.getDestinationString())
-                ).collect(Collectors.toList());
+    public FullPath(final MovementPath path)
+            throws InterruptedException {
+
+        final ImmutableList.Builder<String> builder = ImmutableList.builder();
+
+        for (final Movement movement : path.getMovements()) {
+            builder.add(movement.getLongForm());
+        }
+        pathLines = builder.build();
     }
 
 }
