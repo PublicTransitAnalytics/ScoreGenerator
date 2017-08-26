@@ -18,11 +18,8 @@ package com.publictransitanalytics.scoregenerator.workflow;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SortedSetMultimap;
 import com.publictransitanalytics.scoregenerator.ModeType;
-import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
-import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
-import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -30,26 +27,21 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.publictransitanalytics.scoregenerator.LocationExecutor;
 
 /**
- * A workflow for uses an initial dynamic programming table that is updated 
+ * A workflow for uses an initial dynamic programming table that is updated
  * through a time range.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Slf4j
 @RequiredArgsConstructor
 public class DynamicProgrammingRangeWorkflow implements Workflow {
 
-    private final int depth;
-    private final ScoreCard scoreCard;
-    private final SectorTable sectorTable;
-    private final TimeTracker timeTracker;
-    private final ForkJoinPool pool;
-    private final int taskSize;
+    private final LocationExecutor locationExecutor;
 
     @Override
     public void getPathsForTasks(final Duration duration,
@@ -59,7 +51,7 @@ public class DynamicProgrammingRangeWorkflow implements Workflow {
                                  final Set<TaskIdentifier> tasks) throws
             InterruptedException, ExecutionException {
 
-        final SortedSetMultimap<TaskGroupIdentifier, LocalDateTime> timesByTask
+        final SortedSetMultimap<TaskLocationGroupIdentifier, LocalDateTime> timesByTask
                 = Multimaps.newSortedSetMultimap(
                         new HashMap<>(), () -> {
                     return new TreeSet(Collections.reverseOrder());
@@ -67,19 +59,12 @@ public class DynamicProgrammingRangeWorkflow implements Workflow {
 
         for (final TaskIdentifier task : tasks) {
             final LocalDateTime time = task.getTime();
-            final TaskGroupIdentifier noTime
-                    = new TaskGroupIdentifier(task.getCenter(),
-                                                    task.getExperimentName());
-            timesByTask.put(noTime, time);
+            final TaskLocationGroupIdentifier locationGroup
+                    = new TaskLocationGroupIdentifier(task.getCenter(),
+                                                      task.getExperimentName());
+            timesByTask.put(locationGroup, time);
         }
 
-        final DynamicProgrammingRangeTask completeTask
-                = new DynamicProgrammingRangeTask(
-                        depth, scoreCard, sectorTable, timeTracker, taskSize,
-                        duration, allowedModes, riderFactory, 
-                        reachabilityClient, timesByTask.keySet(), timesByTask);
-
-        pool.execute(completeTask);
-        completeTask.join();
+        locationExecutor.execute(timesByTask);
     }
 }

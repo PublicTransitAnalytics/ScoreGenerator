@@ -16,8 +16,6 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.Sets;
-import com.google.common.io.Files;
-import com.jayway.jsonpath.JsonPath;
 import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import java.awt.BasicStroke;
@@ -25,15 +23,12 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.Shape;
-import java.awt.Stroke;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -90,31 +85,42 @@ public class MapGenerator {
     private final static Color NEUTRAL_COLOR = new Color(0xcc, 0xcc, 0xcc);
     private final static Color HIGH_OUTLIER_COLOR = new Color(0x00, 0x00, 0x00);
     private final static Color LOW_OUTLIER_COLOR = new Color(0xff, 0xff, 0xff);
-    
+
     private final String OUTPUT_FILE = "map.svg";
 
-    public void makeMap(final SectorTable sectorTable,
-                        final ScoreCard scoreCard)
+    public void makeThresholdMap(final String boundsString,
+                                 final Map<String, Integer> reachCounts,
+                                 final int threshold) throws IOException {
+        final Map<Geodetic2DBounds, Color> sectorColors
+                = reachCounts.entrySet().stream().collect(Collectors.toMap(
+                        entry -> getBounds(entry.getKey()),
+                        entry -> entry.getValue() > threshold ? Color.GREEN :
+                                Color.LIGHT_GRAY));
+        makeMap(getBounds(boundsString), sectorColors);
+    }
+
+    public void makeRangeMap(final SectorTable sectorTable,
+                             final ScoreCard scoreCard)
             throws SVGGraphics2DIOException, IOException {
 
         final Geodetic2DBounds bounds = sectorTable.getBounds();
 
-        final Map<Geodetic2DBounds, Integer> sectorBounds
+        final Map<Geodetic2DBounds, Color> sectorBounds
                 = sectorTable.getSectors().stream().collect(Collectors.toMap(
                         sector -> sector.getBounds(),
-                        sector -> getColorLevel(
-                                scoreCard.getReachedCount(sector))));
+                        sector -> getColor(getColorLevel(
+                                scoreCard.getReachedCount(sector)))));
         makeMap(bounds, sectorBounds);
     }
 
-    public void makeMap(final String boundsString,
-                        final Map<String, Integer> reachCounts)
+    public void makeRangeMap(final String boundsString,
+                             final Map<String, Integer> reachCounts)
             throws IOException {
-        final Map<Geodetic2DBounds, Integer> sectorBounds
+        final Map<Geodetic2DBounds, Color> sectorColors
                 = reachCounts.entrySet().stream().collect(Collectors.toMap(
                         entry -> getBounds(entry.getKey()),
-                        entry -> getColorLevel(entry.getValue())));
-        makeMap(getBounds(boundsString), sectorBounds);
+                        entry -> getColor(getColorLevel(entry.getValue()))));
+        makeMap(getBounds(boundsString), sectorColors);
     }
 
     public void makeComparativeMap(
@@ -135,7 +141,7 @@ public class MapGenerator {
     }
 
     private void makeMap(final Geodetic2DBounds bounds,
-                         final Map<Geodetic2DBounds, Integer> sectorBuckets)
+                         final Map<Geodetic2DBounds, Color> sectorColors)
             throws IOException {
         final SVGGraphics2D svgGenerator = createDocument();
 
@@ -147,17 +153,17 @@ public class MapGenerator {
                 (int) (getLatSize(bounds) + 0.5)));
         svgGenerator.setBackground(Color.DARK_GRAY);
         svgGenerator.setStroke(new BasicStroke(17.0F));
-        for (final Geodetic2DBounds sectorBounds : sectorBuckets.keySet()) {
+        for (final Geodetic2DBounds sectorBounds : sectorColors.keySet()) {
             final Shape rectangle
                     = getRectangle(bounds, sectorBounds, topCorner);
 
-            svgGenerator.setPaint(getColor(sectorBuckets.get(sectorBounds)));
+            svgGenerator.setPaint(sectorColors.get(sectorBounds));
             svgGenerator.fill(rectangle);
             svgGenerator.setPaint(Color.GRAY);
             svgGenerator.draw(rectangle);
         }
         boolean useCSS = true; // we want to use CSS style attributes
-        final Writer out = new FileWriter(new File("/Users/matt/prelink.svg"));
+        final Writer out = new FileWriter(new File(OUTPUT_FILE));
         svgGenerator.stream(out, useCSS);
     }
 
@@ -250,21 +256,6 @@ public class MapGenerator {
         final Shape rectangle = new Rectangle.Double(lonDelta, latDelta,
                                                      lonSize, latSize);
         return rectangle;
-    }
-
-    private static Map<String, Integer> getReachCounts(final String json) {
-        final Map<String, Integer> trialCounts = new HashMap<>();
-
-        final Map<String, Object> trialSectors
-                = JsonPath.parse(json).read("$.sectors");
-        for (final Map.Entry<String, Object> entry : trialSectors.entrySet()) {
-            final String sector = entry.getKey();
-            final int reachCount
-                    = JsonPath.parse(entry.getValue()).read("$.reachCount");
-            trialCounts.put(sector, reachCount);
-
-        }
-        return trialCounts;
     }
 
     private int getColorLevel(final int reachCount) {

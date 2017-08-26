@@ -13,18 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.workflow;
+package com.publictransitanalytics.scoregenerator;
 
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import java.util.List;
 import lombok.Value;
 
 /**
- * Data that identifies a range of tasks.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Value
-public class TaskGroupIdentifier {
-    private final PointLocation center;
-    private final String experimentName;
+public class Comparison {
+    
+    private final String files;
+    private final List<ComparisonOperation> operations;
+    
 }

@@ -118,12 +118,12 @@ import java.io.FileReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.nio.file.Files;
-import java.util.concurrent.ForkJoinPool;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.scoring.CountScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
+import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeWorkflow;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -156,10 +156,6 @@ public class Main {
     private static final double ESTIMATE_WALK_METERS_PER_SECOND = 2.0;
 
     private static final int MAX_DEPTH = 6;
-
-    private static final int NUM_DISPLAY_BUCKETS = 9;
-    private static final int NUM_PROBABILITY_BUCKETS = 40;
-    private static final int DISPLAY_BUCKET_SCALE = 5;
 
     private static final String WALKING_DISTANCE_STORE
             = "new_walking_distance_store";
@@ -204,6 +200,7 @@ public class Main {
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
         parser.addArgument("-p", "--poolSize");
         parser.addArgument("-t", "--taskSize");
+        parser.addArgument("-c", "--compare");
 
         final Subparsers subparsers = parser.addSubparsers().dest("command");
 
@@ -220,7 +217,8 @@ public class Main {
                                                               "--startTime");
         generateSampledNetworkAccessibilityParser.addArgument("-s", "--span");
         generateSampledNetworkAccessibilityParser.addArgument("-f", "--files");
-        generateSampledNetworkAccessibilityParser.addArgument("-m", "--samples");
+        generateSampledNetworkAccessibilityParser.addArgument("-m",
+                                                              "--samples");
 
         final Subparser generatePointAccessibilityParser = subparsers.addParser(
                 "generatePointAccessibility");
@@ -261,8 +259,6 @@ public class Main {
 
         final int taskSize = Integer.valueOf(namespace.get("taskSize"));
 
-        final ReachedSectorScoreGenerator scoreGenerator
-                = new ReachedSectorScoreGenerator();
         final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
         final LocalFilePublisher publisher = new LocalFilePublisher();
 
@@ -275,9 +271,7 @@ public class Main {
         final DistanceClient distanceClient
                 = buildDistanceClient(root, key, endpointDeterminer,
                                       waterDetector);
-
-        final ForkJoinPool pool = new ForkJoinPool(poolSize);
-
+        
         final SectorTable sectorTable = generateSectors(waterDetector);
 
         final MapGenerator mapGenerator = new MapGenerator();
@@ -289,24 +283,24 @@ public class Main {
                 generatePointAccessibility(
                         namespace, root, scoreCard, sectorTable, backward,
                         samplingInterval, durations, distanceClient,
-                        endpointDeterminer, pool, taskSize, publisher,
-                        serializer, mapGenerator);
+                        endpointDeterminer, publisher, serializer,
+                        mapGenerator);
             } else if ("generateNetworkAccessibility".equals(command)) {
                 final ScoreCard scoreCard = new CountScoreCard();
 
                 generateNetworkAccessibility(
                         namespace, root, scoreCard, sectorTable, backward,
                         samplingInterval, durations, waterDetector,
-                        distanceClient, endpointDeterminer, pool, taskSize,
-                        publisher, serializer, mapGenerator);
+                        distanceClient, endpointDeterminer, publisher,
+                        serializer, mapGenerator);
             } else if ("generateSampledNetworkAccessibility".equals(command)) {
                 final ScoreCard scoreCard = new CountScoreCard();
 
                 generateSampledNetworkAccessibility(
                         namespace, root, scoreCard, sectorTable, backward,
                         samplingInterval, durations, waterDetector,
-                        distanceClient, endpointDeterminer, pool, taskSize,
-                        publisher, serializer, mapGenerator);
+                        distanceClient, endpointDeterminer, publisher,
+                        serializer, mapGenerator);
             }
         } finally {
 
@@ -375,7 +369,6 @@ public class Main {
             final WaterDetector waterDetector,
             final DistanceClient distanceClient,
             final NearestPointEndpointDeterminer endpointDeterminer,
-            final ForkJoinPool pool, final int taskSize,
             final LocalFilePublisher publisher, final Gson serializer,
             final MapGenerator mapGenerator)
             throws IOException, InterruptedException, ExecutionException {
@@ -398,14 +391,13 @@ public class Main {
         try {
             executeTasks(tasks, root, files, scoreCard, sectorTable,
                          centerPoints, startTime, endTime, backward,
-                         distanceClient, endpointDeterminer, durations.last(),
-                         pool, taskSize);
+                         distanceClient, endpointDeterminer, durations.last());
 
             final NetworkAccessibility map = new NetworkAccessibility(
                     tasks, scoreCard, sectorTable, centerPoints, startTime,
                     endTime, durations.last(), samplingInterval, backward);
             publisher.publish(serializer.toJson(map));
-            mapGenerator.makeMap(sectorTable, scoreCard);
+            mapGenerator.makeRangeMap(sectorTable, scoreCard);
         } finally {
             distanceClient.close();
         }
@@ -438,8 +430,7 @@ public class Main {
             final LocalDateTime startTime, final LocalDateTime endTime,
             final boolean backward, final DistanceClient distanceClient,
             final EndpointDeterminer endpointDeterminer,
-            final Duration longestDuration,
-            final ForkJoinPool pool, final int taskSize)
+            final Duration longestDuration)
             throws InterruptedException, IOException, ExecutionException {
         final StopDetailsDirectory stopDetailsDirectory
                 = buildStopDetailsDirectory(root, files);
@@ -485,16 +476,23 @@ public class Main {
             final ReachabilityClient reachabilityClient
                     = buildReachabilityClient(distanceFilter, distanceEstimator,
                                               timeTracker, locationIdMap);
+            final LocationExecutor locationExecutor
+                    = new ParallelTaskExecutor(
+                            new DynamicProgrammingRangeExecutor(
+                                    MAX_DEPTH, scoreCard, timeTracker,
+                                    longestDuration,
+                                    ImmutableSet.of(ModeType.WALKING,
+                                                    ModeType.TRANSIT),
+                                    riderFactory, reachabilityClient));
             final Workflow workflow
-                    = new DynamicProgrammingRangeWorkflow(
-                            MAX_DEPTH, scoreCard, sectorTable, timeTracker,
-                            pool, taskSize);
+                    = new DynamicProgrammingRangeWorkflow(locationExecutor);
 
             workflow.getPathsForTasks(
                     longestDuration,
                     ImmutableSet.of(ModeType.TRANSIT, ModeType.WALKING),
                     riderFactory, reachabilityClient, tasks);
         } finally {
+            
             distanceEstimator.close();
         }
 
@@ -508,7 +506,6 @@ public class Main {
             final WaterDetector waterDetector,
             final DistanceClient distanceClient,
             final NearestPointEndpointDeterminer endpointDeterminer,
-            final ForkJoinPool pool, final int taskSize,
             final LocalFilePublisher publisher, final Gson serializer,
             final MapGenerator mapGenerator)
             throws IOException, InterruptedException, ExecutionException {
@@ -539,8 +536,7 @@ public class Main {
         try {
             executeTasks(tasks, root, files, scoreCard, sectorTable,
                          centerPoints, startTime, endTime, backward,
-                         distanceClient, endpointDeterminer, durations.last(),
-                         pool, taskSize);
+                         distanceClient, endpointDeterminer, durations.last());
 
             final NetworkAccessibility map
                     = new NetworkAccessibility(
@@ -548,7 +544,7 @@ public class Main {
                             startTime, endTime, durations.last(),
                             samplingInterval, backward);
             publisher.publish(serializer.toJson(map));
-            mapGenerator.makeMap(sectorTable, scoreCard);
+            mapGenerator.makeRangeMap(sectorTable, scoreCard);
         } finally {
             distanceClient.close();
         }
@@ -562,7 +558,6 @@ public class Main {
             final NavigableSet<Duration> durations,
             final DistanceClient distanceClient,
             final NearestPointEndpointDeterminer endpointDeterminer,
-            final ForkJoinPool pool, final int taskSize,
             final LocalFilePublisher publisher, final Gson serializer,
             final MapGenerator mapGenerator)
             throws IOException, InterruptedException, ExecutionException {
@@ -614,7 +609,7 @@ public class Main {
             executeTasks(tasks, root, files, scoreCard, sectorTable,
                          Collections.singleton(centerPoint), startTime, endTime,
                          backward, distanceClient, endpointDeterminer,
-                         durations.last(), pool, taskSize);
+                         durations.last());
 
             if (tasks.size() == 1) {
                 final QualifiedPointAccessibility map
@@ -630,7 +625,7 @@ public class Main {
                         backward);
                 final String output = serializer.toJson(map);
                 publisher.publish(output);
-                mapGenerator.makeMap(sectorTable, scoreCard);
+                mapGenerator.makeRangeMap(sectorTable, scoreCard);
             }
 
         } finally {

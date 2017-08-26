@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SortedSetMultimap;
 import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.ModeType;
-import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
@@ -42,117 +41,74 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.concurrent.RecursiveAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Task used by the dynamic programming workflow.
- * 
+ *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
 @Slf4j
-public class DynamicProgrammingRangeTask extends RecursiveAction {
+public class DynamicProgrammingRangeExecutor {
 
     private final int depth;
     private final ScoreCard scoreCard;
-    private final SectorTable sectorTable;
     private final TimeTracker timeTracker;
-    private final int taskSize;
     private final Duration duration;
     private final Set<ModeType> allowedModes;
     private final RiderBehaviorFactory riderFactory;
     private final ReachabilityClient reachabilityClient;
-    private final Set<TaskGroupIdentifier> tasks;
-    private final SortedSetMultimap<TaskGroupIdentifier, LocalDateTime> timesByTask;
-
-    @Override
-    protected void compute() {
-        int numTasks = tasks.size();
-        if (numTasks <= taskSize) {
-            try {
-                executeTask(tasks);
-            } catch (final InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        } else {
-            final List<TaskGroupIdentifier> taskList = ImmutableList
-                    .copyOf(tasks);
-
-            final int halfTasks = numTasks / 2;
-            final DynamicProgrammingRangeTask t1
-                    = new DynamicProgrammingRangeTask(
-                            depth, scoreCard, sectorTable, timeTracker,
-                            taskSize, duration, allowedModes, riderFactory,
-                            reachabilityClient,
-                            ImmutableSet.copyOf(taskList.subList(0, halfTasks)),
-                            timesByTask);
-            t1.fork();
-            final DynamicProgrammingRangeTask t2
-                    = new DynamicProgrammingRangeTask(
-                            depth, scoreCard, sectorTable, timeTracker,
-                            taskSize, duration, allowedModes, riderFactory,
-                            reachabilityClient,
-                            ImmutableSet.copyOf(taskList.subList(halfTasks,
-                                                                 numTasks)),
-                            timesByTask);
-            t2.fork();
-            t1.join();
-            t2.join();
-        }
-    }
-
-    private void executeTask(final Set<TaskGroupIdentifier> tasks)
+    
+    public void executeTask(final TaskLocationGroupIdentifier taskGroup,
+                            final SortedSet<LocalDateTime> times)
             throws InterruptedException {
+        final Instant startTime = Instant.now();
+        final PointLocation startLocation = taskGroup.getCenter();
+        final String experiment = taskGroup.getExperimentName();
 
-        for (final TaskGroupIdentifier task : tasks) {
-            final Instant startTime = Instant.now();
-            final PointLocation startLocation = task.getCenter();
+        final Iterator<LocalDateTime> timeIterator = times.iterator();
+        final LocalDateTime latestStartTime = timeIterator.next();
+        final LocalDateTime latestCutoffTime = timeTracker.adjust(
+                latestStartTime, duration);
 
-            final SortedSet<LocalDateTime> times = timesByTask.get(task);
-            final Iterator<LocalDateTime> timeIterator = times.iterator();
-            final LocalDateTime latestStartTime = timeIterator.next();
-            final LocalDateTime latestCutoffTime = timeTracker.adjust(
-                    latestStartTime, duration);
+        Table<Integer, VisitableLocation, DynamicProgrammingRecord> priorTable
+                = DynamicProgrammingAlgorithm.createTable(
+                        latestStartTime, latestCutoffTime, startLocation,
+                        timeTracker, duration, depth,
+                        reachabilityClient, riderFactory);
+        LocalDateTime priorCutoffTime = latestCutoffTime;
 
-            Table<Integer, VisitableLocation, DynamicProgrammingRecord> priorTable
-                    = DynamicProgrammingAlgorithm.createTable(
-                            latestStartTime, latestCutoffTime, startLocation,
-                            timeTracker, duration, depth,
-                            reachabilityClient, riderFactory);
-            LocalDateTime priorCutoffTime = latestCutoffTime;
+        final TaskIdentifier latestFullTask = new TaskIdentifier(
+                latestStartTime, startLocation, experiment);
+        updateScoreCard(priorTable, latestFullTask);
 
-            final TaskIdentifier latestFullTask = new TaskIdentifier(
-                    latestStartTime, startLocation, task.getExperimentName());
-            updateScoreCard(priorTable, latestFullTask);
+        while (timeIterator.hasNext()) {
+            final Table<Integer, VisitableLocation, DynamicProgrammingRecord> nextTable
+                    = HashBasedTable.create();
+            final LocalDateTime nextStartTime = timeIterator.next();
+            final LocalDateTime nextCutoffTime = timeTracker.adjust(
+                    nextStartTime, duration);
 
-            while (timeIterator.hasNext()) {
-                final Table<Integer, VisitableLocation, DynamicProgrammingRecord> nextTable
-                        = HashBasedTable.create();
-                final LocalDateTime nextStartTime = timeIterator.next();
-                final LocalDateTime nextCutoffTime = timeTracker.adjust(
-                        nextStartTime, duration);
+            createNewTable(priorTable, nextTable, nextStartTime,
+                           nextCutoffTime, priorCutoffTime, riderFactory,
+                           reachabilityClient);
 
-                createNewTable(priorTable, nextTable, nextStartTime,
-                               nextCutoffTime, priorCutoffTime, riderFactory,
-                               reachabilityClient);
+            final TaskIdentifier nextTask = new TaskIdentifier(
+                    nextStartTime, startLocation, experiment);
 
-                final TaskIdentifier nextTask = new TaskIdentifier(
-                        nextStartTime, startLocation, task.getExperimentName());
-
-                updateScoreCard(nextTable, nextTask);
-                priorTable = nextTable;
-                priorCutoffTime = nextCutoffTime;
-            }
-            final Instant endTime = Instant.now();
-            log.info("Finished {} at {} (wallclock {}).", task,
-                     endTime.toString(), Duration.between(startTime, endTime));
+            updateScoreCard(nextTable, nextTask);
+            priorTable = nextTable;
+            priorCutoffTime = nextCutoffTime;
         }
+        final Instant endTime = Instant.now();
+        log.info("Finished {} at {} (wallclock {}).", taskGroup,
+                 endTime.toString(), Duration.between(startTime, endTime));
+
     }
 
     private void createNewTable(

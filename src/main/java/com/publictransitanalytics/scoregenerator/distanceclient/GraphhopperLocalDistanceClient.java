@@ -36,7 +36,7 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  * DistanceClient that uses Graphhopper.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Slf4j
@@ -48,10 +48,8 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
     public GraphhopperLocalDistanceClient(
             final Path osmFile, final Path graphFolder,
             final NearestPointEndpointDeterminer endpointDeterminer) {
-        // create one GraphHopper instance
         hopper = new GraphHopperOSM().forServer();
         hopper.setDataReaderFile(osmFile.toString());
-        // where to store graphhopper files?
         hopper.setGraphHopperLocation(graphFolder.toString());
         hopper.setEncodingManager(new EncodingManager("foot"));
         hopper.setElevation(true);
