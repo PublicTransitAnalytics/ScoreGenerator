@@ -30,25 +30,28 @@ import org.opensextant.geodesy.Longitude;
  */
 public class SectorTableTest {
 
-    private static final SectorTable TABLE = new SectorTable(
-            new Geodetic2DBounds(
-                    new Geodetic2DPoint(
-                            new Longitude(-130, Longitude.DEGREES),
-                            new Latitude(60, Latitude.DEGREES)),
-                    new Geodetic2DPoint(
-                            new Longitude(-100, Longitude.DEGREES),
-                            new Latitude(40, Latitude.DEGREES))), 2, 3,
-            new AllLandWaterDetector());
-
-    @Test
-    public void testGeneratesSectors() {
-        Assert.assertEquals(6, TABLE.getSectors().size());
+    private static SectorTable makeSectorTable() throws InterruptedException {
+        final SectorTable table = new SectorTable(
+                new Geodetic2DBounds(
+                        new Geodetic2DPoint(
+                                new Longitude(-130, Longitude.DEGREES),
+                                new Latitude(60, Latitude.DEGREES)),
+                        new Geodetic2DPoint(
+                                new Longitude(-100, Longitude.DEGREES),
+                                new Latitude(40, Latitude.DEGREES))), 2, 3,
+                new AllLandWaterDetector());
+        return table;
     }
 
     @Test
-    public void testReturnsCornerSector() {
+    public void testGeneratesSectors() throws Exception {
+        Assert.assertEquals(6, makeSectorTable().getSectors().size());
+    }
 
-        final Sector sector = TABLE.findSector(
+    @Test
+    public void testReturnsCornerSector() throws Exception {
+
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-100, Longitude.DEGREES),
                         new Latitude(40, Latitude.DEGREES)));
@@ -64,9 +67,9 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testReturnsInteriorSector() {
+    public void testReturnsInteriorSector() throws Exception {
 
-        final Sector sector = TABLE.findSector(
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-111, Longitude.DEGREES),
                         new Latitude(41, Latitude.DEGREES)));
@@ -82,9 +85,9 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testReturnsGreatestSector() {
+    public void testReturnsGreatestSector() throws Exception {
 
-        final Sector sector = TABLE.findSector(
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-129.95, Longitude.DEGREES),
                         new Latitude(59, Latitude.DEGREES)));
@@ -100,9 +103,9 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testNullOnLowerLatitude() {
+    public void testNullOnLowerLatitude() throws Exception {
 
-        final Sector sector = TABLE.findSector(
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-111, Longitude.DEGREES),
                         new Latitude(35, Latitude.DEGREES)));
@@ -111,9 +114,9 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testNullOnHigherLatitude() {
+    public void testNullOnHigherLatitude() throws Exception {
 
-        final Sector sector = TABLE.findSector(
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-111, Longitude.DEGREES),
                         new Latitude(65, Latitude.DEGREES)));
@@ -122,9 +125,9 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testNullOnLowerLongitude() {
+    public void testNullOnLowerLongitude() throws Exception {
 
-        final Sector sector = TABLE.findSector(
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-95, Longitude.DEGREES),
                         new Latitude(45, Latitude.DEGREES)));
@@ -133,9 +136,9 @@ public class SectorTableTest {
     }
 
     @Test
-    public void testNullOnHigherLongitude() {
+    public void testNullOnHigherLongitude() throws Exception {
 
-        final Sector sector = TABLE.findSector(
+        final Sector sector = makeSectorTable().findSector(
                 new Geodetic2DPoint(
                         new Longitude(-135, Longitude.DEGREES),
                         new Latitude(45, Latitude.DEGREES)));

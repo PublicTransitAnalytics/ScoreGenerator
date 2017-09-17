@@ -13,18 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.workflow;
+package com.publictransitanalytics.scoregenerator.schedule;
 
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import lombok.Value;
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
- * Data that identifies a range of tasks.
- * 
+ *
  * @author Public Transit Analytics
  */
-@Value
-public class TaskLocationGroupIdentifier {
-    private final PointLocation center;
-    private final String experimentName;
+public interface TransitNetwork {
+
+    Set<EntryPoint> getEntryPoints(TransitStop stop, LocalDateTime startTime,
+                                   LocalDateTime endTime);
+    
+    Duration getInServiceTime();
+    
+    Set<Trip> getTrips();
+    
 }

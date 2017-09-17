@@ -18,7 +18,6 @@ package com.publictransitanalytics.scoregenerator.publishing;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import java.io.FileWriter;
 import java.io.IOException;
-import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Publisher that publishes scores to a randomly-named file.
@@ -27,11 +26,10 @@ import org.apache.commons.lang3.RandomStringUtils;
  */
 public class LocalFilePublisher {
 
-    public void publish(final String output) {
+    public void publish(final String outputName, final String output) {
         FileWriter writer = null;
         try {
-            final String fileName = RandomStringUtils.randomAlphabetic(8);
-            writer = new FileWriter(fileName);
+            writer = new FileWriter(outputName);
             writer.write(output);
         } catch (IOException e) {
             throw new ScoreGeneratorFatalException(e);

@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.SectorTable;
-import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
@@ -63,7 +62,7 @@ public class NetworkAccessibility {
     private final int totalSectors;
 
     public NetworkAccessibility(
-            final Set<TaskIdentifier> tasks, final ScoreCard scoreCard,
+            final int taskCount, final ScoreCard scoreCard,
             final SectorTable sectorTable, 
             final Set<PointLocation> centerPoints, 
             final LocalDateTime startTime, final LocalDateTime endTime,
@@ -84,7 +83,7 @@ public class NetworkAccessibility {
         this.tripDuration = DurationFormatUtils.formatDurationWords(
                 tripDuration.toMillis(), true, true);
 
-        taskCount = tasks.size();
+        this.taskCount = taskCount;
         totalSectors = sectorTable.getSectors().size();
 
         final ImmutableMap.Builder<Bounds, Integer> countBuilder

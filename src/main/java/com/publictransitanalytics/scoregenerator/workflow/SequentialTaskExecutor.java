@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.google.common.collect.SortedSetMultimap;
+import com.google.common.collect.Multimap;
+import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeExecutor;
-import com.publictransitanalytics.scoregenerator.workflow.TaskLocationGroupIdentifier;
+import com.publictransitanalytics.scoregenerator.workflow.TaskGroupIdentifier;
+import com.publictransitanalytics.scoregenerator.workflow.Workflow;
 import java.time.LocalDateTime;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -26,16 +29,21 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class SequentialTaskExecutor implements LocationExecutor {
+public class SequentialTaskExecutor<S extends ScoreCard>
+        implements Workflow<S> {
 
     private final DynamicProgrammingRangeExecutor timeRangeExecutor;
 
     @Override
-    public void execute(
-            final SortedSetMultimap<TaskLocationGroupIdentifier, LocalDateTime> timesByTask)
+    public void calculate(final Set<RangeCalculation<S>> rangeCalculations)
             throws InterruptedException {
-        for (final TaskLocationGroupIdentifier task : timesByTask.keySet()) {
-            timeRangeExecutor.executeTask(task, timesByTask.get(task));
+        for (final RangeCalculation rangeCalculation : rangeCalculations) {
+            final Multimap<TaskGroupIdentifier, LocalDateTime> timesByTask
+                    = rangeCalculation.getTimesByTask();
+            for (final TaskGroupIdentifier task
+                         : timesByTask.keySet()) {
+                timeRangeExecutor.executeRange(rangeCalculation, task);
+            }
         }
     }
 

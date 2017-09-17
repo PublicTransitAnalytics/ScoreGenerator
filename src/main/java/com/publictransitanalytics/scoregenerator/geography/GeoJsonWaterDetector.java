@@ -108,30 +108,4 @@ public class GeoJsonWaterDetector implements WaterDetector {
         }
         return false;
     }
-
-    private static final Geodetic2DBounds SEATTLE_BOUNDS
-            = new Geodetic2DBounds(
-                    new Geodetic2DPoint(
-                            new Longitude(-122.459696, Longitude.DEGREES),
-                            new Latitude(47.734145, Latitude.DEGREES)),
-                    new Geodetic2DPoint(
-                            new Longitude(-122.224433, Longitude.DEGREES),
-                            new Latitude(47.48172, Latitude.DEGREES)));
-
-    private static final int NUM_LATITUDE_SECTORS = 100;
-    private static final int NUM_LONGITUDE_SECTORS = 100;
-
-    public static void main(final String[] args) throws IOException,
-            WaterDetectorException {
-        final Path path = Paths.get(
-                "/Users/matt/score_generator_files_no_google_cache/water.json");
-        final GeoJsonWaterDetector waterDetector
-                = new GeoJsonWaterDetector(path);
-
-        final SectorTable sectorTable = new SectorTable(
-                SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS,
-                waterDetector);
-        
-    }
-
 }

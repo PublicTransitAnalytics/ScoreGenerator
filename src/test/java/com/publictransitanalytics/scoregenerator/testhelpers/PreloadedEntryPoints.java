@@ -17,23 +17,33 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoints;
 import java.time.LocalDateTime;
 import java.util.Set;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import java.time.Duration;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public class PreloadedEntryPoints implements EntryPoints {
+@RequiredArgsConstructor
+public class PreloadedEntryPoints implements TransitNetwork {
+
+    private final Set<EntryPoint> set;
+    @Getter
+    private final Duration inServiceTime;
+    @Getter
+    private final Set<Trip> trips;
     
-    public Set<EntryPoint> set;
 
     @Override
-    public Set<EntryPoint> getEntryPoints(TransitStop stop,
-                                          LocalDateTime startTime,
-                                          LocalDateTime endTime) {
+    public Set<EntryPoint> getEntryPoints(final TransitStop stop,
+                                          final LocalDateTime startTime,
+                                          final LocalDateTime endTime) {
         return set;
     }
-    
+
 }

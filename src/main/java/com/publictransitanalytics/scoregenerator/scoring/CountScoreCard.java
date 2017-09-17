@@ -26,11 +26,12 @@ import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
  * 
  * @author Public Transit Analytics
  */
-public class CountScoreCard implements ScoreCard {
+public class CountScoreCard extends ScoreCard {
     
     final Multiset<VisitableLocation> locations;
     
-     public CountScoreCard() {
+     public CountScoreCard(final int taskCount) {
+         super(taskCount);
         locations = ConcurrentHashMultiset.create();
     }
 

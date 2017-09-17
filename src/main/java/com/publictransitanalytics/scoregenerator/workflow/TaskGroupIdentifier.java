@@ -13,22 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.geography;
+package com.publictransitanalytics.scoregenerator.workflow;
 
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import lombok.Value;
 
 /**
- * Detects whether points or regions are on water.
+ * Data that identifies a range of tasks.
  * 
  * @author Public Transit Analytics
  */
-public interface WaterDetector {
-
-    boolean isOnWater(final Geodetic2DPoint point) 
-            throws WaterDetectorException, InterruptedException;
-
-    boolean isEntirelyWater(final Geodetic2DBounds bounds) 
-            throws WaterDetectorException, InterruptedException;
-
+@Value
+public class TaskGroupIdentifier {
+    private final PointLocation center;
+    private final String experimentName;
 }

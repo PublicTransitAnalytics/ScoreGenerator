@@ -13,22 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.rider;
-
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import java.time.LocalDateTime;
+package com.publictransitanalytics.scoregenerator.comparison;
 
 /**
- * Creates transit riders.
  *
  * @author Public Transit Analytics
  */
-public interface RiderBehaviorFactory {
-
-    public ScheduleReader getScheduleReader();
-
-    public Rider getNewRider(TransitStop stop, LocalDateTime initialTime,
-                             LocalDateTime cutoffTime, Trip trip);
-
+public enum Operator {
+    
+    DELETE
+    
 }

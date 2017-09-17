@@ -113,8 +113,8 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -149,8 +149,8 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -190,8 +190,8 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -231,8 +231,8 @@ public class DirectoryReadingEntryPointsTest {
                 = ImmutableMap.of(STOP_ID, transitStop,
                                   ANOTHER_STOP_ID, anotherTransitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -275,8 +275,8 @@ public class DirectoryReadingEntryPointsTest {
                 = ImmutableMap.of(STOP_ID, transitStop,
                                   ANOTHER_STOP_ID, anotherTransitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -317,8 +317,8 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -360,8 +360,8 @@ public class DirectoryReadingEntryPointsTest {
                 = ImmutableMap.of(STOP_ID, transitStop,
                                   ANOTHER_STOP_ID, anotherTransitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
@@ -403,8 +403,8 @@ public class DirectoryReadingEntryPointsTest {
                 = ImmutableMap.of(STOP_ID, transitStop,
                                   ANOTHER_STOP_ID, anotherTransitStop);
 
-        final DirectoryReadingEntryPoints entryPoints
-                = new DirectoryReadingEntryPoints(
+        final DirectoryReadingTransitNetwork entryPoints
+                = new DirectoryReadingTransitNetwork(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
         final LocalDateTime queryTime = LocalDateTime.of(

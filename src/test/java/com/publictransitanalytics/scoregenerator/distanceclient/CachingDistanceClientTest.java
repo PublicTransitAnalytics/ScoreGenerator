@@ -18,7 +18,9 @@ package com.publictransitanalytics.scoregenerator.distanceclient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.CachingDistanceClient;
 import com.bitvantage.bitvantagecaching.Cache;
+import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.mocks.MapCache;
+import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
@@ -66,11 +68,11 @@ public class CachingDistanceClientTest {
         final Landmark origin = new Landmark(sector, destinationPoint);
         final Landmark destination = new Landmark(sector, originPoint);
 
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> cache
-                = new MapCache<>(Collections.emptyMap());
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
+                = new MapStore<>(Collections.emptyMap());
         final DistanceClient backingClient = new PreloadedDistanceClient(
                 ImmutableTable
-                .<VisitableLocation, VisitableLocation, WalkingCosts>of());
+                        .<VisitableLocation, VisitableLocation, WalkingCosts>of());
         final DistanceClient client
                 = new CachingDistanceClient(cache, backingClient);
 
@@ -103,14 +105,14 @@ public class CachingDistanceClientTest {
         final WalkingDistanceMeasurement measurement
                 = new WalkingDistanceMeasurement(Duration.ZERO, 0);
 
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> cache
-                = new MapCache<>(ImmutableMap.of(
-                        new DistanceCacheKey(origin.getIdentifier(),
-                                             destination.getIdentifier()),
-                        measurement));
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
+                = new MapStore<>(ImmutableMap.of(new DistanceCacheKey(
+                        origin.getIdentifier(),
+                        destination.getIdentifier()).getKeyString(),
+                                                 measurement));
         final DistanceClient backingClient = new PreloadedDistanceClient(
                 ImmutableTable
-                .<VisitableLocation, VisitableLocation, WalkingCosts>of());
+                        .<VisitableLocation, VisitableLocation, WalkingCosts>of());
         final DistanceClient client
                 = new CachingDistanceClient(cache, backingClient);
 
@@ -145,12 +147,12 @@ public class CachingDistanceClientTest {
         final Landmark destination = new Landmark(sector, originPoint);
         final WalkingCosts costs = new WalkingCosts(Duration.ZERO, 0);
 
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> cache
-                = new MapCache<>(new HashMap<>());
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
+                = new MapStore<>(new HashMap<>());
         final DistanceClient backingClient = new PreloadedDistanceClient(
                 ImmutableTable
-                .<VisitableLocation, VisitableLocation, WalkingCosts>of(
-                        origin, destination, costs));
+                        .<VisitableLocation, VisitableLocation, WalkingCosts>of(
+                                origin, destination, costs));
         final DistanceClient client
                 = new CachingDistanceClient(cache, backingClient);
 
@@ -184,18 +186,18 @@ public class CachingDistanceClientTest {
         final Landmark destination = new Landmark(sector, originPoint);
         final WalkingCosts costs = new WalkingCosts(Duration.ZERO, 0);
 
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> cache
-                = new MapCache<>(new HashMap<>());
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
+                = new MapStore<>(new HashMap<>());
         final DistanceClient backingClient = new PreloadedDistanceClient(
                 ImmutableTable
-                .<VisitableLocation, VisitableLocation, WalkingCosts>of(
-                        origin, destination, costs));
+                        .<VisitableLocation, VisitableLocation, WalkingCosts>of(
+                                origin, destination, costs));
         final DistanceClient client
                 = new CachingDistanceClient(cache, backingClient);
 
         client.getDistances(Collections.singleton(origin),
                             Collections.singleton(destination));
-        
+
         final DistanceCacheKey cacheKey = new DistanceCacheKey(
                 origin.getIdentifier(), destination.getIdentifier());
         final WalkingDistanceMeasurement measurement

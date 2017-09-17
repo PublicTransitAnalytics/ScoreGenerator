@@ -13,22 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.geography;
+package com.publictransitanalytics.scoregenerator.output;
 
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
+import lombok.Value;
 
 /**
- * Detects whether points or regions are on water.
- * 
+ *
  * @author Public Transit Analytics
  */
-public interface WaterDetector {
-
-    boolean isOnWater(final Geodetic2DPoint point) 
-            throws WaterDetectorException, InterruptedException;
-
-    boolean isEntirelyWater(final Geodetic2DBounds bounds) 
-            throws WaterDetectorException, InterruptedException;
-
+@Value
+public class CountComparison {
+    final int count;
+    final int trialCount;
 }

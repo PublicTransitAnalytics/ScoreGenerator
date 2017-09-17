@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.collect.TreeBasedTable;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
+import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -47,7 +48,8 @@ public class SectorTable {
     public SectorTable(final Geodetic2DBounds bounds,
                        final int numLatitudeSectors,
                        final int numLongitudeSectors,
-                       final WaterDetector waterDetector) {
+                       final WaterDetector waterDetector) 
+            throws InterruptedException {
         sectorTable = TreeBasedTable.create();
         this.bounds = bounds;
 
@@ -88,8 +90,12 @@ public class SectorTable {
                 final Longitude indexLongitude = new Longitude(longitude);
 
                 final Sector sector = new Sector(sectorBounds);
-                if (waterDetector.isEntirelyWater(sector.getBounds())) {
-                    blacklistBuilder.add(sector);
+                try {
+                    if (waterDetector.isEntirelyWater(sector.getBounds())) {
+                        blacklistBuilder.add(sector);
+                    }
+                } catch (final WaterDetectorException e) {
+                    throw new ScoreGeneratorFatalException(e);
                 }
                 sectorTable.put(indexLatitude, indexLongitude, sector);
                 longitude = nextLongitude;
@@ -98,7 +104,6 @@ public class SectorTable {
         }
         blacklist = blacklistBuilder.build();
     }
-    
 
     public Sector findSector(final Geodetic2DPoint location) {
         final SortedMap<Latitude, Map<Longitude, Sector>> latitudeMap

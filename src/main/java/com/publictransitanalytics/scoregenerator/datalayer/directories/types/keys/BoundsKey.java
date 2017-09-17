@@ -13,14 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys;
+
+import com.bitvantage.bitvantagecaching.Key;
+import org.opensextant.geodesy.Geodetic2DBounds;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public enum Operator {
+public class BoundsKey implements Key {
     
-    DELETE
+    final String boundsString;
+    
+    public BoundsKey(final Geodetic2DBounds bounds) {
+        boundsString = bounds.toString();
+    }
+
+    @Override
+    public String getKeyString() {
+        return boundsString;
+    }
     
 }

@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
+package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import java.time.LocalDateTime;
-import java.util.Set;
+import com.publictransitanalytics.scoregenerator.SectorTable;
+import java.time.Duration;
+import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface EntryPoints {
-
-    Set<EntryPoint> getEntryPoints(TransitStop stop, LocalDateTime startTime,
-                                   LocalDateTime endTime);
-    
+@Value
+public class Environment {
+    final SectorTable sectorTable;
+    final Duration longestDuration;
+    final int maxDepth;
 }

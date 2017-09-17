@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.schedule;
 
 import com.bitvantage.bitvantagetypes.collections.TreeBidirectionalMap;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -98,6 +99,14 @@ public class Trip {
                 k -> new ScheduledLocation(tripSequence.get(k),
                                            timeSequence.getKey(k)))
                 .collect(Collectors.toList());
+    }
+
+    public Duration getInServiceTime() {
+        final LocalDateTime startTime = timeSequence.getKey(
+                tripSequence.firstKey());
+        final LocalDateTime endTime = timeSequence.getKey(
+                tripSequence.lastKey());
+        return Duration.between(startTime, endTime);
     }
 
 }

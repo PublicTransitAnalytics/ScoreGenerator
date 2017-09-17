@@ -18,13 +18,11 @@ package com.publictransitanalytics.scoregenerator.workflow;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.SortedSetMultimap;
 import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.tracking.FixedPath;
@@ -43,9 +41,9 @@ import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 
 /**
  * Task used by the dynamic programming workflow.
@@ -56,36 +54,44 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DynamicProgrammingRangeExecutor {
 
-    private final int depth;
-    private final ScoreCard scoreCard;
-    private final TimeTracker timeTracker;
-    private final Duration duration;
-    private final Set<ModeType> allowedModes;
-    private final RiderBehaviorFactory riderFactory;
-    private final ReachabilityClient reachabilityClient;
-    
-    public void executeTask(final TaskLocationGroupIdentifier taskGroup,
-                            final SortedSet<LocalDateTime> times)
+    private final Environment environment;
+
+    public void executeRange(final RangeCalculation calculation,
+                             final TaskGroupIdentifier taskGroup)
             throws InterruptedException {
+        final int maxDepth = environment.getMaxDepth();
+        final Duration duration = environment.getLongestDuration();
+
+        final ScoreCard scoreCard = calculation.getScoreCard();
+        final TimeTracker timeTracker = calculation.getTimeTracker();
+        final RiderFactory riderFactory = calculation.getRiderFactory();
+        final ReachabilityClient reachabilityClient
+                = calculation.getReachabilityClient();
+
         final Instant startTime = Instant.now();
         final PointLocation startLocation = taskGroup.getCenter();
         final String experiment = taskGroup.getExperimentName();
 
-        final Iterator<LocalDateTime> timeIterator = times.iterator();
+        final Iterator<LocalDateTime> timeIterator =
+                calculation.getTimesByTask().get(taskGroup).iterator();
         final LocalDateTime latestStartTime = timeIterator.next();
         final LocalDateTime latestCutoffTime = timeTracker.adjust(
                 latestStartTime, duration);
 
         Table<Integer, VisitableLocation, DynamicProgrammingRecord> priorTable
-                = DynamicProgrammingAlgorithm.createTable(
-                        latestStartTime, latestCutoffTime, startLocation,
-                        timeTracker, duration, depth,
-                        reachabilityClient, riderFactory);
+                = DynamicProgrammingAlgorithm.createTable(latestStartTime,
+                                                          latestCutoffTime,
+                                                          startLocation,
+                                                          timeTracker, duration,
+                                                          maxDepth,
+                                                          reachabilityClient,
+                                                          riderFactory);
         LocalDateTime priorCutoffTime = latestCutoffTime;
 
         final TaskIdentifier latestFullTask = new TaskIdentifier(
                 latestStartTime, startLocation, experiment);
-        updateScoreCard(priorTable, latestFullTask);
+
+        updateScoreCard(priorTable, latestFullTask, scoreCard);
 
         while (timeIterator.hasNext()) {
             final Table<Integer, VisitableLocation, DynamicProgrammingRecord> nextTable
@@ -94,31 +100,33 @@ public class DynamicProgrammingRangeExecutor {
             final LocalDateTime nextCutoffTime = timeTracker.adjust(
                     nextStartTime, duration);
 
-            createNewTable(priorTable, nextTable, nextStartTime,
-                           nextCutoffTime, priorCutoffTime, riderFactory,
-                           reachabilityClient);
+            createNextTable(priorTable, nextTable, nextStartTime,
+                            nextCutoffTime, priorCutoffTime, riderFactory,
+                            reachabilityClient, timeTracker);
 
             final TaskIdentifier nextTask = new TaskIdentifier(
                     nextStartTime, startLocation, experiment);
 
-            updateScoreCard(nextTable, nextTask);
+            updateScoreCard(nextTable, nextTask, scoreCard);
             priorTable = nextTable;
             priorCutoffTime = nextCutoffTime;
         }
         final Instant endTime = Instant.now();
-        log.info("Finished {} at {} (wallclock {}).", taskGroup,
-                 endTime.toString(), Duration.between(startTime, endTime));
+
+        log.info(
+                "Finished {} at {} (wallclock {}).", taskGroup,
+                endTime.toString(), Duration.between(startTime, endTime));
 
     }
 
-    private void createNewTable(
+    private void createNextTable(
             final Table<Integer, VisitableLocation, DynamicProgrammingRecord> priorTable,
             final Table<Integer, VisitableLocation, DynamicProgrammingRecord> newTable,
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
             final LocalDateTime previousCutoffTime,
-            final RiderBehaviorFactory riderFactory,
-            final ReachabilityClient reachabilityClient)
-            throws InterruptedException {
+            final RiderFactory riderFactory,
+            final ReachabilityClient reachabilityClient,
+            final TimeTracker timeTracker) throws InterruptedException {
 
         final Map<VisitableLocation, DynamicProgrammingRecord> firstPriorRow
                 = priorTable.row(0);
@@ -130,7 +138,7 @@ public class DynamicProgrammingRangeExecutor {
             newTable.put(0, priorTableLocation, newFirstRecord);
         }
 
-        for (int i = 1; i < depth; i++) {
+        for (int i = 1; i < environment.getMaxDepth(); i++) {
             final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow
                     = newTable.row(i - 1);
             final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow
@@ -143,13 +151,15 @@ public class DynamicProgrammingRangeExecutor {
             newTableCurrentRow.putAll(newTablePreviousRow);
             final int merges = mergeRowFromPriorTableRow(
                     priorTableCurrentRow, priorTablePreviousRow,
-                    newTableCurrentRow, newTablePreviousRow, cutoffTime);
+                    newTableCurrentRow, newTablePreviousRow, cutoffTime,
+                    timeTracker);
             final int updates = updateFromPreviousRow(
                     newTableCurrentRow, newTablePreviousRow,
                     priorTablePreviousRow, cutoffTime, previousCutoffTime,
-                    riderFactory, reachabilityClient);
+                    riderFactory, reachabilityClient, timeTracker);
             if (merges == 0 && updates == 0) {
-                log.debug("Stopped processing at row {} because no updates.", i);
+                log.debug("Stopped processing at row {} because no updates.",
+                          i);
                 break;
             }
         }
@@ -160,9 +170,9 @@ public class DynamicProgrammingRangeExecutor {
             final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow,
             final Map<VisitableLocation, DynamicProgrammingRecord> priorTablePreviousRow,
             final LocalDateTime cutoffTime, final LocalDateTime priorCutoffTime,
-            final RiderBehaviorFactory riderFactory,
-            final ReachabilityClient reachabilityClient)
-            throws InterruptedException {
+            final RiderFactory riderFactory,
+            final ReachabilityClient reachabilityClient,
+            final TimeTracker timeTracker) throws InterruptedException {
         int replacements = 0;
 
         for (final VisitableLocation newTablePreviousRowLocation
@@ -278,7 +288,7 @@ public class DynamicProgrammingRangeExecutor {
             final Map<VisitableLocation, DynamicProgrammingRecord> priorTablePreviousRow,
             final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow,
             final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow,
-            final LocalDateTime cutoffTime) {
+            final LocalDateTime cutoffTime, final TimeTracker timeTracker) {
         int replacements = 0;
         for (final VisitableLocation priorTableCurrentLocation
                      : priorTableCurrentRow.keySet()) {
@@ -396,7 +406,8 @@ public class DynamicProgrammingRangeExecutor {
 
     private void updateScoreCard(
             final Table<Integer, VisitableLocation, DynamicProgrammingRecord> table,
-            final TaskIdentifier task) throws InterruptedException {
+            final TaskIdentifier task, final ScoreCard scoreCard)
+            throws InterruptedException {
         final Map<VisitableLocation, DynamicProgrammingRecord> lastRow
                 = table.row(table.rowKeySet().size() - 1);
         final Set<VisitableLocation> reachedLocations = lastRow.keySet();

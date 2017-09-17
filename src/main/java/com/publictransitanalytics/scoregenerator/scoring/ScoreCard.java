@@ -18,19 +18,26 @@ package com.publictransitanalytics.scoregenerator.scoring;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * A way of tracking reachability.
- * 
+ *
  * @author Public Transit Analytics
  */
-public interface ScoreCard {
+@RequiredArgsConstructor
+public abstract class ScoreCard {
 
-    int getReachedCount(VisitableLocation location);
+    @Getter
+    private final int taskCount;
 
-    boolean hasPath(final VisitableLocation location);
+    public abstract int getReachedCount(VisitableLocation location);
 
-    void putPath(final VisitableLocation location, final TaskIdentifier task,
-                 final MovementPath path);
+    public abstract boolean hasPath(final VisitableLocation location);
+
+    public abstract void putPath(final VisitableLocation location,
+                                 final TaskIdentifier task, 
+                                 final MovementPath path);
 
 }

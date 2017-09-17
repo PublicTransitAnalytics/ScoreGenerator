@@ -16,26 +16,32 @@
 package com.publictransitanalytics.scoregenerator.rider;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 
 /**
+ * RiderFactory for producing Riders that move forward through time.
  *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class ForwardScheduleReader implements ScheduleReader {
+public class ForwardRiderFactory implements RiderFactory {
 
-    private final TransitNetwork entryPoints;
+    final TransitNetwork entryPoints;
 
     @Override
-    public Set<EntryPoint> getEntryPoints(
-            final TransitStop position,
-            final LocalDateTime currentTime, final LocalDateTime cutoffTime) {
-        return entryPoints.getEntryPoints(position, currentTime, cutoffTime);
+    public ScheduleReader getScheduleReader() {
+        return new ForwardScheduleReader(entryPoints);
+
+    }
+
+    @Override
+    public Rider getNewRider(
+            final TransitStop stop, final LocalDateTime initialTime,
+            final LocalDateTime cutoffTime, final Trip trip) {
+        return new ForwardRider(stop, initialTime, cutoffTime, trip);
     }
 
 }

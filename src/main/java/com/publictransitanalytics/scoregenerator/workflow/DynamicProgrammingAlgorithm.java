@@ -21,7 +21,6 @@ import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.visitors.FlatTransitRideVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.FlatWalkVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.ModeInfo;
@@ -32,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 
 /**
  * Dynamic programming algorithm for path finding.
@@ -48,7 +48,7 @@ public final class DynamicProgrammingAlgorithm {
                         final TimeTracker timeTracker,
                         final Duration duration, final int depth,
                         final ReachabilityClient reachabilityClient,
-                        final RiderBehaviorFactory riderFactory) throws
+                        final RiderFactory riderFactory) throws
             InterruptedException {
         final Table<Integer, VisitableLocation, DynamicProgrammingRecord> stateTable
                 = HashBasedTable.create();

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.comparison;
 
 import lombok.Value;
 
@@ -25,5 +25,6 @@ import lombok.Value;
 public class ComparisonOperation {
     
     final Operator operator;
+    final String route;
     
 }

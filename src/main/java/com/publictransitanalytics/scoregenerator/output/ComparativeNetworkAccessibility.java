@@ -16,26 +16,23 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.SectorTable;
-import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
- * A measurement of Spontaneous Accessibility at a single place.
  *
  * @author Public Transit Analytics
  */
-public class PointAccessibility {
+public class ComparativeNetworkAccessibility {
 
     private final AccessibilityType type;
 
@@ -43,9 +40,13 @@ public class PointAccessibility {
 
     private final Bounds mapBounds;
 
-    private final Point center;
+    private final Point boundsCenter;
 
-    private final Map<Bounds, SectorReachInformation> sectors;
+    private final Map<Bounds, CountComparison> sectorCounts;
+
+    private final Set<Point> centerPoints;
+
+    private final int sampleCount;
 
     private final String startTime;
 
@@ -54,25 +55,32 @@ public class PointAccessibility {
     private final String samplingInterval;
 
     private final String tripDuration;
-    
+
     private final int taskCount;
-    
+
+    private final int trialTaskCount;
+
     private final int totalSectors;
 
-    public PointAccessibility(
-            final int taskCount, final PathScoreCard scoreCard,
-            final SectorTable sectorTable, final PointLocation centerPoint, 
-            final LocalDateTime startTime, final LocalDateTime lastTime, 
-            final Duration samplingInterval, final Duration tripDuration,
-            final boolean backward)
+    private final String trialName;
+
+    public ComparativeNetworkAccessibility(
+            final int taskCount, final int trialTaskCount,
+            final ScoreCard scoreCard, final ScoreCard trialScoreCard,
+            final SectorTable sectorTable,
+            final Set<PointLocation> centerPoints,
+            final LocalDateTime startTime, final LocalDateTime endTime,
+            final Duration tripDuration, final Duration samplingInterval,
+            final boolean backward, final String trialName)
             throws InterruptedException {
-        type = AccessibilityType.POINT_ACCESSIBILITY;
+        type = AccessibilityType.COMPARATIVE_NETWORK_ACCESSIBILITY;
+
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(sectorTable);
-        center = new Point(centerPoint);
+        boundsCenter = new Point(sectorTable.getBounds().getCenter());
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
-        this.endTime = lastTime.format(DateTimeFormatter.ofPattern(
+        this.endTime = endTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.samplingInterval = DurationFormatUtils.formatDurationWords(
                 samplingInterval.toMillis(), true, true);
@@ -81,31 +89,30 @@ public class PointAccessibility {
                 tripDuration.toMillis(), true, true);
 
         this.taskCount = taskCount;
+        this.trialTaskCount = trialTaskCount;
         totalSectors = sectorTable.getSectors().size();
 
-        final ImmutableMap.Builder<Bounds, SectorReachInformation> informationBuilder
+        final ImmutableMap.Builder<Bounds, CountComparison> countBuilder
                 = ImmutableMap.builder();
-
         for (final Sector sector : sectorTable.getSectors()) {
-            final Map<TaskIdentifier, MovementPath> sectorPaths
-                    = scoreCard.getBestPaths(sector);
-            if (!sectorPaths.isEmpty()) {
-                final ImmutableSet.Builder<MovementPath> bestPathsBuilder
-                        = ImmutableSet.builder();
-                int count = 0;
-                for (final MovementPath taskPath : sectorPaths.values()) {
-                    if (taskPath != null) {
-                        bestPathsBuilder.add(taskPath);
-                        count++;
-                    }
-                }
+            final int count = scoreCard.hasPath(sector)
+                    ? scoreCard.getReachedCount(sector) : 0;
+            final int trialCount = trialScoreCard.hasPath(sector)
+                    ? trialScoreCard.getReachedCount(sector) : 0;
+            if (count != 0 && trialCount != 0) {
                 final Bounds bounds = new Bounds(sector);
-                final SectorReachInformation information
-                        = new SectorReachInformation(
-                                bestPathsBuilder.build(), count);
-                informationBuilder.put(bounds, information);
+                final CountComparison comparison
+                        = new CountComparison(count, trialCount);
+                countBuilder.put(bounds, comparison);
             }
         }
-        sectors = informationBuilder.build();
+
+        sectorCounts = countBuilder.build();
+
+        this.centerPoints = centerPoints.stream().map(
+                point -> new Point(point)).collect(Collectors.toSet());
+        sampleCount = centerPoints.size();
+        
+        this.trialName = trialName;
     }
 }

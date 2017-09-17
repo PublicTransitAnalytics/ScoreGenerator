@@ -16,10 +16,10 @@
 package com.publictransitanalytics.scoregenerator.rider;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoints;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 
 /**
  * RiderFactory that produces riders that move backwards through time.
@@ -27,9 +27,9 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class RetrospectiveRiderBehaviorFactory implements RiderBehaviorFactory {
+public class RetrospectiveRiderFactory implements RiderFactory {
 
-    final EntryPoints entryPoints;
+    final TransitNetwork entryPoints;
 
     @Override
     public ScheduleReader getScheduleReader() {

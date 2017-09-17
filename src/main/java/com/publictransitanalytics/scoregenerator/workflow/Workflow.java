@@ -15,10 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.ModeType;
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
-import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
-import java.time.Duration;
+import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
@@ -27,13 +24,10 @@ import java.util.concurrent.ExecutionException;
  *
  * @author Public Transit Analytics
  */
-public interface Workflow {
+public interface Workflow<S extends ScoreCard> {
 
-    void getPathsForTasks(
-            final Duration duration, final Set<ModeType> allowedModes,
-            final RiderBehaviorFactory riderFactory,
-            final ReachabilityClient reachabilityClient,
-            final Set<TaskIdentifier> tasks) throws
-            InterruptedException, ExecutionException;
+    void calculate(
+            final Set<RangeCalculation<S>> calculations)
+            throws InterruptedException, ExecutionException;
 
 }

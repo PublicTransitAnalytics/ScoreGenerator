@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRider;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoints;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
@@ -31,6 +30,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import org.junit.Assert;
 import org.junit.Test;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 
 /**
  *

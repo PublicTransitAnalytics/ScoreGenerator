@@ -17,10 +17,10 @@ package com.publictransitanalytics.scoregenerator.rider;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoints;
 import java.time.LocalDateTime;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 
 /**
  *
@@ -29,7 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 class RetrospectiveScheduleReader implements ScheduleReader {
 
-    private final EntryPoints entryPoints;
+    private final TransitNetwork entryPoints;
 
     @Override
     public Set<EntryPoint> getEntryPoints(

@@ -19,16 +19,16 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.Rider;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
-import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 
 /**
  *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class PreloadedRiderBehaviorFactory implements RiderBehaviorFactory {
+public class PreloadedRiderBehaviorFactory implements RiderFactory {
 
     private final PreloadedScheduleReader reader;
     private final PreloadedRider rider;

@@ -15,17 +15,22 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
-import java.util.List;
-import lombok.Value;
+import com.bitvantage.bitvantagecaching.Key;
+import com.bitvantage.bitvantagecaching.KeyMaterializer;
+import com.bitvantage.bitvantagecaching.RangedKey;
+import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Store;
+import java.nio.file.Path;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class Comparison {
-    
-    private final String files;
-    private final List<ComparisonOperation> operations;
-    
+public interface StoreFactory {
+
+    <K extends Key, V> Store<K, V> getStore(Path path, Class<V> valueClass);
+
+    <K extends RangedKey<K>, V> RangedStore getRangedStore(
+            Path path, KeyMaterializer<K> keyMaterializer, Class<V> valueClass);
+
 }

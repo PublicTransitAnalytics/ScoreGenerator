@@ -32,9 +32,7 @@ import java.math.RoundingMode;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.batik.dom.GenericDOMImplementation;
-import org.apache.batik.svggen.SVGGraphics2D;
-import org.apache.batik.svggen.SVGGraphics2DIOException;
+import org.jfree.graphics2d.svg.SVGGraphics2D;
 import org.opensextant.geodesy.Geodetic2DArc;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
@@ -86,71 +84,97 @@ public class MapGenerator {
     private final static Color HIGH_OUTLIER_COLOR = new Color(0x00, 0x00, 0x00);
     private final static Color LOW_OUTLIER_COLOR = new Color(0xff, 0xff, 0xff);
 
-    private final String OUTPUT_FILE = "map.svg";
+    private final String OUTPUT_FILENAME_TEMPLATE = "%s.svg";
 
     public void makeThresholdMap(final String boundsString,
                                  final Map<String, Integer> reachCounts,
-                                 final int threshold) throws IOException {
-        final Map<Geodetic2DBounds, Color> sectorColors
-                = reachCounts.entrySet().stream().collect(Collectors.toMap(
-                        entry -> getBounds(entry.getKey()),
-                        entry -> entry.getValue() > threshold ? Color.GREEN :
-                                Color.LIGHT_GRAY));
-        makeMap(getBounds(boundsString), sectorColors);
-    }
-
-    public void makeRangeMap(final SectorTable sectorTable,
-                             final ScoreCard scoreCard)
-            throws SVGGraphics2DIOException, IOException {
-
-        final Geodetic2DBounds bounds = sectorTable.getBounds();
-
-        final Map<Geodetic2DBounds, Color> sectorBounds
-                = sectorTable.getSectors().stream().collect(Collectors.toMap(
-                        sector -> sector.getBounds(),
-                        sector -> getColor(getColorLevel(
-                                scoreCard.getReachedCount(sector)))));
-        makeMap(bounds, sectorBounds);
-    }
-
-    public void makeRangeMap(final String boundsString,
-                             final Map<String, Integer> reachCounts)
+                                 final int threshold, final String outputName)
             throws IOException {
         final Map<Geodetic2DBounds, Color> sectorColors
                 = reachCounts.entrySet().stream().collect(Collectors.toMap(
                         entry -> getBounds(entry.getKey()),
-                        entry -> getColor(getColorLevel(entry.getValue()))));
-        makeMap(getBounds(boundsString), sectorColors);
+                        entry -> entry.getValue() > threshold ? Color.GREEN
+                        : Color.LIGHT_GRAY));
+        makeMap(outputName, getBounds(boundsString), sectorColors);
+    }
+
+    public void makeRangeMap(final SectorTable sectorTable,
+                             final ScoreCard scoreCard,
+                             final double lowEnd, final double highEnd,
+                             final String outputName)
+            throws IOException {
+
+        final Geodetic2DBounds bounds = sectorTable.getBounds();
+        final int taskCount = scoreCard.getTaskCount();
+
+        final Map<Geodetic2DBounds, Color> sectorColors
+                = sectorTable.getSectors().stream().collect(Collectors.toMap(
+                        sector -> sector.getBounds(),
+                        sector -> getColor(getColorLevel(
+                                scoreCard.getReachedCount(sector),
+                                taskCount, lowEnd, highEnd))));
+        makeMap(outputName, bounds, sectorColors);
+    }
+
+    public void makeRangeMap(final String boundsString,
+                             final Map<String, Integer> reachCounts,
+                             final int taskCount, final double lowEnd,
+                             final double highEnd, final String outputName)
+            throws IOException {
+
+        final Map<Geodetic2DBounds, Color> sectorColors
+                = reachCounts.entrySet().stream().collect(Collectors.toMap(
+                        entry -> getBounds(entry.getKey()),
+                        entry -> getColor(getColorLevel(
+                                entry.getValue(), taskCount, lowEnd,
+                                highEnd))));
+        makeMap(outputName, getBounds(boundsString), sectorColors);
+    }
+
+    public void makeComparativeMap(
+            final String output, final SectorTable sectorTable,
+            final ScoreCard scoreCard, final ScoreCard trialScoreCard,
+            final double range, final String outputName) throws IOException {
+        final Geodetic2DBounds bounds = sectorTable.getBounds();
+
+        final Map<Geodetic2DBounds, Color> sectorColors
+                = sectorTable.getSectors().stream().collect(Collectors.toMap(
+                        sector -> sector.getBounds(),
+                        sector -> getComparativeColor(getComparativeColorLevel(
+                                scoreCard.getReachedCount(sector),
+                                trialScoreCard.getReachedCount(sector),
+                                range))));
+
+        makeMap(outputName, bounds, sectorColors);
     }
 
     public void makeComparativeMap(
             final String boundsString,
             final Map<String, Integer> baseReachCounts,
-            final Map<String, Integer> trialReachCounts) throws IOException {
+            final Map<String, Integer> trialReachCounts, final double range,
+            final String outputName) throws IOException {
 
         final Set<String> boundsStringSet = Sets.union(
                 baseReachCounts.keySet(), trialReachCounts.keySet());
 
-        final Map<Geodetic2DBounds, Integer> sectorBounds
+        final Map<Geodetic2DBounds, Color> sectorColors
                 = boundsStringSet.stream().collect(Collectors.toMap(
                         key -> getBounds(key),
-                        key -> getComparativeColorLevel(
+                        key -> getComparativeColor(getComparativeColorLevel(
                                 baseReachCounts.getOrDefault(key, 0),
-                                trialReachCounts.getOrDefault(key, 0))));
-        makeComparativeMap(getBounds(boundsString), sectorBounds);
+                                trialReachCounts.getOrDefault(key, 0),
+                                range))));
+        makeMap(outputName, getBounds(boundsString), sectorColors);
     }
 
-    private void makeMap(final Geodetic2DBounds bounds,
+    private void makeMap(final String outputName, final Geodetic2DBounds bounds,
                          final Map<Geodetic2DBounds, Color> sectorColors)
             throws IOException {
-        final SVGGraphics2D svgGenerator = createDocument();
+        final SVGGraphics2D svgGenerator = createDocument(bounds);
 
         final Geodetic2DPoint topCorner = new Geodetic2DPoint(
                 bounds.getWestLon(), bounds.getNorthLat());
 
-        svgGenerator.setSVGCanvasSize(new Dimension(
-                (int) (getLonSize(bounds) + 0.5),
-                (int) (getLatSize(bounds) + 0.5)));
         svgGenerator.setBackground(Color.DARK_GRAY);
         svgGenerator.setStroke(new BasicStroke(17.0F));
         for (final Geodetic2DBounds sectorBounds : sectorColors.keySet()) {
@@ -162,48 +186,17 @@ public class MapGenerator {
             svgGenerator.setPaint(Color.GRAY);
             svgGenerator.draw(rectangle);
         }
-        boolean useCSS = true; // we want to use CSS style attributes
-        final Writer out = new FileWriter(new File(OUTPUT_FILE));
-        svgGenerator.stream(out, useCSS);
+        final Writer out = new FileWriter(new File(
+                String.format(OUTPUT_FILENAME_TEMPLATE, outputName)));
+        out.write(svgGenerator.getSVGDocument());
+        out.close();
     }
 
-    private void makeComparativeMap(
-            final Geodetic2DBounds bounds,
-            final Map<Geodetic2DBounds, Integer> sectorBuckets)
-            throws IOException {
-        final SVGGraphics2D svgGenerator = createDocument();
+    private static SVGGraphics2D createDocument(final Geodetic2DBounds bounds) {
 
-        final Geodetic2DPoint topCorner = new Geodetic2DPoint(
-                bounds.getWestLon(), bounds.getNorthLat());
-
-        svgGenerator.setSVGCanvasSize(new Dimension(
-                (int) (getLonSize(bounds) + 0.5),
-                (int) (getLatSize(bounds) + 0.5)));
-        svgGenerator.setBackground(Color.DARK_GRAY);
-        svgGenerator.setStroke(new BasicStroke(17.0F));
-        for (final Geodetic2DBounds sectorBounds : sectorBuckets.keySet()) {
-            final Shape rectangle
-                    = getRectangle(bounds, sectorBounds, topCorner);
-
-            svgGenerator.setPaint(getComparativeColor(
-                    sectorBuckets.get(sectorBounds)));
-            svgGenerator.fill(rectangle);
-            svgGenerator.setPaint(Color.GRAY);
-            svgGenerator.draw(rectangle);
-        }
-        boolean useCSS = true; // we want to use CSS style attributes
-        final Writer out = new FileWriter(new File(OUTPUT_FILE));
-        svgGenerator.stream(out, useCSS);
-    }
-
-    private static SVGGraphics2D createDocument() {
-        final DOMImplementation domImpl = GenericDOMImplementation
-                .getDOMImplementation();
-
-        final String svgNS = "http://www.w3.org/2000/svg";
-        final Document document = domImpl.createDocument(svgNS, "svg", null);
-
-        final SVGGraphics2D svgGenerator = new SVGGraphics2D(document);
+        final SVGGraphics2D svgGenerator = new SVGGraphics2D(
+                (int) (getLonSize(bounds) + 0.5), 
+                (int) (getLatSize(bounds) + 0.5));
         return svgGenerator;
     }
 
@@ -258,12 +251,14 @@ public class MapGenerator {
         return rectangle;
     }
 
-    private int getColorLevel(final int reachCount) {
+    private int getColorLevel(final int reachCount, final int samples,
+                              final double lowEnd, final double highEnd) {
         return BigDecimal.valueOf(reachCount)
-                .divide(BigDecimal.valueOf(6063 * 1440), 10,
+                .divide(BigDecimal.valueOf(samples), 10,
                         RoundingMode.HALF_EVEN)
-                .divide(BigDecimal.valueOf(0.02), 0, RoundingMode.FLOOR)
-                .intValueExact();
+                .subtract(BigDecimal.valueOf(lowEnd))
+                .divide(BigDecimal.valueOf(highEnd - lowEnd), 0,
+                        RoundingMode.FLOOR).intValueExact();
     }
 
     private static Color getColor(final int colorLevel) {
@@ -271,12 +266,12 @@ public class MapGenerator {
     }
 
     private static Color getComparativeColor(final int colorLevel) {
-        if (colorLevel > 9) {
+        if (colorLevel > NINE_ORANGE_LEVELS.length) {
             System.err.println(String.format("higher outlier %d", colorLevel));
             return HIGH_OUTLIER_COLOR;
         } else if (colorLevel > 0) {
             return NINE_ORANGE_LEVELS[colorLevel - 1];
-        } else if (colorLevel < -9) {
+        } else if (colorLevel < -NINE_BLUE_LEVELS.length) {
             System.err.println(String.format("low outlier %d", colorLevel));
             return HIGH_OUTLIER_COLOR;
         } else if (colorLevel < 0) {
@@ -287,19 +282,28 @@ public class MapGenerator {
     }
 
     private int getComparativeColorLevel(final int baseReachCount,
-                                         final int trialReachCount) {
-        final BigDecimal change = BigDecimal.valueOf(
-                trialReachCount - baseReachCount);
-        final BigDecimal changeRatio = change.divide(
-                BigDecimal.valueOf(baseReachCount), 10, RoundingMode.HALF_EVEN);
-        final BigDecimal scaled = changeRatio.divide(
-                BigDecimal.valueOf(0.0525), 0, RoundingMode.DOWN);
+                                         final int trialReachCount,
+                                         final double range) {
+        if (baseReachCount == 0 && trialReachCount == 0) {
+            return 0;
+        } else if (baseReachCount == 0) {
+            return NINE_ORANGE_LEVELS.length + 1;
+        } else {
+            final BigDecimal change = BigDecimal.valueOf(
+                    trialReachCount - baseReachCount);
+            final BigDecimal changeRatio = change.divide(
+                    BigDecimal.valueOf(baseReachCount), 10,
+                    RoundingMode.HALF_EVEN);
+            final BigDecimal scaled = changeRatio
+                    .multiply(BigDecimal.valueOf(NINE_ORANGE_LEVELS.length))
+                    .divide(BigDecimal.valueOf(range), 0, RoundingMode.DOWN);
 
-        System.err.println(String.format(
-                "trial %d base %d change %s scaled %s",
-                trialReachCount, baseReachCount, changeRatio, scaled));
+            System.err.println(String.format(
+                    "trial %d base %d change %s scaled %s",
+                    trialReachCount, baseReachCount, changeRatio, scaled));
 
-        return scaled.intValueExact();
+            return scaled.intValueExact();
+        }
     }
 
     private static Geodetic2DBounds getBounds(final String boundsString) {

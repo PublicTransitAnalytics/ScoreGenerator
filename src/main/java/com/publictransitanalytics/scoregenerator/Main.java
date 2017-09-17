@@ -15,21 +15,15 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
-import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
-import com.bitvantage.bitvantagecaching.Cache;
-import com.bitvantage.bitvantagecaching.CachingStore;
-import com.bitvantage.bitvantagecaching.InMemoryHashStore;
+import com.publictransitanalytics.scoregenerator.comparison.Comparison;
+import com.publictransitanalytics.scoregenerator.comparison.ComparisonOperation;
+import com.publictransitanalytics.scoregenerator.comparison.CalculationTransformer;
+import com.publictransitanalytics.scoregenerator.workflow.Environment;
+import com.publictransitanalytics.scoregenerator.workflow.RangeCalculation;
 import com.bitvantage.bitvantagecaching.LmdbStore;
-import com.bitvantage.bitvantagecaching.CachingRangedStore;
-import com.bitvantage.bitvantagecaching.InMemoryTreeStore;
-import com.bitvantage.bitvantagecaching.RangedCache;
-import com.bitvantage.bitvantagecaching.RangedLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
-import com.bitvantage.bitvantagecaching.ReaderControlledRangedStore;
-import com.bitvantage.bitvantagecaching.ReaderControlledStore;
 import com.bitvantage.bitvantagecaching.Store;
-import com.bitvantage.bitvantagecaching.UnboundedCache;
-import com.bitvantage.bitvantagecaching.UnboundedRangedCache;
+import com.google.common.collect.BiMap;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingRouteDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingStopDetailsDirectory;
@@ -65,12 +59,12 @@ import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.output.QualifiedPointAccessibility;
-import com.publictransitanalytics.scoregenerator.rider.ForwardRiderBehaviorFactory;
-import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderBehaviorFactory;
+import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
+import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.walking.BackwardTimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.ForwardTimeTracker;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -96,10 +90,12 @@ import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Multimap;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.BoundsKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.GraphhopperLocalDistanceClient;
@@ -108,29 +104,39 @@ import com.publictransitanalytics.scoregenerator.geography.NearestPointEndpointD
 import com.publictransitanalytics.scoregenerator.geography.GeoJsonWaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.WaterStatus;
+import com.publictransitanalytics.scoregenerator.geography.StoredWaterDetector;
+import com.publictransitanalytics.scoregenerator.output.ComparativeNetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.MapGenerator;
 import com.publictransitanalytics.scoregenerator.output.NetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.PointAccessibility;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
-import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingEntryPoints;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoints;
+import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingTransitNetwork;
 import java.io.FileReader;
 import java.io.Reader;
 import java.io.StringReader;
-import java.nio.file.Files;
 import org.opensextant.geodesy.Geodetic2DBounds;
-import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
-import com.publictransitanalytics.scoregenerator.scoring.CountScoreCard;
-import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeExecutor;
-import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeWorkflow;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 import com.publictransitanalytics.scoregenerator.workflow.Workflow;
+import java.util.Map;
+import java.util.Optional;
+import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
+import com.publictransitanalytics.scoregenerator.scoring.CountScoreCard;
+import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
+import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
+import com.publictransitanalytics.scoregenerator.scoring.PathScoreCardFactory;
+import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
+import com.publictransitanalytics.scoregenerator.workflow.TaskGroupIdentifier;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
+import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 @Slf4j
 /**
@@ -170,6 +176,7 @@ public class Main {
     private static final String ROUTE_DETAILS_STORE = "route_details_store";
     private static final String TRIP_DETAILS_STORE = "trip_details_store";
     private static final String STOP_DETAILS_STORE = "stop_details_store";
+    private static final String WATER_STORE = "water_store";
 
     private static final String GTFS_DIRECTORY = "gtfs";
 
@@ -189,6 +196,7 @@ public class Main {
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
             ExecutionException, WaterDetectorException {
+        final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
 
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
                 "ScoreGenerator").defaultHelp(true)
@@ -198,9 +206,9 @@ public class Main {
         parser.addArgument("-i", "--samplingInterval");
         parser.addArgument("-d", "--baseDirectory");
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
-        parser.addArgument("-p", "--poolSize");
-        parser.addArgument("-t", "--taskSize");
-        parser.addArgument("-c", "--compare");
+        parser.addArgument("-n", "--inMemCache").action(Arguments.storeTrue());
+        parser.addArgument("-c", "--comparisonFile");
+        parser.addArgument("-o", "--outputName");
 
         final Subparsers subparsers = parser.addSubparsers().dest("command");
 
@@ -241,7 +249,13 @@ public class Main {
         final String baseDirectoryString = namespace.get("baseDirectory");
         final Path root = Paths.get(baseDirectoryString);
 
-        final String key = namespace.get("apiKey");
+        final String files = namespace.get("files");
+
+        final String comparisonFile = namespace.get("comparisonFile");
+        final Comparison comparison = (comparisonFile == null) ? null
+                : serializer.fromJson(new String(Files.readAllBytes(
+                        Paths.get(comparisonFile)), StandardCharsets.UTF_8),
+                                      Comparison.class);
 
         final Boolean backwardObject = namespace.getBoolean("backward");
         final boolean backward
@@ -253,54 +267,68 @@ public class Main {
                 ? Duration.ofMinutes(Long.valueOf(samplingIntervalString))
                 : null;
 
+        final String outputName = namespace.get("outputName");
+
         final String command = namespace.get("command");
 
-        final int poolSize = Integer.valueOf(namespace.get("poolSize"));
-
-        final int taskSize = Integer.valueOf(namespace.get("taskSize"));
-
-        final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
         final LocalFilePublisher publisher = new LocalFilePublisher();
 
+        final Store<BoundsKey, WaterStatus> waterStore = new LmdbStore<>(
+                root.resolve(files).resolve(WATER_STORE), WaterStatus.class);
+
         final Path waterFilePath = root.resolve(WATER_BODIES_FILE);
-        final WaterDetector waterDetector
-                = new GeoJsonWaterDetector(waterFilePath);
+        final WaterDetector waterDetector = new StoredWaterDetector(
+                new GeoJsonWaterDetector(waterFilePath), waterStore);
 
         final NearestPointEndpointDeterminer endpointDeterminer
                 = new NearestPointEndpointDeterminer();
+
+        final Boolean inMemCacheObject = namespace.getBoolean("inMemCache");
+        final StoreFactory storeFactory
+                = (inMemCacheObject == null || inMemCacheObject == false)
+                        ? new NoCacheStoreFactory()
+                        : new UnboundedCacheStoreFactory();
+
         final DistanceClient distanceClient
-                = buildDistanceClient(root, key, endpointDeterminer,
+                = buildDistanceClient(root, storeFactory, endpointDeterminer,
                                       waterDetector);
-        
+
+        final Set<ModeType> modes = ImmutableSet.of(ModeType.TRANSIT,
+                                                    ModeType.WALKING);
+
         final SectorTable sectorTable = generateSectors(waterDetector);
 
         final MapGenerator mapGenerator = new MapGenerator();
 
         try {
             if ("generatePointAccessibility".equals(command)) {
-                final PathScoreCard scoreCard = new PathScoreCard();
-
+                final PathScoreCardFactory scoreCardFactory
+                        = new PathScoreCardFactory();
                 generatePointAccessibility(
-                        namespace, root, scoreCard, sectorTable, backward,
-                        samplingInterval, durations, distanceClient,
-                        endpointDeterminer, publisher, serializer,
-                        mapGenerator);
+                        namespace, root, files, storeFactory, scoreCardFactory,
+                        sectorTable, backward, samplingInterval, durations,
+                        distanceClient, endpointDeterminer, modes, comparison,
+                        publisher, serializer, mapGenerator, outputName);
             } else if ("generateNetworkAccessibility".equals(command)) {
-                final ScoreCard scoreCard = new CountScoreCard();
+                final ScoreCardFactory scoreCardFactory
+                        = new CountScoreCardFactory();
 
                 generateNetworkAccessibility(
-                        namespace, root, scoreCard, sectorTable, backward,
-                        samplingInterval, durations, waterDetector,
-                        distanceClient, endpointDeterminer, publisher,
-                        serializer, mapGenerator);
+                        namespace, root, files, storeFactory, scoreCardFactory,
+                        sectorTable, backward, samplingInterval, durations,
+                        waterDetector, distanceClient, endpointDeterminer, modes,
+                        comparison, publisher, serializer, mapGenerator,
+                        outputName);
             } else if ("generateSampledNetworkAccessibility".equals(command)) {
-                final ScoreCard scoreCard = new CountScoreCard();
+                final ScoreCardFactory scoreCardFactory
+                        = new CountScoreCardFactory();
 
                 generateSampledNetworkAccessibility(
-                        namespace, root, scoreCard, sectorTable, backward,
-                        samplingInterval, durations, waterDetector,
-                        distanceClient, endpointDeterminer, publisher,
-                        serializer, mapGenerator);
+                        namespace, root, files, storeFactory, scoreCardFactory,
+                        sectorTable, backward, samplingInterval, durations,
+                        waterDetector, distanceClient, endpointDeterminer, modes,
+                        comparison, publisher, serializer, mapGenerator,
+                        outputName);
             }
         } finally {
 
@@ -338,41 +366,45 @@ public class Main {
         return latestTime;
     }
 
-    private static EntryPoints buildEntryPoints(
-            final Path root, final String files,
-            final LocalDateTime earliestTime, final LocalDateTime latestTime,
+    private static TransitNetwork buildTransitNetwork(
+            final StoreFactory storeFactory, final Path root,
+            final String files, final LocalDateTime earliestTime,
+            final LocalDateTime latestTime,
             final ImmutableBiMap<String, TransitStop> stopIdMap)
             throws IOException, InterruptedException {
 
         final ServiceTypeCalendar serviceTypeCalendar
-                = buildServiceTypeCalendar(root, files);
+                = buildServiceTypeCalendar(storeFactory, root, files);
         final TripDetailsDirectory tripDetailsDirectory
-                = buildTripDetailsDirectory(root, files);
+                = buildTripDetailsDirectory(storeFactory, root, files);
         final RouteDetailsDirectory routeDetailsDirectory
-                = buildRouteDetailsDirectory(root, files);
+                = buildRouteDetailsDirectory(storeFactory, root, files);
         final StopTimesDirectory stopTimesDirectory
-                = buildStopTimesDirectory(root, files);
+                = buildStopTimesDirectory(storeFactory, root, files);
 
-        final EntryPoints entryPoints = buildEntryPoints(
+        final TransitNetwork transitNetwork = Main.buildTransitNetwork(
                 earliestTime, latestTime, serviceTypeCalendar,
                 tripDetailsDirectory, routeDetailsDirectory, stopTimesDirectory,
                 stopIdMap);
 
-        return entryPoints;
+        return transitNetwork;
     }
 
     private static void generateNetworkAccessibility(
-            final Namespace namespace, final Path root,
-            final ScoreCard scoreCard, final SectorTable sectorTable,
-            final boolean backward, final Duration samplingInterval,
+            final Namespace namespace, final Path root, final String files,
+            final StoreFactory storeFactory,
+            final ScoreCardFactory scoreCardFactory,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
             final NavigableSet<Duration> durations,
             final WaterDetector waterDetector,
             final DistanceClient distanceClient,
             final NearestPointEndpointDeterminer endpointDeterminer,
+            final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
-            final MapGenerator mapGenerator)
+            final MapGenerator mapGenerator, final String outputName)
             throws IOException, InterruptedException, ExecutionException {
-        final String files = namespace.get("files");
+
         final LocalDateTime startTime
                 = LocalDateTime.parse(namespace.get("startTime"));
 
@@ -385,53 +417,57 @@ public class Main {
                 .map(sector -> new Landmark(
                 sector, sector.getCanonicalPoint()))
                 .collect(Collectors.toSet());
-
-        final Set<TaskIdentifier> tasks = getTasks(
-                centerPoints, startTime, endTime, samplingInterval);
         try {
-            executeTasks(tasks, root, files, scoreCard, sectorTable,
-                         centerPoints, startTime, endTime, backward,
-                         distanceClient, endpointDeterminer, durations.last());
-
-            final NetworkAccessibility map = new NetworkAccessibility(
-                    tasks, scoreCard, sectorTable, centerPoints, startTime,
-                    endTime, durations.last(), samplingInterval, backward);
-            publisher.publish(serializer.toJson(map));
-            mapGenerator.makeRangeMap(sectorTable, scoreCard);
+            final BiMap<Optional<Comparison>, RangeCalculation<CountScoreCard>> result
+                    = calculate(root, files, storeFactory, scoreCardFactory,
+                                sectorTable, centerPoints, startTime, endTime,
+                                samplingInterval, backward, distanceClient,
+                                endpointDeterminer, durations.last(),
+                                allowedModes, comparison);
+            publishNetworkAccessibility(comparison, result, sectorTable,
+                                        centerPoints, startTime, endTime,
+                                        durations, samplingInterval, backward,
+                                        publisher, serializer, mapGenerator,
+                                        outputName);
         } finally {
             distanceClient.close();
         }
     }
 
-    private static Set<TaskIdentifier> getTasks(
+    private static Multimap<TaskGroupIdentifier, LocalDateTime> getRangedTasks(
             final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Duration samplingInterval) {
-        final ImmutableSet.Builder<TaskIdentifier> tasksBuilder
-                = ImmutableSet.builder();
+
+        final ImmutableListMultimap.Builder<TaskGroupIdentifier, LocalDateTime> resultBuilder
+                = ImmutableListMultimap.builder();
 
         for (final PointLocation centerPoint : centerPoints) {
-            LocalDateTime time = startTime;
-            while (time.isBefore(endTime)) {
-                final TaskIdentifier task = new TaskIdentifier(
-                        time, centerPoint, "generatePointAccessibility");
-                tasksBuilder.add(task);
-                time = time.plus(samplingInterval);
+            final TaskGroupIdentifier taskGroup
+                    = new TaskGroupIdentifier(centerPoint, "");
+            LocalDateTime time = endTime;
+            while (time.isAfter(startTime)) {
+                time = time.minus(samplingInterval);
+                resultBuilder.put(taskGroup, time);
             }
         }
-        return tasksBuilder.build();
+        return resultBuilder.build();
     }
 
-    private static void executeTasks(
-            final Set<TaskIdentifier> tasks, final Path root,
-            final String files, final ScoreCard scoreCard,
+    private static <S extends ScoreCard> BiMap<Optional<Comparison>, RangeCalculation<S>> calculate(
+            final Path root, final String files,
+            final StoreFactory storeFactory,
+            final ScoreCardFactory<S> scoreCardFactory,
             final SectorTable sectorTable,
             final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
-            final boolean backward, final DistanceClient distanceClient,
+            final Duration samplingInterval, final boolean backward,
+            final DistanceClient distanceClient,
             final EndpointDeterminer endpointDeterminer,
-            final Duration longestDuration)
+            final Duration longestDuration, final Set<ModeType> allowedModes,
+            final Comparison comparison)
             throws InterruptedException, IOException, ExecutionException {
+
         final StopDetailsDirectory stopDetailsDirectory
                 = buildStopDetailsDirectory(root, files);
 
@@ -448,20 +484,20 @@ public class Main {
         final LocalDateTime latestTime = getLatestTime(
                 startTime, endTime, longestDuration, backward);
 
-        final EntryPoints entryPoints = buildEntryPoints(
-                root, files, earliestTime, latestTime, stopIdMap);
+        final TransitNetwork transitNetwork = buildTransitNetwork(
+                storeFactory, root, files, earliestTime, latestTime, stopIdMap);
 
-        final RiderBehaviorFactory riderFactory;
+        final RiderFactory riderFactory;
         final TimeTracker timeTracker;
         final DistanceFilter distanceFilter;
         if (!backward) {
-            riderFactory = new ForwardRiderBehaviorFactory(entryPoints);
+            riderFactory = new ForwardRiderFactory(transitNetwork);
             timeTracker = new ForwardTimeTracker();
             distanceFilter = new ManyDestinationsDistanceFilter(
                     distanceClient);
         } else {
-            riderFactory = new RetrospectiveRiderBehaviorFactory(
-                    entryPoints);
+            riderFactory = new RetrospectiveRiderFactory(
+                    transitNetwork);
             timeTracker = new BackwardTimeTracker();
             distanceFilter = new ManyOriginsDistanceFilter(
                     distanceClient);
@@ -470,47 +506,76 @@ public class Main {
         final DistanceEstimator distanceEstimator
                 = buildDistanceEstimator(
                         sectorTable, endpointDeterminer, centerPoints,
-                        pointIdMap, longestDuration, root, files);
+                        pointIdMap, longestDuration, storeFactory, root, files);
 
-        try {
-            final ReachabilityClient reachabilityClient
-                    = buildReachabilityClient(distanceFilter, distanceEstimator,
-                                              timeTracker, locationIdMap);
-            final LocationExecutor locationExecutor
-                    = new ParallelTaskExecutor(
-                            new DynamicProgrammingRangeExecutor(
-                                    MAX_DEPTH, scoreCard, timeTracker,
-                                    longestDuration,
-                                    ImmutableSet.of(ModeType.WALKING,
-                                                    ModeType.TRANSIT),
-                                    riderFactory, reachabilityClient));
-            final Workflow workflow
-                    = new DynamicProgrammingRangeWorkflow(locationExecutor);
+        final Multimap<TaskGroupIdentifier, LocalDateTime> timesByTask
+                = getRangedTasks(centerPoints, startTime, endTime,
+                                 samplingInterval);
+        final ReachabilityClient reachabilityClient
+                = buildReachabilityClient(distanceFilter, distanceEstimator,
+                                          timeTracker, locationIdMap);
+        final S scoreCard = scoreCardFactory.makeScoreCard(timesByTask.size());
 
-            workflow.getPathsForTasks(
-                    longestDuration,
-                    ImmutableSet.of(ModeType.TRANSIT, ModeType.WALKING),
-                    riderFactory, reachabilityClient, tasks);
-        } finally {
-            
-            distanceEstimator.close();
+        final RangeCalculation calculation = new RangeCalculation(
+                timesByTask, scoreCard, distanceClient,
+                timeTracker, allowedModes, transitNetwork, backward,
+                reachabilityClient, riderFactory);
+        final ImmutableBiMap.Builder<Optional<Comparison>, RangeCalculation<S>> resultBuilder
+                = ImmutableBiMap.builder();
+        resultBuilder.put(Optional.empty(), calculation);
+
+        final Environment environment = new Environment(
+                sectorTable, longestDuration, MAX_DEPTH);
+
+        if (comparison != null) {
+            final CalculationTransformer transformer
+                    = new CalculationTransformer(calculation, scoreCardFactory);
+            for (final ComparisonOperation operation
+                         : comparison.getOperations()) {
+                switch (operation.getOperator()) {
+                case DELETE:
+                    transformer.deleteRoute(operation.getRoute());
+                    break;
+                }
+            }
+            final RangeCalculation trialCalculation = transformer.transform();
+            log.info(
+                    "Trial in service time = {}; original in service time = {} ",
+                    trialCalculation.getTransitNetwork().getInServiceTime(),
+                    calculation.getTransitNetwork().getInServiceTime());
+            resultBuilder.put(Optional.of(comparison), trialCalculation);
         }
 
+        final BiMap<Optional<Comparison>, RangeCalculation<S>> calculations
+                = resultBuilder.build();
+        try {
+
+            final Workflow workflow = new ParallelTaskExecutor(
+                    new DynamicProgrammingRangeExecutor(environment));
+
+            workflow.calculate(calculations.values());
+            return calculations;
+
+        } finally {
+            distanceEstimator.close();
+        }
     }
 
     private static void generateSampledNetworkAccessibility(
-            final Namespace namespace, final Path root,
-            final ScoreCard scoreCard, final SectorTable sectorTable,
-            final boolean backward, final Duration samplingInterval,
+            final Namespace namespace, final Path root, final String files,
+            final StoreFactory storeFactory,
+            final ScoreCardFactory scoreCardFactory,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
             final NavigableSet<Duration> durations,
             final WaterDetector waterDetector,
             final DistanceClient distanceClient,
-            final NearestPointEndpointDeterminer endpointDeterminer,
+            final EndpointDeterminer endpointDeterminer,
+            final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
-            final MapGenerator mapGenerator)
+            final MapGenerator mapGenerator, final String outputName)
             throws IOException, InterruptedException, ExecutionException {
 
-        final String files = namespace.get("files");
         final LocalDateTime startTime
                 = LocalDateTime.parse(namespace.get("startTime"));
 
@@ -530,36 +595,85 @@ public class Main {
                 sector, sector.getCanonicalPoint()))
                 .collect(Collectors.toSet());
 
-        final Set<TaskIdentifier> tasks = getTasks(
-                centerPoints, startTime, endTime, samplingInterval);
-
         try {
-            executeTasks(tasks, root, files, scoreCard, sectorTable,
-                         centerPoints, startTime, endTime, backward,
-                         distanceClient, endpointDeterminer, durations.last());
-
-            final NetworkAccessibility map
-                    = new NetworkAccessibility(
-                            tasks, scoreCard, sectorTable, centerPoints,
-                            startTime, endTime, durations.last(),
-                            samplingInterval, backward);
-            publisher.publish(serializer.toJson(map));
-            mapGenerator.makeRangeMap(sectorTable, scoreCard);
+            final BiMap<Optional<Comparison>, RangeCalculation<CountScoreCard>> result
+                    = calculate(root, files, storeFactory, scoreCardFactory,
+                                sectorTable, centerPoints, startTime, endTime,
+                                samplingInterval, backward, distanceClient,
+                                endpointDeterminer, durations.last(),
+                                allowedModes, comparison);
+            publishNetworkAccessibility(comparison, result, sectorTable,
+                                        centerPoints, startTime, endTime,
+                                        durations, samplingInterval, backward,
+                                        publisher, serializer, mapGenerator,
+                                        outputName);
         } finally {
             distanceClient.close();
         }
+    }
 
+    private static void publishNetworkAccessibility(
+            final Comparison comparison,
+            final BiMap<Optional<Comparison>, RangeCalculation<CountScoreCard>> calculations,
+            final SectorTable sectorTable,
+            final Set<PointLocation> centerPoints,
+            final LocalDateTime startTime, final LocalDateTime endTime,
+            final NavigableSet<Duration> durations,
+            final Duration samplingInterval, final boolean backward,
+            final LocalFilePublisher publisher, Gson serializer,
+            final MapGenerator mapGenerator, final String outputName)
+            throws InterruptedException, IOException {
+        final RangeCalculation calculation
+                = calculations.get(Optional.<Comparison>empty());
+
+        final ScoreCard scoreCard = calculation.getScoreCard();
+        final int taskCount = calculation.getTimesByTask().size();
+        if (comparison == null) {
+            final NetworkAccessibility map = new NetworkAccessibility(
+                    taskCount, scoreCard, sectorTable, centerPoints,
+                    startTime, endTime, durations.last(), samplingInterval,
+                    backward);
+            publisher.publish(outputName, serializer.toJson(map));
+            mapGenerator.makeRangeMap(sectorTable, scoreCard, 0, 0.2,
+                                      outputName);
+        } else {
+            for (final Optional<Comparison> trialComparison
+                         : calculations.keySet()) {
+                if (trialComparison.isPresent()) {
+                    final RangeCalculation trialCalculation
+                            = calculations.get(trialComparison);
+                    final ScoreCard trialScoreCard
+                            = trialCalculation.getScoreCard();
+                    final int trialTaskCount
+                            = calculation.getTimesByTask().size();
+                    final ComparativeNetworkAccessibility map
+                            = new ComparativeNetworkAccessibility(
+                                    taskCount, trialTaskCount, scoreCard,
+                                    trialScoreCard, sectorTable,
+                                    centerPoints, startTime, endTime,
+                                    durations.last(), samplingInterval,
+                                    backward, "Comp");
+                    publisher.publish(outputName, serializer.toJson(map));
+                    mapGenerator.makeComparativeMap(
+                            outputName, sectorTable, scoreCard, trialScoreCard,
+                            0.2, outputName);
+                }
+            }
+        }
     }
 
     private static void generatePointAccessibility(
-            final Namespace namespace, final Path root,
-            final PathScoreCard scoreCard, final SectorTable sectorTable,
-            final boolean backward, final Duration samplingInterval,
+            final Namespace namespace, final Path root, final String files,
+            final StoreFactory storeFactory,
+            final PathScoreCardFactory scoreCardFactory,
+            final SectorTable sectorTable, final boolean backward,
+            final Duration samplingInterval,
             final NavigableSet<Duration> durations,
             final DistanceClient distanceClient,
             final NearestPointEndpointDeterminer endpointDeterminer,
+            final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
-            final MapGenerator mapGenerator)
+            final MapGenerator mapGenerator, final String outputName)
             throws IOException, InterruptedException, ExecutionException {
 
         final String coordinateString = namespace.get("coordinate");
@@ -568,7 +682,6 @@ public class Main {
         final Landmark centerPoint = buildCenterPoint(
                 sectorTable, centerCoordinate);
 
-        final String files = namespace.get("files");
         final LocalDateTime startTime
                 = LocalDateTime.parse(namespace.get("startTime"));
 
@@ -580,53 +693,22 @@ public class Main {
         final LocalDateTime endTime
                 = (span == null) ? null : startTime.plus(span);
 
-        final String experimentName = "TQPA";
-        final Set<TaskIdentifier> tasks;
-        LocalDateTime lastTime;
-        if (endTime == null && durations.size() == 1) {
-            final TaskIdentifier task = new TaskIdentifier(
-                    startTime, centerPoint, experimentName);
-            tasks = Collections.singleton(task);
-            lastTime = startTime;
-        } else if (durations.size() == 1) {
-            final ImmutableSet.Builder<TaskIdentifier> tasksBuilder
-                    = ImmutableSet.builder();
-            LocalDateTime time = startTime;
-            lastTime = startTime;
-            while (time.isBefore(endTime)) {
-                tasksBuilder.add(new TaskIdentifier(
-                        time, centerPoint, experimentName));
-                lastTime = time;
-                time = time.plus(samplingInterval);
-            }
-            tasks = tasksBuilder.build();
-        } else {
-            throw new UnsupportedOperationException(
-                    "Cannot handle request.");
-        }
-
         try {
-            executeTasks(tasks, root, files, scoreCard, sectorTable,
-                         Collections.singleton(centerPoint), startTime, endTime,
-                         backward, distanceClient, endpointDeterminer,
-                         durations.last());
-
-            if (tasks.size() == 1) {
-                final QualifiedPointAccessibility map
-                        = new QualifiedPointAccessibility(
-                                tasks.iterator().next(), scoreCard, sectorTable,
-                                durations.first(), backward);
-                final String output = serializer.toJson(map);
-                publisher.publish(output);
-            } else {
-                final PointAccessibility map = new PointAccessibility(
-                        tasks, scoreCard, sectorTable, centerPoint, startTime,
-                        lastTime, samplingInterval, durations.first(),
-                        backward);
-                final String output = serializer.toJson(map);
-                publisher.publish(output);
-                mapGenerator.makeRangeMap(sectorTable, scoreCard);
-            }
+            final Map<Optional<Comparison>, RangeCalculation<PathScoreCard>> result
+                    = calculate(root, files, storeFactory, scoreCardFactory,
+                                sectorTable, Collections.singleton(centerPoint),
+                                startTime, endTime, samplingInterval, backward,
+                                distanceClient, endpointDeterminer,
+                                durations.last(), allowedModes, comparison);
+            final RangeCalculation<PathScoreCard> calculation
+                    = result.get(Optional.<Comparison>empty());
+            final PathScoreCard scoreCard = calculation.getScoreCard();
+            final int taskCount = calculation.getTimesByTask().size();
+            final PointAccessibility map = new PointAccessibility(
+                    taskCount, scoreCard, sectorTable, centerPoint, startTime,
+                    endTime, durations.last(), samplingInterval, backward);
+            publisher.publish(outputName, serializer.toJson(map));
+            mapGenerator.makeRangeMap(sectorTable, scoreCard, 0, 1, outputName);
 
         } finally {
             distanceClient.close();
@@ -634,7 +716,7 @@ public class Main {
     }
 
     private static SectorTable generateSectors(
-            final WaterDetector waterDetector) {
+            final WaterDetector waterDetector) throws InterruptedException {
         final SectorTable sectorTable = new SectorTable(
                 SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS,
                 waterDetector);
@@ -662,7 +744,7 @@ public class Main {
                         stopDetails.getStopName(), location);
                 stopMapBuilder.put(stop.getIdentifier(), stop);
             } else {
-                log.info(
+                log.debug(
                         "Stop at {} location {} was skipped because it was not in the sector table.",
                         stopDetails, location);
             }
@@ -716,14 +798,9 @@ public class Main {
     private static StopDetailsDirectory buildStopDetailsDirectory(
             final Path baseDirectory, final String revision)
             throws InterruptedException, IOException {
-        final Store<StopIdKey, StopDetails> stopDetailsBackingStore
+        final Store<StopIdKey, StopDetails> stopDetailsStore
                 = new LmdbStore<>(baseDirectory.resolve(revision).resolve(
-                        STOP_DETAILS_STORE), StopDetails.class
-                );
-        final Cache<StopIdKey, StopDetails> stopDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<StopIdKey, StopDetails> stopDetailsStore = new CachingStore(
-                stopDetailsBackingStore, stopDetailsCache);
+                        STOP_DETAILS_STORE), StopDetails.class);
 
         final Reader stopDetailsReader = new FileReader(
                 baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
@@ -736,22 +813,13 @@ public class Main {
     }
 
     private static DistanceClient buildDistanceClient(
-            final Path baseDirectory, final String key,
+            final Path baseDirectory, final StoreFactory storeFactory,
             final NearestPointEndpointDeterminer endpointDeterminer,
             final WaterDetector waterDetector) {
-        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceBackingStore
-                = new LmdbStore(baseDirectory.resolve(WALKING_DISTANCE_STORE),
-                                WalkingDistanceMeasurement.class
-                );
-        final Store<DistanceCacheKey, WalkingDistanceMeasurement> limitedAccessWalkingDistanceStore
-                = new ReaderControlledStore(walkingDistanceBackingStore, 126);
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceMemoryCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCacheStore
-                = new CachingStore<>(limitedAccessWalkingDistanceStore,
-                                     walkingDistanceMemoryCache);
-        final Cache<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceCache
-                = new UnboundedCache<>(walkingDistanceCacheStore);
+        final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceStore
+                = storeFactory.getStore(
+                        baseDirectory.resolve(WALKING_DISTANCE_STORE),
+                        WalkingDistanceMeasurement.class);
 
         final GraphhopperLocalDistanceClient graphhopperDistanceClient
                 = new GraphhopperLocalDistanceClient(
@@ -759,7 +827,7 @@ public class Main {
                         baseDirectory.resolve(GRAPHHOPPER_DIRECTORY),
                         endpointDeterminer);
         final DistanceClient distanceClient = new CachingDistanceClient(
-                walkingDistanceCache, graphhopperDistanceClient);
+                walkingDistanceStore, graphhopperDistanceClient);
 
         return distanceClient;
     }
@@ -781,34 +849,21 @@ public class Main {
             final EndpointDeterminer endpointDeterminer,
             final Set<PointLocation> centerPoints,
             final ImmutableBiMap<String, PointLocation> pointIdMap,
-            final Duration maxDuration, final Path baseDirectory,
-            final String revision) throws InterruptedException {
+            final Duration maxDuration, final StoreFactory storeFactory,
+            final Path baseDirectory, final String revision)
+            throws InterruptedException {
         final Path candidateDistancesStorePath = baseDirectory.resolve(revision)
                 .resolve(CANDIDATE_STOP_DISTANCES_STORE);
-        final RangedStore<LocationDistanceKey, String> candidateStopDistancesBackingStore
-                = new RangedLmdbStore<>(candidateDistancesStorePath,
-                                        new LocationDistanceKey.Materializer(),
-                                        String.class);
-        final ReaderControlledRangedStore<LocationDistanceKey, String> limitedAccessCandidateStopDistancesStore
-                = new ReaderControlledRangedStore(
-                        candidateStopDistancesBackingStore, 126);
-        final RangedCache<LocationDistanceKey, String> candidateStopDistancesCache
-                = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
-        final RangedStore<LocationDistanceKey, String> candidateDistancesStore
-                = new CachingRangedStore<>(
-                        limitedAccessCandidateStopDistancesStore,
-                        candidateStopDistancesCache);
+        final RangedStore<LocationDistanceKey, String> candidateStopDistancesStore
+                = storeFactory.getRangedStore(
+                        candidateDistancesStorePath,
+                        new LocationDistanceKey.Materializer(), String.class);
 
         final Path maxCandidateDistanceStorePath = baseDirectory.resolve(
                 revision).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
-        final Store<LocationKey, Double> maxCandidateDistancesBackingStore
-                = new LmdbStore<>(maxCandidateDistanceStorePath, Double.class
-                );
-        final Cache<LocationKey, Double> maxCandidateDistanceCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
         final Store<LocationKey, Double> maxCandidateDistanceStore
-                = new CachingStore<>(maxCandidateDistancesBackingStore,
-                                     maxCandidateDistanceCache);
+                = storeFactory.getStore(maxCandidateDistanceStorePath,
+                                        Double.class);
 
         final double maxWalkingDistance
                 = ESTIMATE_WALK_METERS_PER_SECOND * maxDuration.getSeconds();
@@ -816,22 +871,16 @@ public class Main {
         final DistanceEstimator distanceEstimator = new StoredDistanceEstimator(
                 centerPoints, sectorTable.getSectors(), pointIdMap.values(),
                 maxWalkingDistance, maxCandidateDistanceStore,
-                candidateDistancesStore, endpointDeterminer);
+                candidateStopDistancesStore, endpointDeterminer);
         return distanceEstimator;
     }
 
     private static ServiceTypeCalendar buildServiceTypeCalendar(
-            final Path root, final String revision)
-            throws IOException, InterruptedException {
-        final Store<DateKey, ServiceSet> serviceTypesBackingStore
-                = new LmdbStore<>(root.resolve(revision).resolve(
-                        SERVICE_TYPES_STORE), ServiceSet.class);
-
-        final Cache<DateKey, ServiceSet> serviceTypesCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
+            final StoreFactory storeFactory, final Path root,
+            final String revision) throws IOException, InterruptedException {
         final Store<DateKey, ServiceSet> serviceTypesStore
-                = new CachingStore<>(serviceTypesBackingStore,
-                                     serviceTypesCache);
+                = storeFactory.getStore(root.resolve(revision).resolve(
+                        SERVICE_TYPES_STORE), ServiceSet.class);
 
         final Reader calendarReader = new FileReader(
                 root.resolve(revision).resolve(GTFS_DIRECTORY).
@@ -847,16 +896,11 @@ public class Main {
     }
 
     private static TripDetailsDirectory buildTripDetailsDirectory(
-            final Path root, final String revision)
-            throws IOException, InterruptedException {
-        final Store<TripGroupKey, TripDetails> tripDetailsBackingStore
-                = new LmdbStore<>(root.resolve(revision).resolve(
-                        TRIP_DETAILS_STORE), TripDetails.class
-                );
-        final Cache<TripGroupKey, TripDetails> tripDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        Store<TripGroupKey, TripDetails> tripDetailsStore
-                = new CachingStore(tripDetailsBackingStore, tripDetailsCache);
+            final StoreFactory storeFactory, final Path root,
+            final String revision) throws IOException, InterruptedException {
+        final Store<TripGroupKey, TripDetails> tripDetailsStore
+                = storeFactory.getStore(root.resolve(revision).resolve(
+                        TRIP_DETAILS_STORE), TripDetails.class);
 
         final Reader tripReader = new FileReader(root.resolve(revision)
                 .resolve(GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
@@ -867,41 +911,24 @@ public class Main {
     }
 
     private static StopTimesDirectory buildStopTimesDirectory(
-            final Path root, final String revision)
-            throws IOException, InterruptedException {
+            final StoreFactory storeFactory, final Path root,
+            final String revision) throws IOException, InterruptedException {
         final Path tripSequenceStorePath
                 = root.resolve(revision).resolve(TRIP_SEQUENCE_STORE);
-        final RangedStore<TripSequenceKey, TripStop> tripSequenceBackingStore
-                = new RangedLmdbStore<>(tripSequenceStorePath,
-                                        new TripSequenceKey.Materializer(),
-                                        TripStop.class
-                );
-        final RangedCache<TripSequenceKey, TripStop> tripSequenceCache
-                = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = new CachingRangedStore<>(tripSequenceBackingStore,
-                                           tripSequenceCache);
+                = storeFactory.getRangedStore(
+                        tripSequenceStorePath,
+                        new TripSequenceKey.Materializer(), TripStop.class);
 
         final Path stopTimesStorePath = root.resolve(revision)
                 .resolve(STOP_TIMES_STORE);
-        final RangedStore<StopTimeKey, TripStop> stopTimesBackingStore
-                = new RangedLmdbStore<>(stopTimesStorePath,
-                                        new StopTimeKey.Materializer(),
-                                        TripStop.class
-                );
-        final RangedCache<StopTimeKey, TripStop> stopTimesCache
-                = new UnboundedRangedCache<>(new InMemoryTreeStore<>());
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = new CachingRangedStore<>(stopTimesBackingStore,
-                                           stopTimesCache);
+                = storeFactory.getRangedStore(stopTimesStorePath,
+                                              new StopTimeKey.Materializer(),
+                                              TripStop.class);
 
-        final Store<TripIdKey, TripId> tripsBackingStore = new LmdbStore<>(
-                root.resolve(revision).resolve(TRIPS_STORE), TripId.class
-        );
-        final Cache<TripIdKey, TripId> tripsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
-        final Store<TripIdKey, TripId> tripsStore
-                = new CachingStore<>(tripsBackingStore, tripsCache);
+        final Store<TripIdKey, TripId> tripsStore = storeFactory.getStore(
+                root.resolve(revision).resolve(TRIPS_STORE), TripId.class);
 
         final Path frequenciesPath = root.resolve(revision).resolve(
                 GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
@@ -922,17 +949,12 @@ public class Main {
     }
 
     private static RouteDetailsDirectory buildRouteDetailsDirectory(
-            final Path root, final String revision)
-            throws IOException, InterruptedException {
-        final Store<RouteIdKey, RouteDetails> routeDetailsBackingStore
-                = new LmdbStore<>(root.resolve(revision).resolve(
-                        ROUTE_DETAILS_STORE), RouteDetails.class
-                );
-        final Cache<RouteIdKey, RouteDetails> routeDetailsCache
-                = new UnboundedCache<>(new InMemoryHashStore<>());
+            final StoreFactory storeFactory, final Path root,
+            final String revision) throws IOException, InterruptedException {
         final Store<RouteIdKey, RouteDetails> routeDetailsStore
-                = new CachingStore(routeDetailsBackingStore,
-                                   routeDetailsCache);
+                = storeFactory.getStore(root.resolve(revision).resolve(
+                        ROUTE_DETAILS_STORE), RouteDetails.class);
+
         final Reader routeReader = new FileReader(root
                 .resolve(revision).resolve(GTFS_DIRECTORY)
                 .resolve(ROUTES_FILE).toFile());
@@ -943,7 +965,7 @@ public class Main {
         return routeDetailsDirectory;
     }
 
-    private static EntryPoints buildEntryPoints(
+    private static TransitNetwork buildTransitNetwork(
             final LocalDateTime earliestTime, final LocalDateTime latestTime,
             final ServiceTypeCalendar serviceTypeCalendar,
             final TripDetailsDirectory tripDetailsDirectory,
@@ -951,10 +973,11 @@ public class Main {
             final StopTimesDirectory stopTimesDirectory,
             final ImmutableMap<String, TransitStop> stopIdMap)
             throws IOException, InterruptedException {
-        final EntryPoints entryPoints = new DirectoryReadingEntryPoints(
-                earliestTime, latestTime, stopTimesDirectory,
-                routeDetailsDirectory, tripDetailsDirectory,
-                serviceTypeCalendar, stopIdMap);
-        return entryPoints;
+        final TransitNetwork transitNetwork
+                = new DirectoryReadingTransitNetwork(
+                        earliestTime, latestTime, stopTimesDirectory,
+                        routeDetailsDirectory, tripDetailsDirectory,
+                        serviceTypeCalendar, stopIdMap);
+        return transitNetwork;
     }
 }

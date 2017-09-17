@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
 
 /**
  * A table that maps every time and place to entries into all the transit trips
@@ -42,11 +43,13 @@ import java.util.Set;
  *
  * @author Public Transit Analytics
  */
-public class DirectoryReadingEntryPoints implements EntryPoints {
+public class DirectoryReadingTransitNetwork implements TransitNetwork {
 
     final TreeBasedTable<TransitStop, LocalDateTime, EntryPoint> entryPoints;
+    @Getter
+    final Set<Trip> trips;
 
-    public DirectoryReadingEntryPoints(
+    public DirectoryReadingTransitNetwork(
             final LocalDateTime startTime, final LocalDateTime endTime,
             final StopTimesDirectory stopTimesDirectory,
             final RouteDetailsDirectory routeDetailsDirectory,
@@ -137,7 +140,7 @@ public class DirectoryReadingEntryPoints implements EntryPoints {
                 }
             }
         }
-        final ImmutableSet<Trip> trips = tripsBuilder.build();
+        trips = tripsBuilder.build();
 
         for (final Trip trip : trips) {
             for (final ScheduledLocation scheduledLocation
@@ -163,6 +166,15 @@ public class DirectoryReadingEntryPoints implements EntryPoints {
             builder.add(entryPoints.get(stop, endTime));
         }
         return builder.build();
+    }
+    
+    @Override
+    public Duration getInServiceTime() {
+        Duration duration = Duration.ZERO;
+        for (final Trip trip : trips) {
+            duration = duration.plus(trip.getInServiceTime());
+        }
+        return duration;
     }
 
 }

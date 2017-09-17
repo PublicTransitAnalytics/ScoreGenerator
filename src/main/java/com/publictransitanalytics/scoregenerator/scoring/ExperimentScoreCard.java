@@ -27,11 +27,12 @@ import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
  * 
  * @author Public Transit Analytics
  */
-public class ExperimentScoreCard implements ScoreCard {
+public class ExperimentScoreCard extends ScoreCard {
 
     final Multimap<VisitableLocation, TaskIdentifier> reachedTasks;
 
-    public ExperimentScoreCard() {
+    public ExperimentScoreCard(final int taskCount) {
+        super(taskCount);
         reachedTasks = Multimaps.synchronizedMultimap(HashMultimap.create());
     }
 

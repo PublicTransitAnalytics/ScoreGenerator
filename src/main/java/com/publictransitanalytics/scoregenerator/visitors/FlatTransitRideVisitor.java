@@ -21,7 +21,6 @@ import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.Rider;
-import com.publictransitanalytics.scoregenerator.rider.RiderBehaviorFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
@@ -30,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 
 /**
  * Visitor for transit rides that does not recurse.
@@ -43,7 +43,7 @@ public class FlatTransitRideVisitor
     private final LocalDateTime cutoffTime;
     private final LocalDateTime waitCutoffTime;
     private final LocalDateTime currentTime;
-    private final RiderBehaviorFactory riderFactory;
+    private final RiderFactory riderFactory;
 
     private Set<ReachabilityOutput> output;
 

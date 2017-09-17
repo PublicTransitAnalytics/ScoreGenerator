@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
-import com.bitvantage.bitvantagecaching.Cache;
+import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
@@ -36,7 +36,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CachingDistanceClient implements DistanceClient {
 
-    private final Cache<DistanceCacheKey, WalkingDistanceMeasurement> cache;
+    private final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache;
     private final DistanceClient client;
 
     @Override

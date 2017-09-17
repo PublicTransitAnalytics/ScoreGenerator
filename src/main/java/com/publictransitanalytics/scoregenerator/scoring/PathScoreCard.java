@@ -27,11 +27,12 @@ import java.util.Map;
  * 
  * @author Public Transit Analytics
  */
-public class PathScoreCard implements ScoreCard {
+public class PathScoreCard extends ScoreCard {
 
     private final Table<VisitableLocation, TaskIdentifier, MovementPath> bestPaths;
 
-    public PathScoreCard() {
+    public PathScoreCard(final int taskCount) {
+        super(taskCount);
         bestPaths = HashBasedTable.create();
     }
 

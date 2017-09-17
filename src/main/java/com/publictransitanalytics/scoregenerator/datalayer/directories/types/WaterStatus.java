@@ -13,19 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
-
-import com.google.common.collect.SortedSetMultimap;
-import com.publictransitanalytics.scoregenerator.workflow.TaskLocationGroupIdentifier;
-import java.time.LocalDateTime;
+package com.publictransitanalytics.scoregenerator.datalayer.directories.types;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface LocationExecutor {
-
-    void execute(
-            final SortedSetMultimap<TaskLocationGroupIdentifier, LocalDateTime> timesByTask)
-            throws InterruptedException;
+public enum WaterStatus {
+    
+    ALL_WATER,
+    SOME_LAND
+    
 }

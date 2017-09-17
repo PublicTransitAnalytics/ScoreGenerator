@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -74,14 +75,10 @@ public class ManyDestinationsDistanceFilter implements DistanceFilter {
                     = distanceTable.row(origin);
 
             final Duration duration = Duration.between(currentTime, cutoffTime);
-
-            for (Map.Entry<VisitableLocation, WalkingCosts> costEntry : costMap
-                    .entrySet()) {
-                if (costEntry.getValue().getDuration().compareTo(duration)
-                            <= 0) {
-                    resultBuilder.put(costEntry.getKey(), costEntry.getValue());
-                }
-            }
+            return costMap.entrySet().stream().filter(entry -> entry.getValue()
+                    .getDuration().compareTo(duration) <= 0).collect(
+                    Collectors.toMap(entry -> entry.getKey(),
+                                     entry -> entry.getValue()));
         }
 
         return resultBuilder.build();
