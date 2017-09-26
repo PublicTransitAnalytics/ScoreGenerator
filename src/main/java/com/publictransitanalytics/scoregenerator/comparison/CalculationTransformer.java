@@ -51,15 +51,15 @@ public class CalculationTransformer {
     public RangeCalculation transform() {
         final TransitNetwork patchedNetwork = getPatchedNetwork();
         final RiderFactory newRiderFactory = getRiderFactory(patchedNetwork);
-        final int newTaskCount = original.getTimesByTask().size();
+        final int newTaskCount = original.getTaskCount();
         
         return new RangeCalculation(
-                original.getTimesByTask(),
+                original.getTaskGroups(), original.getTimes(),
                 scoreCardFactory.makeScoreCard(newTaskCount), 
                 original.getDistanceClient(), original.getTimeTracker(),
-                original.getAllowedModes(), patchedNetwork,
-                original.isBackward(), original.getReachabilityClient(),
-                newRiderFactory);
+                original.getMovementAssembler(), original.getAllowedModes(), 
+                patchedNetwork, original.isBackward(), 
+                original.getReachabilityClient(), newRiderFactory);
     }
 
     private TransitNetwork getPatchedNetwork() {

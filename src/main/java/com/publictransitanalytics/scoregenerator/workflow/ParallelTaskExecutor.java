@@ -15,9 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.google.common.collect.Multimap;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
-import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,10 +42,10 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
     @Override
     public void calculate(final Set<RangeCalculation<S>> rangeCalculations)
             throws InterruptedException {
-        for (final RangeCalculation rangeCalculation : rangeCalculations) {
-            final Multimap<TaskGroupIdentifier, LocalDateTime> timesByTask
-                    = rangeCalculation.getTimesByTask();
-            final Set<TaskGroupIdentifier> tasks = timesByTask.keySet();
+        for (final RangeCalculation<S> rangeCalculation : rangeCalculations) {
+
+            final Set<TaskGroupIdentifier> tasks 
+                    = rangeCalculation.getTaskGroups();
             for (final TaskGroupIdentifier task : tasks) {
                 pool.execute(new Runnable() {
                     @Override

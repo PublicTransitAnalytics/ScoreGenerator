@@ -19,9 +19,11 @@ import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableMap;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -46,18 +48,19 @@ public class QualifiedPointAccessibility {
     private final String time;
 
     private final String tripDuration;
-    
+
     private final int totalSectors;
 
     public QualifiedPointAccessibility(
-            final TaskIdentifier task, final PathScoreCard scoreCard,
-            final SectorTable sectorTable, final Duration tripDuration, 
-            final boolean backward) throws InterruptedException {
+            final PathScoreCard scoreCard, final SectorTable sectorTable,
+            final PointLocation centerPoint, final LocalDateTime time, 
+            final Duration tripDuration, final boolean backward) 
+            throws InterruptedException {
         type = AccessibilityType.TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(sectorTable);
-        center = new Point(task.getCenter());
-        this.time = task.getTime().format(DateTimeFormatter.ofPattern(
+        center = new Point(centerPoint);
+        this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
 
         this.tripDuration = DurationFormatUtils.formatDurationWords(
@@ -65,6 +68,7 @@ public class QualifiedPointAccessibility {
         final ImmutableMap.Builder<Bounds, FullSectorReachInformation> builder
                 = ImmutableMap.builder();
 
+        final TaskIdentifier task = new TaskIdentifier(time, centerPoint);
         for (final Sector sector : sectorTable.getSectors()) {
             final MovementPath sectorPath
                     = scoreCard.getBestPath(sector, task);

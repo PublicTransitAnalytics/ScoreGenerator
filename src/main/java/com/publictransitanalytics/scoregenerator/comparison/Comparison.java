@@ -25,6 +25,7 @@ import lombok.Value;
 @Value
 public class Comparison {
     
+    private final String name;
     private final String files;
     private final List<ComparisonOperation> operations;
     

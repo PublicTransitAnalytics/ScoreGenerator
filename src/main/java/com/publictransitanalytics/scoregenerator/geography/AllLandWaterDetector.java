@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.testhelpers;
+package com.publictransitanalytics.scoregenerator.geography;
 
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import org.opensextant.geodesy.Geodetic2DBounds;

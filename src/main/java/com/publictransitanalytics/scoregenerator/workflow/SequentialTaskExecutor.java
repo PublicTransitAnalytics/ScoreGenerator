@@ -15,12 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.google.common.collect.Multimap;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
-import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeExecutor;
-import com.publictransitanalytics.scoregenerator.workflow.TaskGroupIdentifier;
-import com.publictransitanalytics.scoregenerator.workflow.Workflow;
-import java.time.LocalDateTime;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
@@ -37,11 +32,10 @@ public class SequentialTaskExecutor<S extends ScoreCard>
     @Override
     public void calculate(final Set<RangeCalculation<S>> rangeCalculations)
             throws InterruptedException {
-        for (final RangeCalculation rangeCalculation : rangeCalculations) {
-            final Multimap<TaskGroupIdentifier, LocalDateTime> timesByTask
-                    = rangeCalculation.getTimesByTask();
+        for (final RangeCalculation<S> rangeCalculation : rangeCalculations) {
+
             for (final TaskGroupIdentifier task
-                         : timesByTask.keySet()) {
+                         : rangeCalculation.getTaskGroups()) {
                 timeRangeExecutor.executeRange(rangeCalculation, task);
             }
         }

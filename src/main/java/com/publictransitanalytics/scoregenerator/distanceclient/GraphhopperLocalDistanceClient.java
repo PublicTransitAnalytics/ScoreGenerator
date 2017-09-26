@@ -23,7 +23,7 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.PathWrapper;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.routing.util.EncodingManager;
-import com.publictransitanalytics.scoregenerator.geography.NearestPointEndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
 import com.publictransitanalytics.scoregenerator.geography.Endpoints;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
@@ -43,11 +43,11 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 public class GraphhopperLocalDistanceClient implements DistanceClient {
 
     private final GraphHopper hopper;
-    private final NearestPointEndpointDeterminer endpointDeterminer;
+    private final EndpointDeterminer endpointDeterminer;
 
     public GraphhopperLocalDistanceClient(
             final Path osmFile, final Path graphFolder,
-            final NearestPointEndpointDeterminer endpointDeterminer) {
+            final EndpointDeterminer endpointDeterminer) {
         hopper = new GraphHopperOSM().forServer();
         hopper.setDataReaderFile(osmFile.toString());
         hopper.setGraphHopperLocation(graphFolder.toString());

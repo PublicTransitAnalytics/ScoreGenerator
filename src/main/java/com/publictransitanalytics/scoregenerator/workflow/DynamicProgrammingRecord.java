@@ -27,8 +27,7 @@ import lombok.Value;
  * @author Public Transit Analytics
  */
 @Value
-public class DynamicProgrammingRecord
-        implements Comparable<DynamicProgrammingRecord> {
+public class DynamicProgrammingRecord {
 
     @NonNull
     private LocalDateTime reachTime;
@@ -36,8 +35,4 @@ public class DynamicProgrammingRecord
     private ModeInfo mode;
     private VisitableLocation predecessor;
 
-    @Override
-    public int compareTo(DynamicProgrammingRecord other) {
-        return reachTime.compareTo(other.reachTime);
-    }
 }

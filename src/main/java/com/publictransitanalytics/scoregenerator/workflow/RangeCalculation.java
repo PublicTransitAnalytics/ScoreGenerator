@@ -15,7 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.google.common.collect.Multimap;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
@@ -26,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 import lombok.Value;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
+import java.util.NavigableSet;
 
 /**
  *
@@ -34,15 +34,21 @@ import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 @Value
 public class RangeCalculation<S extends ScoreCard> {
 
-    private final Multimap<TaskGroupIdentifier, LocalDateTime> timesByTask;
+    private final Set<TaskGroupIdentifier> taskGroups;
+    private final NavigableSet<LocalDateTime> times;
     private final S scoreCard;
     private final DistanceClient distanceClient;
     private final TimeTracker timeTracker;
+    private final MovementAssembler movementAssembler;
     private final Set<ModeType> allowedModes;
     private final TransitNetwork transitNetwork;
     private final boolean backward;
     private final ReachabilityClient reachabilityClient;
     private final RiderFactory riderFactory;
+    
+    public int getTaskCount() {
+        return taskGroups.size() * times.size();
+    }
     
     @Override
     public int hashCode() {

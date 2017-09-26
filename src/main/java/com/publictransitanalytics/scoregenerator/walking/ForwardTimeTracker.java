@@ -17,10 +17,12 @@ package com.publictransitanalytics.scoregenerator.walking;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Iterator;
+import java.util.NavigableSet;
 
 /**
  * Keeps track of time as it moves forward.
- * 
+ *
  * @author Public Transit Analytics
  */
 public class ForwardTimeTracker implements TimeTracker {
@@ -40,6 +42,24 @@ public class ForwardTimeTracker implements TimeTracker {
     public Duration getDuration(LocalDateTime currentTime,
                                 LocalDateTime cutoffTime) {
         return Duration.between(currentTime, cutoffTime);
+    }
+
+    @Override
+    public boolean shouldReplace(final LocalDateTime baseTime,
+                                 final LocalDateTime otherTime) {
+        return otherTime.isBefore(baseTime);
+    }
+
+    @Override
+    public boolean meetsCutoff(final LocalDateTime time,
+                               final LocalDateTime cutoffTime) {
+        return !time.isAfter(cutoffTime);
+    }
+
+    @Override
+    public Iterator<LocalDateTime> getTimeIterator(
+            final NavigableSet<LocalDateTime> times) {
+        return times.descendingIterator();
     }
 
 }

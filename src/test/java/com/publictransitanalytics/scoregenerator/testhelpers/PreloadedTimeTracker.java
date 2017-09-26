@@ -18,6 +18,9 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.NavigableSet;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -48,6 +51,24 @@ public class PreloadedTimeTracker implements TimeTracker {
     public Duration getDuration(final LocalDateTime currentTime,
                                 final LocalDateTime cutoffTime) {
         return duration;
+    }
+
+    @Override
+    public boolean shouldReplace(final LocalDateTime baseTime,
+                                 final LocalDateTime otherTime) {
+        return true;
+    }
+
+    @Override
+    public boolean meetsCutoff(final LocalDateTime time,
+                               final LocalDateTime cutoffTime) {
+        return true;
+    }
+
+    @Override
+    public Iterator<LocalDateTime> getTimeIterator(
+            final NavigableSet<LocalDateTime> times) {
+        return Collections.emptyIterator();
     }
 
 }

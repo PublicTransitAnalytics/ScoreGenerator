@@ -26,5 +26,4 @@ import lombok.Value;
 @Value
 public class TaskGroupIdentifier {
     private final PointLocation center;
-    private final String experimentName;
 }

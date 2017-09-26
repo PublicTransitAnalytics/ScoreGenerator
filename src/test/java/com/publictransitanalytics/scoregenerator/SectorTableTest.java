@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator;
 
 import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.testhelpers.AllLandWaterDetector;
+import com.publictransitanalytics.scoregenerator.geography.AllLandWaterDetector;
 import junit.framework.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;

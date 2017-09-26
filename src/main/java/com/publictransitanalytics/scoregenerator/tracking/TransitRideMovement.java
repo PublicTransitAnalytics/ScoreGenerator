@@ -29,9 +29,9 @@ import lombok.Value;
 public class TransitRideMovement implements Movement {
 
     private final Trip trip;
-    private final VisitableLocation beginningStop;
+    private final VisitableLocation boardStop;
     private final LocalDateTime boardTime;
-    private final VisitableLocation endStop;
+    private final VisitableLocation deboardStop;
     private final LocalDateTime deboardTime;
 
     @Override
@@ -65,10 +65,9 @@ public class TransitRideMovement implements Movement {
     @Override
     public String getLongForm()
             throws InterruptedException {
-        return String.format(
-                "Take route %s from %s at %s arriving at %s at %s",
-                trip.getRouteNumber(), beginningStop.getCommonName(), boardTime,
-                endStop.getCommonName(), deboardTime);
+        return String.format("Take route %s from %s at %s arriving at %s at %s",
+                trip.getRouteNumber(), boardStop.getCommonName(), boardTime,
+                deboardStop.getCommonName(), deboardTime);
     }
 
 }

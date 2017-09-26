@@ -17,6 +17,8 @@ package com.publictransitanalytics.scoregenerator.walking;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Iterator;
+import java.util.NavigableSet;
 
 /**
  * Keeps track of time.
@@ -25,12 +27,18 @@ import java.time.LocalDateTime;
  */
 public interface TimeTracker {
 
-    public LocalDateTime adjust(LocalDateTime time, Duration adjustment);
+    LocalDateTime adjust(LocalDateTime time, Duration adjustment);
 
-    public boolean canAdjust(LocalDateTime baseTime, Duration adjustment,
-                             LocalDateTime cutoffTime);
+    boolean canAdjust(LocalDateTime baseTime, Duration adjustment,
+                      LocalDateTime cutoffTime);
 
-    public Duration getDuration(LocalDateTime baseTime,
-                                LocalDateTime otherTime);
+    Duration getDuration(LocalDateTime baseTime,
+                         LocalDateTime otherTime);
+
+    boolean shouldReplace(LocalDateTime baseTime, LocalDateTime otherTime);
+
+    boolean meetsCutoff(LocalDateTime time, LocalDateTime cutoffTime);
+    
+    Iterator<LocalDateTime> getTimeIterator(NavigableSet<LocalDateTime> times); 
 
 }

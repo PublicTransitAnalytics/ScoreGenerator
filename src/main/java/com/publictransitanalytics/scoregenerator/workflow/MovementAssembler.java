@@ -15,17 +15,18 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import java.time.LocalDateTime;
-import lombok.Value;
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import java.util.Map;
 
 /**
- * The identifying information for passing to workflows.
- * 
+ *
  * @author Public Transit Analytics
  */
-@Value
-public class TaskIdentifier {
-    private final LocalDateTime time;
-    private final PointLocation center;
+public interface MovementAssembler {
+    
+    public MovementPath assemble(
+            final VisitableLocation terminal,
+            final Map<VisitableLocation, DynamicProgrammingRecord> lastRow);
+    
 }

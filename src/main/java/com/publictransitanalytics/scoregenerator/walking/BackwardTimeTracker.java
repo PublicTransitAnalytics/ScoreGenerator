@@ -17,9 +17,11 @@ package com.publictransitanalytics.scoregenerator.walking;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Iterator;
+import java.util.NavigableSet;
 
 /**
- * Keeps track of time if it's moving backwards, in the context of looking at
+ * Keeps track of time as if it's moving backwards, in the context of looking at
  * where a person could have come from.
  *
  * @author Public Transit Analytics
@@ -45,4 +47,21 @@ public class BackwardTimeTracker implements TimeTracker {
         return Duration.between(cutoffTime, currentTime);
     }
 
+    @Override
+    public boolean shouldReplace(final LocalDateTime baseTime,
+                                 final LocalDateTime otherTime) {
+        return otherTime.isAfter(baseTime);
+    }
+
+    @Override
+    public boolean meetsCutoff(final LocalDateTime time,
+                               final LocalDateTime cutoffTime) {
+        return !time.isBefore(cutoffTime);
+    }
+
+    @Override
+    public Iterator<LocalDateTime> getTimeIterator(
+            final NavigableSet<LocalDateTime> times) {
+        return times.iterator();
+    }
 }

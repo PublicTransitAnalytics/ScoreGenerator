@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Dynamic programming algorithm for path finding.
@@ -39,9 +40,10 @@ import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
  * @author Public Transit Analytics
  */
 @Slf4j
-public final class DynamicProgrammingAlgorithm {
+@RequiredArgsConstructor
+public class DynamicProgrammingAlgorithm {
 
-    public static Table<Integer, VisitableLocation, DynamicProgrammingRecord>
+    public Table<Integer, VisitableLocation, DynamicProgrammingRecord>
             createTable(final LocalDateTime startTime,
                         final LocalDateTime cutoffTime,
                         final VisitableLocation startLocation,
@@ -73,18 +75,18 @@ public final class DynamicProgrammingAlgorithm {
                 final LocalDateTime currentTime = priorRecord
                         .getReachTime();
 
-                final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
-                        cutoffTime, currentTime, reachabilityClient,
-                        timeTracker);
                 final FlatTransitRideVisitor transitRideVisitor
                         = new FlatTransitRideVisitor(cutoffTime, cutoffTime,
                                                      currentTime, riderFactory);
                 final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
                         = ImmutableSet.builder();
                 if (!priorRecord.getMode().getType().equals(ModeType.WALKING)) {
+                    final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
+                            cutoffTime, currentTime, reachabilityClient,
+                            timeTracker);
                     priorLocation.accept(walkVisitor);
-                    final Set<ReachabilityOutput> walks = walkVisitor
-                            .getOutput();
+                    final Set<ReachabilityOutput> walks
+                            = walkVisitor.getOutput();
                     reachabilitiesBuilder.addAll(walks);
                 }
                 priorLocation.accept(transitRideVisitor);
@@ -93,14 +95,14 @@ public final class DynamicProgrammingAlgorithm {
                 reachabilitiesBuilder.addAll(transitRides);
 
                 final int updates = updateRow(reachabilitiesBuilder.build(),
-                                              currentRow, priorLocation);
+                                              currentRow, priorLocation,
+                                              timeTracker);
                 roundUpdates += updates;
             }
 
             if (roundUpdates == 0) {
                 log.debug(
-                        "Stopped processing at row {} because no updates.",
-                        i);
+                        "Stopped processing at row {} because no updates.", i);
                 break;
             }
 
@@ -108,14 +110,14 @@ public final class DynamicProgrammingAlgorithm {
         return stateTable;
     }
 
-    private static int updateRow(
+    private int updateRow(
             final Set<ReachabilityOutput> reachabilities,
             final Map<VisitableLocation, DynamicProgrammingRecord> currentRow,
-            final VisitableLocation priorLocation) {
+            final VisitableLocation priorLocation,
+            final TimeTracker timeTracker) {
         int updates = 0;
         for (final ReachabilityOutput reachability : reachabilities) {
-            final VisitableLocation newLocation = reachability
-                    .getLocation();
+            final VisitableLocation newLocation = reachability.getLocation();
             final LocalDateTime newTime = reachability.getReachTime();
 
             final ModeInfo mode = reachability.getModeInfo();
@@ -127,7 +129,10 @@ public final class DynamicProgrammingAlgorithm {
             if (currentRow.containsKey(newLocation)) {
                 final DynamicProgrammingRecord earlierThisRoundReach
                         = currentRow.get(newLocation);
-                if (record.compareTo(earlierThisRoundReach) < 0) {
+                final LocalDateTime earlierThisRoundTime
+                        = earlierThisRoundReach.getReachTime();
+
+                if (timeTracker.shouldReplace(earlierThisRoundTime, newTime)) {
                     currentRow.put(newLocation, record);
                     updates++;
                 }
@@ -137,8 +142,5 @@ public final class DynamicProgrammingAlgorithm {
             }
         }
         return updates;
-    }
-
-    private DynamicProgrammingAlgorithm() {
     }
 }
