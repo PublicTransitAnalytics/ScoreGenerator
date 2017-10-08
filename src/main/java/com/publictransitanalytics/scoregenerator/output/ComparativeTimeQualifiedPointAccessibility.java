@@ -15,13 +15,13 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableMap;
+import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -29,11 +29,10 @@ import java.util.Map;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
- * A measurement of Spontaneous Accessibility at a single place and time.
  *
  * @author Public Transit Analytics
  */
-public class QualifiedPointAccessibility {
+public class ComparativeTimeQualifiedPointAccessibility {
 
     private final AccessibilityType type;
 
@@ -43,7 +42,7 @@ public class QualifiedPointAccessibility {
 
     private final Point center;
 
-    private final Map<Bounds, FullSectorReachInformation> sectorPaths;
+    private final Map<Bounds, ComparativeFullSectorReachInformation> sectorPaths;
 
     private final String time;
 
@@ -51,12 +50,15 @@ public class QualifiedPointAccessibility {
 
     private final int totalSectors;
 
-    public QualifiedPointAccessibility(
-            final PathScoreCard scoreCard, final SectorTable sectorTable,
-            final PointLocation centerPoint, final LocalDateTime time, 
-            final Duration tripDuration, final boolean backward) 
+    private final String trialName;
+
+    public ComparativeTimeQualifiedPointAccessibility(
+            final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
+            final SectorTable sectorTable, final PointLocation centerPoint,
+            final LocalDateTime time, final Duration tripDuration,
+            final boolean backward, final String name)
             throws InterruptedException {
-        type = AccessibilityType.TIME_QUALIFIED_POINT_ACCESSIBILITY;
+        type = AccessibilityType.COMPARATIVE_TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(sectorTable);
         center = new Point(centerPoint);
@@ -65,22 +67,25 @@ public class QualifiedPointAccessibility {
 
         this.tripDuration = DurationFormatUtils.formatDurationWords(
                 tripDuration.toMillis(), true, true);
-        final ImmutableMap.Builder<Bounds, FullSectorReachInformation> builder
+        final ImmutableMap.Builder<Bounds, ComparativeFullSectorReachInformation> builder
                 = ImmutableMap.builder();
 
         final TaskIdentifier task = new TaskIdentifier(time, centerPoint);
         for (final Sector sector : sectorTable.getSectors()) {
             final MovementPath sectorPath
                     = scoreCard.getBestPath(sector, task);
-            if (sectorPath != null) {
+            final MovementPath trialSectorPath
+                    = trialScoreCard.getBestPath(sector, task);
+            if (sectorPath != null || trialSectorPath != null) {
                 final Bounds sectorBounds = new Bounds(sector);
 
-                builder.put(sectorBounds, new FullSectorReachInformation(
-                            sectorPath));
+                builder.put(sectorBounds,
+                            new ComparativeFullSectorReachInformation(
+                                    sectorPath, trialSectorPath));
             }
         }
         sectorPaths = builder.build();
         totalSectors = sectorTable.getSectors().size();
+        trialName = name;
     }
-
 }

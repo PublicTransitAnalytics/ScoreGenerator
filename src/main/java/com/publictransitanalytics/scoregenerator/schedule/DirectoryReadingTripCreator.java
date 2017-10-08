@@ -16,7 +16,6 @@
 package com.publictransitanalytics.scoregenerator.schedule;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.TreeBasedTable;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.RouteDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
@@ -35,34 +34,25 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
- * A table that maps every time and place to entries into all the transit trips
- * that exist.
  *
  * @author Public Transit Analytics
  */
-public class DirectoryReadingTransitNetwork implements TransitNetwork {
+@RequiredArgsConstructor
+public class DirectoryReadingTripCreator implements TripCreator {
 
-    final TreeBasedTable<TransitStop, LocalDateTime, EntryPoint> entryPoints;
-    @Getter
-    final Set<Trip> trips;
+    private final LocalDateTime startTime;
+    private final LocalDateTime endTime;
+    private final StopTimesDirectory stopTimesDirectory;
+    private final RouteDetailsDirectory routeDetailsDirectory;
+    private final TripDetailsDirectory tripDetailsDirectory;
+    private final ServiceTypeCalendar calendar;
+    private final Map<String, TransitStop> stopIdMap;
 
-    public DirectoryReadingTransitNetwork(
-            final LocalDateTime startTime, final LocalDateTime endTime,
-            final StopTimesDirectory stopTimesDirectory,
-            final RouteDetailsDirectory routeDetailsDirectory,
-            final TripDetailsDirectory tripDetailsDirectory,
-            final ServiceTypeCalendar calendar,
-            final Map<String, TransitStop> stopIdMap)
-            throws InterruptedException {
-
-        entryPoints = TreeBasedTable.create(
-                (stop1, stop2) -> stop1.getIdentifier().compareTo(
-                        stop2.getIdentifier()),
-                (time1, time2) -> time1.compareTo(time2));
-
+    @Override
+    public Set<Trip> createTrips() throws InterruptedException {
         final List<IntervalOfDay> intervals = IntervalOfDay.getIntervals(
                 startTime, endTime);
 
@@ -121,8 +111,8 @@ public class DirectoryReadingTransitNetwork implements TransitNetwork {
                         final int sequence = tripStopEntry.getSequence();
                         final String stopId = tripStopEntry.getStopId();
                         if (stopIdMap.containsKey(stopId)) {
-                            /* The trip may go beyond the edges of the current map.
-                         * Do not add these stops. */
+                            /* The trip may go beyond the edges of the current
+                             * map. Do not add these stops. */
                             final TransitStop stop = stopIdMap.get(stopId);
                             final ScheduleEntry scheduleEntry
                                     = new ScheduleEntry(
@@ -140,41 +130,7 @@ public class DirectoryReadingTransitNetwork implements TransitNetwork {
                 }
             }
         }
-        trips = tripsBuilder.build();
-
-        for (final Trip trip : trips) {
-            for (final ScheduledLocation scheduledLocation
-                         : trip.getCompleteSchedule()) {
-                final LocalDateTime time = scheduledLocation.getScheduledTime();
-                final TransitStop transitStop
-                        = scheduledLocation.getLocation();
-                final EntryPoint entryPoint = new EntryPoint(trip, time);
-                entryPoints.put(transitStop, time, entryPoint);
-            }
-        }
-    }
-
-    @Override
-    public Set<EntryPoint> getEntryPoints(
-            final TransitStop stop, final LocalDateTime startTime,
-            final LocalDateTime endTime) {
-        final ImmutableSet.Builder<EntryPoint> builder = ImmutableSet.builder();
-
-        builder.addAll(entryPoints.row(stop).subMap(startTime, endTime)
-                .values());
-        if (entryPoints.contains(stop, endTime)) {
-            builder.add(entryPoints.get(stop, endTime));
-        }
-        return builder.build();
-    }
-    
-    @Override
-    public Duration getInServiceTime() {
-        Duration duration = Duration.ZERO;
-        for (final Trip trip : trips) {
-            duration = duration.plus(trip.getInServiceTime());
-        }
-        return duration;
+        return tripsBuilder.build();
     }
 
 }

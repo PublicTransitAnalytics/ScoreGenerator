@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.datalayer.distanceestimates;
+package com.publictransitanalytics.scoregenerator.comparison;
 
-import java.util.Set;
+import java.util.Map;
+import lombok.Value;
 
 /**
- * A directory for all estimates of distance from one location to all other
- * potentially feasible ones.
  *
  * @author Public Transit Analytics
  */
-public interface DistanceEstimator {
-
-    Set<String> getReachableLocations(String originStopId,
-                                      double distanceMeters)
-            throws InterruptedException;
+@Value
+public class Extension {
     
-    void close();
-
+    private final String referenceStopId;
+    private final ExtensionType type;
+    private final Map<Integer, String> sequence;
+    
 }

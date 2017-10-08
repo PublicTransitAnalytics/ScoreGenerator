@@ -18,20 +18,24 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 
 /**
- * Describes the information pertaining to the rider's arrival to a Sector at a
- * time.
  *
  * @author Public Transit Analytics
  */
-public class FullSectorReachInformation {
+public class ComparativeFullSectorReachInformation {
 
     private final SimplePath path;
     private final FullPath fullPath;
+    private final SimplePath trialPath;
+    private final FullPath trialFullPath;
 
-    public FullSectorReachInformation(final MovementPath movements) 
+    public ComparativeFullSectorReachInformation(
+            final MovementPath movements, final MovementPath trialMovements)
             throws InterruptedException {
-        path = new SimplePath(movements);
-        fullPath = new FullPath(movements);
+        path = (movements == null) ? null : new SimplePath(movements);
+        fullPath = (movements == null) ? null : new FullPath(movements);
+        trialPath = (trialMovements == null) ? null 
+                : new SimplePath(trialMovements);
+        trialFullPath = (trialMovements == null) ? null
+                : new FullPath(trialMovements);
     }
-
 }

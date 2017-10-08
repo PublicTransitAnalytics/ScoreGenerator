@@ -24,22 +24,30 @@ import java.util.NavigableSet;
 import java.util.Set;
 
 /**
- * Describes the information pertaining to the rider's arrival at a Sector over
- * a time range.
  *
  * @author Public Transit Analytics
  */
-public class SectorReachInformation {
-
+class ComparativeSectorReachInformation {
+    
     private final int reachCount;
     private final Map<SimplePath, Integer> pathCounts;
-
-    public SectorReachInformation(
-            final Set<MovementPath> bestPaths, final int count) 
+    private final int trialReachCount;
+    private final Map<SimplePath, Integer> trialPathCounts;
+    
+    public ComparativeSectorReachInformation(
+            final Set<MovementPath> bestPaths, final int count,
+            final Set<MovementPath> trialBestPaths, final int trialCount) 
             throws InterruptedException {
 
         reachCount = count;
-       
+        trialReachCount = trialCount;
+        pathCounts = getPathCounts(bestPaths);
+        trialPathCounts = getPathCounts(trialBestPaths);
+    }
+    
+    private static Map<SimplePath, Integer> getPathCounts(
+            final Set<MovementPath> bestPaths) throws InterruptedException {
+        final Map<SimplePath, Integer> pathCounts;
         final TreeMultimap<Integer, SimplePath> frequencyMap
                 = TreeMultimap.create(
                         Integer::compareTo,
@@ -70,6 +78,7 @@ public class SectorReachInformation {
         } else {
             pathCounts = null;
         }
+        return pathCounts;
     }
-
+    
 }

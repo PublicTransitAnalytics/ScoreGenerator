@@ -15,12 +15,15 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
-import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import java.util.NavigableMap;
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import edu.emory.mathcs.backport.java.util.Collections;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Set;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -28,19 +31,21 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class PreloadedDistanceEstimator implements DistanceEstimator {
+public class PreloadedTransitNetwork implements TransitNetwork {
 
-    private final NavigableMap<Double, VisitableLocation> estimates;
+    @Getter
+    private final Set<Trip> trips;
 
     @Override
-    public Set<VisitableLocation> getReachableLocations(
-            final PointLocation originStop, final double distanceMeters) {
-        return ImmutableSet.copyOf(
-                estimates.headMap(distanceMeters, true).values());
+    public Set<EntryPoint> getEntryPoints(
+            final TransitStop stop, final LocalDateTime startTime,
+            final LocalDateTime endTime) {
+        return Collections.emptySet();
     }
 
     @Override
-    public void close() {
+    public Duration getInServiceTime() {
+        return Duration.ZERO;
     }
 
 }

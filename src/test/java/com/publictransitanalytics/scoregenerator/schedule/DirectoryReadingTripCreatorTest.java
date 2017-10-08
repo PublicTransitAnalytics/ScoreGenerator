@@ -50,7 +50,7 @@ import org.opensextant.geodesy.Longitude;
  *
  * @author Public Transit Analytics
  */
-public class DirectoryReadingEntryPointsTest {
+public class DirectoryReadingTripCreatorTest {
 
     private final static Sector SECTOR = new Sector(
             new Geodetic2DBounds(
@@ -113,13 +113,12 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
+        final DirectoryReadingTripCreator tripCreator
+                = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, LATEST_TIME).size());
+        Assert.assertEquals(1, tripCreator.createTrips().size());
 
     }
 
@@ -149,13 +148,12 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
+        final DirectoryReadingTripCreator tripCreator
+                = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, LATEST_TIME).size());
+        Assert.assertEquals(1, tripCreator.createTrips().size());
 
     }
 
@@ -190,57 +188,12 @@ public class DirectoryReadingEntryPointsTest {
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
 
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
+        final DirectoryReadingTripCreator tripCreator
+                = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
-        Assert.assertEquals(2, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, LATEST_TIME).size());
-    }
-
-    @Test
-    public void testFindsAllTripStops() throws Exception {
-        final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
-                ImmutableSet.of(
-                        new TripStop(new TransitTime(0, 0, 0), STOP_ID,
-                                     new TripId(TRIP_ID), 0),
-                        new TripStop(new TransitTime(0, 1, 0), ANOTHER_STOP_ID,
-                                     new TripId(TRIP_ID), 1)));
-        final RouteDetailsDirectory routes
-                = new PreloadedRouteDetailsDirectory(ImmutableMap.of(
-                        ROUTE_ID, new RouteDetails(ROUTE_NUMBER, ROUTE_NAME)));
-        final TripDetailsDirectory trips = new PreloadedTripDetailsDirectory(
-                ImmutableMap.of(new TripGroupKey(TRIP_ID), new TripDetails(
-                                TRIP_ID, ROUTE_ID, WEEKDAY_SERVICE)));
-        final ServiceTypeCalendar calendar
-                = new PreloadedServiceTypeCalendar(ImmutableMap.of(
-                        PRIOR_SERVICE_DATE,
-                        new ServiceSet(Collections.singleton(WEEKDAY_SERVICE)),
-                        SERVICE_DATE,
-                        new ServiceSet(Collections.singleton(
-                                WEEKDAY_SERVICE))));
-
-        final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
-        final TransitStop anotherTransitStop
-                = new TransitStop(SECTOR, ANOTHER_STOP_ID, ANOTHER_STOP_NAME,
-                                  POINT);
-
-        final Map<String, TransitStop> stopIdMap
-                = ImmutableMap.of(STOP_ID, transitStop,
-                                  ANOTHER_STOP_ID, anotherTransitStop);
-
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
-                        EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
-
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, LATEST_TIME).size());
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            anotherTransitStop, EARLIEST_TIME, LATEST_TIME)
-                            .size());
+        Assert.assertEquals(2, tripCreator.createTrips().size());
     }
 
     @Test
@@ -275,15 +228,12 @@ public class DirectoryReadingEntryPointsTest {
                 = ImmutableMap.of(STOP_ID, transitStop,
                                   ANOTHER_STOP_ID, anotherTransitStop);
 
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
+        final DirectoryReadingTripCreator tripCreator
+                = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
-        Assert.assertTrue(entryPoints.getEntryPoints(
-                transitStop, EARLIEST_TIME, LATEST_TIME).isEmpty());
-        Assert.assertTrue(entryPoints.getEntryPoints(
-                anotherTransitStop, EARLIEST_TIME, LATEST_TIME).isEmpty());
+        Assert.assertTrue(tripCreator.createTrips().isEmpty());
     }
 
     @Test
@@ -308,113 +258,14 @@ public class DirectoryReadingEntryPointsTest {
                         new ServiceSet(Collections.singleton(
                                 WEEKDAY_SERVICE))));
 
-        final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
-        final TransitStop anotherTransitStop
-                = new TransitStop(SECTOR, ANOTHER_STOP_ID, ANOTHER_STOP_NAME,
-                                  POINT);
+        final Map<String, TransitStop> stopIdMap = ImmutableMap.of();
 
-        final Map<String, TransitStop> stopIdMap
-                = ImmutableMap.of(STOP_ID, transitStop);
-
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
+        final DirectoryReadingTripCreator tripCreator
+                = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
                         calendar, stopIdMap);
 
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, LATEST_TIME).size());
-        Assert.assertTrue(entryPoints.getEntryPoints(
-                anotherTransitStop, EARLIEST_TIME, LATEST_TIME).isEmpty());
+        Assert.assertTrue(tripCreator.createTrips().isEmpty());
     }
-
-    @Test
-    public void testDoesNotFindOutOfScheduleTime() throws Exception {
-        final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
-                ImmutableSet.of(
-                        new TripStop(new TransitTime(0, 0, 0), STOP_ID,
-                                     new TripId(TRIP_ID), 0),
-                        new TripStop(new TransitTime(2, 1, 0), ANOTHER_STOP_ID,
-                                     new TripId(TRIP_ID), 1)));
-        final RouteDetailsDirectory routes
-                = new PreloadedRouteDetailsDirectory(ImmutableMap.of(
-                        ROUTE_ID, new RouteDetails(ROUTE_NUMBER, ROUTE_NAME)));
-        final TripDetailsDirectory trips = new PreloadedTripDetailsDirectory(
-                ImmutableMap.of(new TripGroupKey(TRIP_ID), new TripDetails(
-                                TRIP_ID, ROUTE_ID, WEEKDAY_SERVICE)));
-        final ServiceTypeCalendar calendar
-                = new PreloadedServiceTypeCalendar(ImmutableMap.of(
-                        PRIOR_SERVICE_DATE,
-                        new ServiceSet(Collections.singleton(WEEKDAY_SERVICE)),
-                        SERVICE_DATE,
-                        new ServiceSet(Collections.singleton(
-                                WEEKDAY_SERVICE))));
-
-        final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
-        final TransitStop anotherTransitStop
-                = new TransitStop(SECTOR, ANOTHER_STOP_ID, ANOTHER_STOP_NAME,
-                                  POINT);
-
-        final Map<String, TransitStop> stopIdMap
-                = ImmutableMap.of(STOP_ID, transitStop,
-                                  ANOTHER_STOP_ID, anotherTransitStop);
-
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
-                        EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
-
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, LATEST_TIME).size());
-        Assert.assertTrue(entryPoints.getEntryPoints(
-                anotherTransitStop, EARLIEST_TIME, LATEST_TIME).isEmpty());
-    }
-
-    @Test
-    public void testDoesNotFindOutOfRequestTime() throws Exception {
-        final StopTimesDirectory stops = new PreloadedStopTimesDirectory(
-                ImmutableSet.of(
-                        new TripStop(new TransitTime(0, 0, 0), STOP_ID,
-                                     new TripId(TRIP_ID), 0),
-                        new TripStop(new TransitTime(0, 1, 0), ANOTHER_STOP_ID,
-                                     new TripId(TRIP_ID), 1)));
-        final RouteDetailsDirectory routes
-                = new PreloadedRouteDetailsDirectory(ImmutableMap.of(
-                        ROUTE_ID, new RouteDetails(ROUTE_NUMBER, ROUTE_NAME)));
-        final TripDetailsDirectory trips = new PreloadedTripDetailsDirectory(
-                ImmutableMap.of(new TripGroupKey(TRIP_ID), new TripDetails(
-                                TRIP_ID, ROUTE_ID, WEEKDAY_SERVICE)));
-        final ServiceTypeCalendar calendar
-                = new PreloadedServiceTypeCalendar(ImmutableMap.of(
-                        PRIOR_SERVICE_DATE,
-                        new ServiceSet(Collections.singleton(WEEKDAY_SERVICE)),
-                        SERVICE_DATE,
-                        new ServiceSet(Collections.singleton(
-                                WEEKDAY_SERVICE))));
-
-        final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
-        final TransitStop anotherTransitStop
-                = new TransitStop(SECTOR, ANOTHER_STOP_ID, ANOTHER_STOP_NAME,
-                                  POINT);
-
-        final Map<String, TransitStop> stopIdMap
-                = ImmutableMap.of(STOP_ID, transitStop,
-                                  ANOTHER_STOP_ID, anotherTransitStop);
-
-        final DirectoryReadingTransitNetwork entryPoints
-                = new DirectoryReadingTransitNetwork(
-                        EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
-        final LocalDateTime queryTime = LocalDateTime.of(
-                2017, Month.APRIL, 4, 0, 0, 0);
-
-        Assert.assertEquals(1, entryPoints.getEntryPoints(
-                            transitStop, EARLIEST_TIME, queryTime).size());
-        Assert.assertTrue(entryPoints.getEntryPoints(
-                anotherTransitStop, EARLIEST_TIME, queryTime).isEmpty());
-
-    }
-
+    
 }

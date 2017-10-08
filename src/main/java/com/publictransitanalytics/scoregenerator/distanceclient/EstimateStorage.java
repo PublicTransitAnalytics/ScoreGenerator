@@ -13,34 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.testhelpers;
+package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
-import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import java.util.NavigableMap;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@RequiredArgsConstructor
-public class PreloadedDistanceEstimator implements DistanceEstimator {
+public interface EstimateStorage {
 
-    private final NavigableMap<Double, VisitableLocation> estimates;
+    public void put(final PointLocation origin,
+                    final VisitableLocation destination,
+                    final double distanceMeters) throws InterruptedException;
 
-    @Override
-    public Set<VisitableLocation> getReachableLocations(
-            final PointLocation originStop, final double distanceMeters) {
-        return ImmutableSet.copyOf(
-                estimates.headMap(distanceMeters, true).values());
-    }
+    public Set<VisitableLocation> getReachable(final PointLocation origin,
+                                               final double distanceMeters)
+            throws InterruptedException;
 
-    @Override
-    public void close() {
-    }
+    public boolean isInitialized() throws InterruptedException;
+
+    public double getMaxStored(final PointLocation origin)
+            throws InterruptedException;
+
+    public void updateMaxStored(final PointLocation orgin, final double max)
+            throws InterruptedException;
+
+    public void close();
 
 }

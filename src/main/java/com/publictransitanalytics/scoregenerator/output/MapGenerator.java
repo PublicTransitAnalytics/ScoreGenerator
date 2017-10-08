@@ -267,12 +267,10 @@ public class MapGenerator {
 
     private static Color getComparativeColor(final int colorLevel) {
         if (colorLevel > NINE_ORANGE_LEVELS.length) {
-            System.err.println(String.format("higher outlier %d", colorLevel));
             return HIGH_OUTLIER_COLOR;
         } else if (colorLevel > 0) {
             return NINE_ORANGE_LEVELS[colorLevel - 1];
         } else if (colorLevel < -NINE_BLUE_LEVELS.length) {
-            System.err.println(String.format("low outlier %d", colorLevel));
             return HIGH_OUTLIER_COLOR;
         } else if (colorLevel < 0) {
             final Color level = NINE_BLUE_LEVELS[(-colorLevel) - 1];
@@ -297,10 +295,6 @@ public class MapGenerator {
             final BigDecimal scaled = changeRatio
                     .multiply(BigDecimal.valueOf(NINE_ORANGE_LEVELS.length))
                     .divide(BigDecimal.valueOf(range), 0, RoundingMode.DOWN);
-
-            System.err.println(String.format(
-                    "trial %d base %d change %s scaled %s",
-                    trialReachCount, baseReachCount, changeRatio, scaled));
 
             return scaled.intValueExact();
         }

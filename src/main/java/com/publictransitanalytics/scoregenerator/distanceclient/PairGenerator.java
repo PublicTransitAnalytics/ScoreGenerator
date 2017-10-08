@@ -13,29 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
-
-import java.time.LocalDate;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
+package com.publictransitanalytics.scoregenerator.distanceclient;
 
 /**
- * The identifier for a trip. Made up of an opaque id, the day from which it
- * originates, and an opaque offset.
- * 
+ *
  * @author Public Transit Analytics
  */
-@Value
-@RequiredArgsConstructor
-public class TripId {
+public interface PairGenerator {
 
-    @NonNull
-    private final String baseId;
-    private final LocalDate serviceDay;
-    private final  String offset;
-    
-    public TripId(final String baseId, final LocalDate serviceDay) {
-        this(baseId, serviceDay, null);
-    }
+    public void storeEstimates(CalculatingDistanceEstimator estimator,
+                               EstimateStorage estimateStorage,
+                               double maxDistanceMeters)
+            throws InterruptedException;
+
 }

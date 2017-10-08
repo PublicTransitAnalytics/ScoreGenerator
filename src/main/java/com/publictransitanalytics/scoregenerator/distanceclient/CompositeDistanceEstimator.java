@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.testhelpers;
+package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import java.util.NavigableMap;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
@@ -28,19 +26,28 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class PreloadedDistanceEstimator implements DistanceEstimator {
+public class CompositeDistanceEstimator implements DistanceEstimator {
 
-    private final NavigableMap<Double, VisitableLocation> estimates;
-
+    private final Set<DistanceEstimator> estimators;
+    
     @Override
     public Set<VisitableLocation> getReachableLocations(
-            final PointLocation originStop, final double distanceMeters) {
-        return ImmutableSet.copyOf(
-                estimates.headMap(distanceMeters, true).values());
+            final PointLocation origin, final double distanceMeters)
+            throws InterruptedException {
+        final ImmutableSet.Builder<VisitableLocation> builder
+                = ImmutableSet.builder();
+        for (final DistanceEstimator estimator : estimators) {
+            builder.addAll(estimator.getReachableLocations(origin,
+                                                           distanceMeters));
+        }
+        return builder.build();
     }
 
     @Override
     public void close() {
+        for (final DistanceEstimator estimator : estimators) {
+            estimator.close();
+        }
     }
-
+    
 }

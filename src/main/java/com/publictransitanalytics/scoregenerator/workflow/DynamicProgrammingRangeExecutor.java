@@ -52,7 +52,7 @@ public class DynamicProgrammingRangeExecutor {
     private final DynamicProgrammingAlgorithm algorithm;
     private final Environment environment;
 
-    public void executeRange(final RangeCalculation calculation,
+    public void executeRange(final Calculation calculation,
                              final TaskGroupIdentifier taskGroup)
             throws InterruptedException {
         final int maxDepth = environment.getMaxDepth();

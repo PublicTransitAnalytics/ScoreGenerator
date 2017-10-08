@@ -19,21 +19,18 @@ import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableSet;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.DistanceEstimator;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 
 /**
- * Computes a map walking costs by using an exhaustive distance estimator, and 
- * then filtering the results of the estimator against a precise distance 
+ * Computes a map walking costs by using an exhaustive distance estimator, and
+ * then filtering the results of the estimator against a precise distance
  * finder.
- * 
+ *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
@@ -43,43 +40,28 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
     private final DistanceEstimator distanceEstimator;
     private final TimeTracker timeTracker;
     private final double walkingMetersPerSecond;
-    private final ImmutableBiMap<String, VisitableLocation> locationMap;
 
     @Override
     public Map<VisitableLocation, WalkingCosts> getWalkingDistances(
             final PointLocation location, final LocalDateTime currentTime,
-            final LocalDateTime cutoffTime) 
+            final LocalDateTime cutoffTime)
             throws DistanceClientException, InterruptedException {
-
-        final String locationId = location.getIdentifier();
 
         final Duration duration
                 = timeTracker.getDuration(currentTime, cutoffTime);
 
-        final double maximumDistanceMeters =
-                duration.getSeconds() * walkingMetersPerSecond;
-        final Set<String> candidateStopIds 
+        final double maximumDistanceMeters = duration.getSeconds()
+                                             * walkingMetersPerSecond;
+        final Set<VisitableLocation> candidateLocations
                 = distanceEstimator.getReachableLocations(
-                        locationId, maximumDistanceMeters);
-        if (candidateStopIds == null) {
+                        location, maximumDistanceMeters);
+        if (candidateLocations == null) {
             throw new ScoreGeneratorFatalException(String.format(
                     "Distance estimates did not contain location %s",
-                    locationId));
+                    location.getIdentifier()));
         }
-
-        final ImmutableSet.Builder<VisitableLocation> builder = ImmutableSet
-                .builder();
-        for (final String candidateStopId : candidateStopIds) {
-            if (locationMap.containsKey(candidateStopId)) {
-                builder.add(locationMap.get(candidateStopId));
-            }
-        }
-        final ImmutableSet<VisitableLocation> candidateLocations = 
-                builder.build();
 
         return distanceFilter.getFilteredDistances(location, candidateLocations,
                                                    currentTime, cutoffTime);
     }
-    
-
 }

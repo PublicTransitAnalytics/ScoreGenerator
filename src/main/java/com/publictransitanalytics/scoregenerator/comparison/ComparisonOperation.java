@@ -26,5 +26,7 @@ public class ComparisonOperation {
     
     final Operator operator;
     final String route;
+    final Stop stop;
+    final Extension extension;
     
 }

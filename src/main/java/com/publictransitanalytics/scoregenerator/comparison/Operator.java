@@ -21,6 +21,9 @@ package com.publictransitanalytics.scoregenerator.comparison;
  */
 public enum Operator {
     
-    DELETE
+    DELETE,
+    ADD,
+    EXTEND
+    
     
 }

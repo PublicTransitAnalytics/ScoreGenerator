@@ -30,9 +30,9 @@ public class SequentialTaskExecutor<S extends ScoreCard>
     private final DynamicProgrammingRangeExecutor timeRangeExecutor;
 
     @Override
-    public void calculate(final Set<RangeCalculation<S>> rangeCalculations)
+    public void calculate(final Set<Calculation<S>> rangeCalculations)
             throws InterruptedException {
-        for (final RangeCalculation<S> rangeCalculation : rangeCalculations) {
+        for (final Calculation<S> rangeCalculation : rangeCalculations) {
 
             for (final TaskGroupIdentifier task
                          : rangeCalculation.getTaskGroups()) {

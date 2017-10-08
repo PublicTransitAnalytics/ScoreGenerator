@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutionException;
 public interface Workflow<S extends ScoreCard> {
 
     void calculate(
-            final Set<RangeCalculation<S>> calculations)
+            final Set<Calculation<S>> calculations)
             throws InterruptedException, ExecutionException;
 
 }

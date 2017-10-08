@@ -15,32 +15,42 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.distanceclient.CalculatingDistanceEstimator;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import java.util.NavigableMap;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@RequiredArgsConstructor
-public class PreloadedDistanceEstimator implements DistanceEstimator {
+public class RecordingEstimator implements CalculatingDistanceEstimator {
 
-    private final NavigableMap<Double, VisitableLocation> estimates;
+    @Getter
+    final SetMultimap<PointLocation, VisitableLocation> record;
 
+    public RecordingEstimator() {
+        record = HashMultimap.create();
+    }
+    
     @Override
-    public Set<VisitableLocation> getReachableLocations(
-            final PointLocation originStop, final double distanceMeters) {
-        return ImmutableSet.copyOf(
-                estimates.headMap(distanceMeters, true).values());
+    public Set<VisitableLocation> getReachableLocations(PointLocation origin,
+                                                        double distanceMeters)
+            throws InterruptedException {
+        return null;
     }
 
     @Override
     public void close() {
     }
 
+    @Override
+    public void generateEstimate(final PointLocation origin,
+                                 final VisitableLocation destination) {
+        record.put(origin, destination);
+    }
+    
 }

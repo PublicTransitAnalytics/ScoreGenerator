@@ -15,27 +15,12 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
-import java.time.LocalDate;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
-
 /**
- * The identifier for a trip. Made up of an opaque id, the day from which it
- * originates, and an opaque offset.
- * 
+ *
  * @author Public Transit Analytics
  */
-@Value
-@RequiredArgsConstructor
-public class TripId {
-
-    @NonNull
-    private final String baseId;
-    private final LocalDate serviceDay;
-    private final  String offset;
+public enum Direction {
+    INBOUND,
+    OUTBOUND
     
-    public TripId(final String baseId, final LocalDate serviceDay) {
-        this(baseId, serviceDay, null);
-    }
 }

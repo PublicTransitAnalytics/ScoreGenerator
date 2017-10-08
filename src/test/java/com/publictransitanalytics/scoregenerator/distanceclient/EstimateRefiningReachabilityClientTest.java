@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.distanceclient.EstimateRefiningReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceFilter;
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.DistanceEstimator;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
@@ -72,8 +71,8 @@ public class EstimateRefiningReachabilityClientTest {
     @Test
     public void testIgnoresOutOfEstimateRange() throws Exception {
         final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, String>of(
-                        1000.0, LOCATION_ID_1)));
+                new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
+                        1000.0, LOCATION_1)));
 
         final DistanceFilter filter = new PreloadedDistanceFilter(
                 new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
@@ -82,12 +81,9 @@ public class EstimateRefiningReachabilityClientTest {
         final TimeTracker tracker = new PreloadedTimeTracker(
                 null, true, Duration.ofMinutes(2));
 
-        final ImmutableBiMap locationMap
-                = ImmutableBiMap.of(LOCATION_ID_1, LOCATION_1);
-
         final EstimateRefiningReachabilityClient reachabilityClient
                 = new EstimateRefiningReachabilityClient(
-                        filter, estimator, tracker, 1, locationMap);
+                        filter, estimator, tracker, 1);
 
         final Map<VisitableLocation, WalkingCosts> reachable
                 = reachabilityClient.getWalkingDistances(
@@ -101,8 +97,8 @@ public class EstimateRefiningReachabilityClientTest {
     @Test
     public void testIgnoresUnreachable() throws Exception {
         final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, String>of(
-                        0.5, LOCATION_ID_1)));
+                new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
+                        0.5, LOCATION_1)));
 
         final DistanceFilter filter = new PreloadedDistanceFilter(
                 new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
@@ -112,12 +108,9 @@ public class EstimateRefiningReachabilityClientTest {
         final TimeTracker tracker = new PreloadedTimeTracker(
                 null, true, Duration.ofMinutes(2));
 
-        final ImmutableBiMap locationMap
-                = ImmutableBiMap.of(LOCATION_ID_1, LOCATION_1);
-
         final EstimateRefiningReachabilityClient reachabilityClient
                 = new EstimateRefiningReachabilityClient(
-                        filter, estimator, tracker, 1, locationMap);
+                        filter, estimator, tracker, 1);
 
         final Map<VisitableLocation, WalkingCosts> reachable
                 = reachabilityClient.getWalkingDistances(
@@ -131,8 +124,8 @@ public class EstimateRefiningReachabilityClientTest {
     @Test
     public void testReturnsReachableEstimate() throws Exception {
         final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, String>of(
-                        0.5, LOCATION_ID_1)));
+                new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
+                        0.5, LOCATION_1)));
 
         final DistanceFilter filter = new PreloadedDistanceFilter(
                 new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
@@ -142,12 +135,9 @@ public class EstimateRefiningReachabilityClientTest {
         final TimeTracker tracker = new PreloadedTimeTracker(
                 null, true, Duration.ofMinutes(2));
 
-        final ImmutableBiMap locationMap
-                = ImmutableBiMap.of(LOCATION_ID_1, LOCATION_1);
-
         final EstimateRefiningReachabilityClient reachabilityClient
                 = new EstimateRefiningReachabilityClient(
-                        filter, estimator, tracker, 1, locationMap);
+                        filter, estimator, tracker, 1);
 
         final Map<VisitableLocation, WalkingCosts> reachable
                 = reachabilityClient.getWalkingDistances(
@@ -156,35 +146,6 @@ public class EstimateRefiningReachabilityClientTest {
                         LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 47));
 
         Assert.assertEquals(1, reachable.size());
-    }
-
-    @Test
-    public void testIgnoresUnmapped() throws Exception {
-        final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, String>of(
-                        0.5, LOCATION_ID_1)));
-
-        final DistanceFilter filter = new PreloadedDistanceFilter(
-                new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
-                        Duration.ofMinutes(1), LOCATION_1)),
-                Duration.ofMinutes(2));
-
-        final TimeTracker tracker = new PreloadedTimeTracker(
-                null, true, Duration.ofMinutes(2));
-
-        final ImmutableBiMap locationMap = ImmutableBiMap.of();
-
-        final EstimateRefiningReachabilityClient reachabilityClient
-                = new EstimateRefiningReachabilityClient(
-                        filter, estimator, tracker, 1, locationMap);
-
-        final Map<VisitableLocation, WalkingCosts> reachable
-                = reachabilityClient.getWalkingDistances(
-                        HOME,
-                        LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 45),
-                        LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 47));
-
-        Assert.assertTrue(reachable.isEmpty());
     }
 
 }
