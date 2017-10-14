@@ -70,6 +70,7 @@ public class StoredDistanceEstimator implements CalculatingDistanceEstimator {
         estimateStorage.close();
     }
 
+    @Override
     public void generateEstimate(
             final PointLocation origin, final VisitableLocation destination)
             throws InterruptedException {

@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.workflow;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
@@ -133,7 +132,7 @@ public class DynamicProgrammingRangeExecutor {
             newTable.put(0, priorTableLocation, newFirstRecord);
         }
 
-        for (int i = 1; i < environment.getMaxDepth(); i++) {
+        for (int i = 1;; i++) {
             final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow
                     = newTable.row(i - 1);
             final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow

@@ -33,7 +33,7 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
  *
  * @author Public Transit Analytics
  */
-public class QualifiedPointAccessibility {
+public class TimeQualifiedPointAccessibility {
 
     private final AccessibilityType type;
 
@@ -51,7 +51,7 @@ public class QualifiedPointAccessibility {
 
     private final int totalSectors;
 
-    public QualifiedPointAccessibility(
+    public TimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final SectorTable sectorTable,
             final PointLocation centerPoint, final LocalDateTime time, 
             final Duration tripDuration, final boolean backward) 

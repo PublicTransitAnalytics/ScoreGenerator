@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
@@ -92,20 +93,27 @@ public class ComparativePointAccessibility {
                 = ImmutableMap.builder();
 
         for (final Sector sector : sectorTable.getSectors()) {
-            final Map<TaskIdentifier, MovementPath> taskPaths
+            final Map<TaskIdentifier, MovementPath> bestPaths
                     = scoreCard.getBestPaths(sector);
-            final Map<TaskIdentifier, MovementPath> trialSectorPaths
+            final Map<TaskIdentifier, MovementPath> trialBestPaths
                     = trialScoreCard.getBestPaths(sector);
-            if (!taskPaths.isEmpty() || !trialSectorPaths.isEmpty()) {
-                final Set<MovementPath> bestPaths = getBestPaths(taskPaths);
-                final Set<MovementPath> trialBestPaths
-                        = getBestPaths(trialSectorPaths);
+            if (!bestPaths.isEmpty() || !trialBestPaths.isEmpty()) {
+                final Set<MovementPath> bestPathSet = getBestPathSet(bestPaths);
+                final Set<LocalDateTime> reachTimes = scoreCard.getReachedTimes(
+                        sector);
+                final Set<MovementPath> trialBestPathSet
+                        = getBestPathSet(trialBestPaths);
+                final Set<LocalDateTime> trialReachTimes
+                        = trialScoreCard.getReachedTimes(sector);
+                int numBestPaths = bestPathSet.size();
+                int numTrialBestPaths = trialBestPathSet.size();
 
                 final Bounds bounds = new Bounds(sector);
                 final ComparativeSectorReachInformation information
                         = new ComparativeSectorReachInformation(
-                                bestPaths, bestPaths.size(), trialBestPaths,
-                                trialBestPaths.size());
+                                bestPathSet, numBestPaths, reachTimes,
+                                trialBestPathSet, numTrialBestPaths,
+                                trialReachTimes);
                 informationBuilder.put(bounds, information);
             }
         }
@@ -113,7 +121,7 @@ public class ComparativePointAccessibility {
         this.trialName = trialName;
     }
 
-    private static Set<MovementPath> getBestPaths(
+    private static Set<MovementPath> getBestPathSet(
             final Map<TaskIdentifier, MovementPath> sectorPaths) {
         final ImmutableSet.Builder<MovementPath> bestPathsBuilder
                 = ImmutableSet.builder();

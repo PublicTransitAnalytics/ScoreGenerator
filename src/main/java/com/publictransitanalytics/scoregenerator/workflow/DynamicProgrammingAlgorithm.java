@@ -61,7 +61,7 @@ public class DynamicProgrammingAlgorithm {
 
         stateTable.put(0, startLocation, initialRecord);
 
-        for (int i = 1; i < depth; i++) {
+        for (int i = 1;; i++) {
             final Map<VisitableLocation, DynamicProgrammingRecord> priorRow
                     = stateTable.row(i - 1);
             final Map<VisitableLocation, DynamicProgrammingRecord> currentRow
@@ -101,7 +101,7 @@ public class DynamicProgrammingAlgorithm {
             }
 
             if (roundUpdates == 0) {
-                log.debug(
+                log.info(
                         "Stopped processing at row {} because no updates.", i);
                 break;
             }

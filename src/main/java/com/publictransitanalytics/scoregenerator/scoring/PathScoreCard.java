@@ -20,11 +20,14 @@ import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Scorecard that keeps track of beth paths.
- * 
+ *
  * @author Public Transit Analytics
  */
 public class PathScoreCard extends ScoreCard {
@@ -70,13 +73,19 @@ public class PathScoreCard extends ScoreCard {
         return bestPaths.row(location).size();
     }
 
-    public boolean hasPath(final VisitableLocation location,
-                           final TaskIdentifier task) {
+    public synchronized Set<LocalDateTime> getReachedTimes(
+            final VisitableLocation location) {
+        return bestPaths.row(location).keySet().stream()
+                .map(task -> task.getTime()).collect(Collectors.toSet());
+    }
+
+    public synchronized boolean hasPath(final VisitableLocation location,
+                                        final TaskIdentifier task) {
         return bestPaths.contains(location, task);
     }
 
     @Override
-    public boolean hasPath(final VisitableLocation location) {
+    public synchronized boolean hasPath(final VisitableLocation location) {
         return bestPaths.containsRow(location);
     }
 

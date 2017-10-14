@@ -31,15 +31,15 @@ import lombok.Getter;
  */
 public class TripProcessingTransitNetwork implements TransitNetwork {
 
-    final TreeBasedTable<TransitStop, LocalDateTime, EntryPoint> entryPoints;
+    final TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> entryPoints;
     @Getter
     final Set<Trip> trips;
 
     public TripProcessingTransitNetwork(final TripCreator tripCreator)
             throws InterruptedException {
-        
+
         trips = tripCreator.createTrips();
-        entryPoints = NetworkHelpers.makeEntyPointTable(trips);
+        entryPoints = makeEntyPointTable(trips);
     }
 
     @Override
@@ -48,10 +48,13 @@ public class TripProcessingTransitNetwork implements TransitNetwork {
             final LocalDateTime endTime) {
         final ImmutableSet.Builder<EntryPoint> builder = ImmutableSet.builder();
 
-        builder.addAll(entryPoints.row(stop).subMap(startTime, endTime)
-                .values());
-        if (entryPoints.contains(stop, endTime)) {
-            builder.add(entryPoints.get(stop, endTime));
+        final EntryPointTimeKey startKey
+                = EntryPointTimeKey.getMinimalKey(startTime);
+        final EntryPointTimeKey endKey = EntryPointTimeKey
+                .getMaximalKey(endTime);
+        builder.addAll(entryPoints.row(stop).subMap(startKey, endKey).values());
+        if (entryPoints.contains(stop, endKey)) {
+            builder.add(entryPoints.get(stop, endKey));
         }
         return builder.build();
     }
@@ -65,4 +68,24 @@ public class TripProcessingTransitNetwork implements TransitNetwork {
         return duration;
     }
 
+    private static TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> makeEntyPointTable(
+            final Set<Trip> trips) {
+        final TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> entryPoints
+                = TreeBasedTable.create(
+                        (stop1, stop2) -> stop1.getIdentifier().compareTo(
+                                stop2.getIdentifier()),
+                        (time1, time2) -> time1.compareTo(time2));
+        for (final Trip trip : trips) {
+            for (final ScheduledLocation scheduledLocation
+                         : trip.getSchedule()) {
+                final LocalDateTime time = scheduledLocation.getScheduledTime();
+                final EntryPointTimeKey timeKey = new EntryPointTimeKey(time);
+                final TransitStop transitStop
+                        = scheduledLocation.getLocation();
+                final EntryPoint entryPoint = new EntryPoint(trip, time);
+                entryPoints.put(transitStop, timeKey, entryPoint);
+            }
+        }
+        return entryPoints;
+    }
 }

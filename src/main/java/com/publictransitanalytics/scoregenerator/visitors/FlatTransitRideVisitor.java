@@ -61,7 +61,7 @@ public class FlatTransitRideVisitor
     public void visit(TransitStop transitStop) throws InterruptedException {
         final ImmutableSet.Builder<ReachabilityOutput> outputBuilder
                 = ImmutableSet.builder();
-
+        
         final Sector sector = transitStop.getContainingSector();
         outputBuilder.add(new ReachabilityOutput(
                 sector, currentTime, currentTime, ModeInfo.NONE));

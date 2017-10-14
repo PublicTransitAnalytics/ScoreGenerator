@@ -118,7 +118,7 @@ import com.publictransitanalytics.scoregenerator.output.ComparativeTimeQualified
 import com.publictransitanalytics.scoregenerator.output.MapGenerator;
 import com.publictransitanalytics.scoregenerator.output.NetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.PointAccessibility;
-import com.publictransitanalytics.scoregenerator.output.QualifiedPointAccessibility;
+import com.publictransitanalytics.scoregenerator.output.TimeQualifiedPointAccessibility;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
 import java.io.FileReader;
 import java.io.Reader;
@@ -758,8 +758,8 @@ public class Main {
                         backward);
                 publisher.publish(outputName, serializer.toJson(map));
             } else {
-                final QualifiedPointAccessibility map
-                        = new QualifiedPointAccessibility(
+                final TimeQualifiedPointAccessibility map
+                        = new TimeQualifiedPointAccessibility(
                                 scoreCard, sectorTable, centerPoint,
                                 startTime, durations.last(), backward);
                 publisher.publish(outputName, serializer.toJson(map));

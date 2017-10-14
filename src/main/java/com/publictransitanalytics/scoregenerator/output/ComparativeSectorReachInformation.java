@@ -18,33 +18,45 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.TreeMultimap;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  *
  * @author Public Transit Analytics
  */
 class ComparativeSectorReachInformation {
-    
+
     private final int reachCount;
     private final Map<SimplePath, Integer> pathCounts;
+    private final Set<String> reachTimes;
     private final int trialReachCount;
     private final Map<SimplePath, Integer> trialPathCounts;
-    
+    private final Set<String> trialReachTimes;
+
     public ComparativeSectorReachInformation(
             final Set<MovementPath> bestPaths, final int count,
-            final Set<MovementPath> trialBestPaths, final int trialCount) 
+            final Set<LocalDateTime> reachTimes,
+            final Set<MovementPath> trialBestPaths, final int trialCount,
+            final Set<LocalDateTime> trialReachTimes)
             throws InterruptedException {
 
         reachCount = count;
         trialReachCount = trialCount;
+        this.reachTimes = reachTimes.stream()
+                .map(time -> time.toLocalTime().toString())
+                .collect(Collectors.toSet());
         pathCounts = getPathCounts(bestPaths);
         trialPathCounts = getPathCounts(trialBestPaths);
+        this.trialReachTimes = trialReachTimes.stream()
+                .map(time -> time.toLocalTime().toString())
+                .collect(Collectors.toSet());
     }
-    
+
     private static Map<SimplePath, Integer> getPathCounts(
             final Set<MovementPath> bestPaths) throws InterruptedException {
         final Map<SimplePath, Integer> pathCounts;
@@ -80,5 +92,5 @@ class ComparativeSectorReachInformation {
         }
         return pathCounts;
     }
-    
+
 }
