@@ -33,6 +33,7 @@ import com.publictransitanalytics.scoregenerator.workflow.Calculation;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
+import com.publictransitanalytics.scoregenerator.schedule.Patch;
 import com.publictransitanalytics.scoregenerator.schedule.PatchingTripCreator;
 import com.publictransitanalytics.scoregenerator.schedule.RouteExtension;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
@@ -41,7 +42,9 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.TripProcessingTransitNetwork;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  *
@@ -52,29 +55,23 @@ public class CalculationTransformer {
 
     private final Calculation original;
     private final ScoreCardFactory scoreCardFactory;
-    private final Set<String> removedRoutes;
-    private final ListMultimap<String, RouteExtension> extendedRoutes;
+    private final List<Patch> tripPatches;
     private final Set<TransitStop> addedStops;
 
     public CalculationTransformer(final Calculation original,
                                   final ScoreCardFactory scoreCardFactory) {
         this.original = original;
         this.scoreCardFactory = scoreCardFactory;
-        removedRoutes = new HashSet<>();
-        extendedRoutes = ArrayListMultimap.create();
+        tripPatches = new ArrayList<>();
         addedStops = new HashSet<>();
     }
 
-    public void deleteRoute(final String route) {
-        removedRoutes.add(route);
+    public void addTripPatch(final Patch patch) {
+        tripPatches.add(patch);
     }
 
     public void addStop(final TransitStop stop) {
         addedStops.add(stop);
-    }
-
-    public void extend(final String route, final RouteExtension extension) {
-        extendedRoutes.put(route, extension);
     }
 
     public Calculation transform() throws InterruptedException {
@@ -93,15 +90,15 @@ public class CalculationTransformer {
                 original.isBackward(), original.getLongestDuration(),
                 original.getWalkingDistanceMetersPerSecond(),
                 original.getEndpointDeterminer(), original.getDistanceFilter(),
-                original.getSectors(), original.getStops(), 
-                original .getCenters(), newDistanceEstimator, 
+                original.getSectors(), original.getStops(),
+                original.getCenters(), newDistanceEstimator,
                 newReachabilityClient, newRiderFactory);
     }
 
     private TransitNetwork getPatchedNetwork() throws InterruptedException {
 
         return new TripProcessingTransitNetwork(new PatchingTripCreator(
-                removedRoutes, extendedRoutes, original.getTransitNetwork()));
+                tripPatches, original.getTransitNetwork()));
     }
 
     private RiderFactory getRiderFactory(final TransitNetwork newNetwork) {

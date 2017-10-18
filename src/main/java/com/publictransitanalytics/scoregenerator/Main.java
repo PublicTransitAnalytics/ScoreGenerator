@@ -135,6 +135,7 @@ import com.publictransitanalytics.scoregenerator.workflow.Workflow;
 import java.util.Map;
 import java.util.Optional;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
+import com.publictransitanalytics.scoregenerator.schedule.Deletion;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingTripCreator;
 import com.publictransitanalytics.scoregenerator.schedule.ExtensionType;
 import com.publictransitanalytics.scoregenerator.schedule.RouteExtension;
@@ -546,7 +547,9 @@ public class Main {
                 for (final ComparisonOperation operation : operations) {
                     switch (operation.getOperator()) {
                     case DELETE:
-                        transformer.deleteRoute(operation.getRoute());
+                        final Deletion deletion 
+                                = new Deletion(operation .getRoute());
+                        transformer.addTripPatch(deletion);
                         break;
                     case ADD:
                         final Stop stopData = operation.getStop();
@@ -574,9 +577,10 @@ public class Main {
                                 = mapSequence(extension.getSequence(),
                                               allStopsById);
                         final RouteExtension routeExtension
-                                = new RouteExtension(
-                                        referenceStop, type, sequence);
-                        transformer.extend(route, routeExtension);
+                                = new RouteExtension(route,
+                                                     referenceStop, type,
+                                                     sequence);
+                        transformer.addTripPatch(routeExtension);
                         break;
                     }
                 }

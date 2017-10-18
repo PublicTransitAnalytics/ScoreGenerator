@@ -140,10 +140,10 @@ public class MapGenerator {
         final Map<Geodetic2DBounds, Color> sectorColors
                 = sectorTable.getSectors().stream().collect(Collectors.toMap(
                         sector -> sector.getBounds(),
-                        sector -> getComparativeColor(getComparativeColorLevel(
-                                scoreCard.getReachedCount(sector),
-                                trialScoreCard.getReachedCount(sector),
-                                range))));
+                        sector -> getComparativeColor(
+                                trialScoreCard.getReachedCount(sector)
+                                        - scoreCard.getReachedCount(sector),
+                                range)));
 
         makeMap(outputName, bounds, sectorColors);
     }
@@ -160,10 +160,10 @@ public class MapGenerator {
         final Map<Geodetic2DBounds, Color> sectorColors
                 = boundsStringSet.stream().collect(Collectors.toMap(
                         key -> getBounds(key),
-                        key -> getComparativeColor(getComparativeColorLevel(
-                                baseReachCounts.getOrDefault(key, 0),
-                                trialReachCounts.getOrDefault(key, 0),
-                                range))));
+                        key -> getComparativeColor(
+                                trialReachCounts.getOrDefault(key, 0)
+                                        - baseReachCounts.getOrDefault(key, 0),
+                                range)));
         makeMap(outputName, getBounds(boundsString), sectorColors);
     }
 
@@ -195,7 +195,7 @@ public class MapGenerator {
     private static SVGGraphics2D createDocument(final Geodetic2DBounds bounds) {
 
         final SVGGraphics2D svgGenerator = new SVGGraphics2D(
-                (int) (getLonSize(bounds) + 0.5), 
+                (int) (getLonSize(bounds) + 0.5),
                 (int) (getLatSize(bounds) + 0.5));
         return svgGenerator;
     }
@@ -265,39 +265,35 @@ public class MapGenerator {
         return NINE_GREEN_LEVELS[colorLevel];
     }
 
-    private static Color getComparativeColor(final int colorLevel) {
-        if (colorLevel > NINE_ORANGE_LEVELS.length) {
-            return HIGH_OUTLIER_COLOR;
-        } else if (colorLevel > 0) {
-            return NINE_ORANGE_LEVELS[colorLevel - 1];
-        } else if (colorLevel < -NINE_BLUE_LEVELS.length) {
-            return HIGH_OUTLIER_COLOR;
-        } else if (colorLevel < 0) {
-            final Color level = NINE_BLUE_LEVELS[(-colorLevel) - 1];
-            return level;
-        }
-        return NEUTRAL_COLOR;
+    private static int getColorLevel(
+            final int numColors, final int reachChange, double range) {
+        return (int) Math.floor(((double) reachChange) / ((double) range)
+                                        * (numColors + 1));
     }
 
-    private int getComparativeColorLevel(final int baseReachCount,
-                                         final int trialReachCount,
-                                         final double range) {
-        if (baseReachCount == 0 && trialReachCount == 0) {
-            return 0;
-        } else if (baseReachCount == 0) {
-            return NINE_ORANGE_LEVELS.length + 1;
-        } else {
-            final BigDecimal change = BigDecimal.valueOf(
-                    trialReachCount - baseReachCount);
-            final BigDecimal changeRatio = change.divide(
-                    BigDecimal.valueOf(baseReachCount), 10,
-                    RoundingMode.HALF_EVEN);
-            final BigDecimal scaled = changeRatio
-                    .multiply(BigDecimal.valueOf(NINE_ORANGE_LEVELS.length))
-                    .divide(BigDecimal.valueOf(range), 0, RoundingMode.DOWN);
+    private static Color getComparativeColor(final int reachChange,
+                                             final double range) {
 
-            return scaled.intValueExact();
+        final int level;
+        final Color[] colors;
+        if (reachChange > 0) {
+            level = getColorLevel(NINE_ORANGE_LEVELS.length, reachChange,
+                                  range);
+            colors = NINE_ORANGE_LEVELS;
+        } else if (reachChange < -0) {
+            level = getColorLevel(NINE_BLUE_LEVELS.length, reachChange,
+                                  range);
+            colors = NINE_BLUE_LEVELS;
+        } else {
+            return NEUTRAL_COLOR;
         }
+
+        if (level == 0) {
+            return NEUTRAL_COLOR;
+        } else if (level > colors.length) {
+            return HIGH_OUTLIER_COLOR;
+        }
+        return colors[level - 1];
     }
 
     private static Geodetic2DBounds getBounds(final String boundsString) {

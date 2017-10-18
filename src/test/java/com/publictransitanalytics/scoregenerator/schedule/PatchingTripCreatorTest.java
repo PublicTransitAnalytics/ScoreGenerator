@@ -75,8 +75,7 @@ public class PatchingTripCreatorTest {
                                          "71", "71", Collections.emptySet())));
 
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.singleton("71"), ArrayListMultimap.create(),
-                baseNetwork);
+                Collections.singletonList(new Deletion("71")), baseNetwork);
         final Set<Trip> trips = tripCreator.createTrips();
         Assert.assertEquals(1, trips.size());
         Assert.assertEquals(trip70_1, trips.iterator().next());
@@ -96,11 +95,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71)));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_2, ExtensionType.AFTER_LAST,
+                "71", STOP_2, ExtensionType.AFTER_LAST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(),
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         final List<ScheduledLocation> newSchedule
@@ -125,11 +123,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71)));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.AFTER_LAST,
+                "71", STOP_1, ExtensionType.AFTER_LAST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         final List<ScheduledLocation> newSchedule
@@ -155,11 +152,10 @@ public class PatchingTripCreatorTest {
                 ImmutableSet.of(route71Trip));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_2, ExtensionType.AFTER_LAST,
+                "71", STOP_2, ExtensionType.AFTER_LAST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         Assert.assertEquals(1, trips.size());
@@ -181,11 +177,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71)));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.BEFORE_FIRST,
+                "71", STOP_1, ExtensionType.BEFORE_FIRST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         final List<ScheduledLocation> newSchedule
@@ -209,11 +204,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71)));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.BEFORE_FIRST,
+                "71", STOP_1, ExtensionType.BEFORE_FIRST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         final List<ScheduledLocation> newSchedule
@@ -246,11 +240,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71_2)));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.BEFORE_FIRST,
+                "71", STOP_1, ExtensionType.BEFORE_FIRST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         final Set<LocalDateTime> firstTimes = trips.stream()
@@ -283,11 +276,10 @@ public class PatchingTripCreatorTest {
                 ImmutableSet.of(route71Ib, route71Ob));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.BEFORE_FIRST,
+                "71", STOP_1, ExtensionType.BEFORE_FIRST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         Assert.assertEquals(2, trips.size());
@@ -311,11 +303,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71), trip70_1));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.BEFORE_FIRST,
+                "71", STOP_1, ExtensionType.BEFORE_FIRST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         Assert.assertEquals(2, trips.size());
@@ -338,11 +329,10 @@ public class PatchingTripCreatorTest {
                                          "71", "71", route71), trip71_1));
 
         final RouteExtension extension = new RouteExtension(
-                STOP_1, ExtensionType.BEFORE_FIRST,
+                "71", STOP_1, ExtensionType.BEFORE_FIRST,
                 ImmutableSortedMap.of(Duration.ofMinutes(5), STOP_3));
         final PatchingTripCreator tripCreator = new PatchingTripCreator(
-                Collections.emptySet(), 
-                ImmutableListMultimap.of("71", extension), baseNetwork);
+                Collections.singletonList(extension), baseNetwork);
 
         final Set<Trip> trips = tripCreator.createTrips();
         Assert.assertEquals(2, trips.size());
