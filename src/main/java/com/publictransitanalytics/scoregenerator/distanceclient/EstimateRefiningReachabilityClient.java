@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
+import edu.emory.mathcs.backport.java.util.Collections;
+import java.util.stream.Collectors;
 
 /**
  * Computes a map walking costs by using an exhaustive distance estimator, and
@@ -36,7 +38,7 @@ import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 @RequiredArgsConstructor
 public class EstimateRefiningReachabilityClient implements ReachabilityClient {
 
-    private final DistanceFilter distanceFilter;
+    private final DistanceClient distanceClient;
     private final DistanceEstimator distanceEstimator;
     private final TimeTracker timeTracker;
     private final double walkingMetersPerSecond;
@@ -51,7 +53,7 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
                 = timeTracker.getDuration(currentTime, cutoffTime);
 
         final double maximumDistanceMeters = duration.getSeconds()
-                                             * walkingMetersPerSecond;
+                                                     * walkingMetersPerSecond;
         final Set<VisitableLocation> candidateLocations
                 = distanceEstimator.getReachableLocations(
                         location, maximumDistanceMeters);
@@ -61,7 +63,16 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
                     location.getIdentifier()));
         }
 
-        return distanceFilter.getFilteredDistances(location, candidateLocations,
-                                                   currentTime, cutoffTime);
+        if (candidateLocations.isEmpty()) {
+            return Collections.emptyMap();
+        } else {
+            final Map<VisitableLocation, WalkingCosts> costs
+                    = distanceClient.getDistances(location, candidateLocations);
+            return costs.entrySet().stream()
+                    .filter(entry -> entry.getValue().getDuration().compareTo(
+                    duration) <= 0)
+                    .collect(Collectors.toMap(entry -> entry.getKey(),
+                                              entry -> entry.getValue()));
+        }
     }
 }

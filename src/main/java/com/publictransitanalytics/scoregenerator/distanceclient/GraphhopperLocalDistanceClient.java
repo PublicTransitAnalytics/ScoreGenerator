@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Table;
 import com.graphhopper.GHRequest;
@@ -30,6 +31,7 @@ import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.opensextant.geodesy.Geodetic2DPoint;
@@ -42,12 +44,15 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 @Slf4j
 public class GraphhopperLocalDistanceClient implements DistanceClient {
 
+    private final PointOrdererFactory ordererFactory;
     private final GraphHopper hopper;
     private final EndpointDeterminer endpointDeterminer;
 
     public GraphhopperLocalDistanceClient(
+            final PointOrdererFactory ordererFactory,
             final Path osmFile, final Path graphFolder,
             final EndpointDeterminer endpointDeterminer) {
+        this.ordererFactory = ordererFactory;
         hopper = new GraphHopperOSM().forServer();
         hopper.setDataReaderFile(osmFile.toString());
         hopper.setGraphHopperLocation(graphFolder.toString());
@@ -60,50 +65,53 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
     }
 
     @Override
-    public Table<VisitableLocation, VisitableLocation, WalkingCosts> getDistances(
-            final Set<VisitableLocation> origins,
-            final Set<VisitableLocation> destinations)
+    public Map<VisitableLocation, WalkingCosts> getDistances(
+            final VisitableLocation point,
+            final Set<VisitableLocation> consideredPoints)
             throws DistanceClientException, InterruptedException {
 
-        final ImmutableTable.Builder<VisitableLocation, VisitableLocation, WalkingCosts> resultBuilder
-                = ImmutableTable.builder();
+        final ImmutableMap.Builder<VisitableLocation, WalkingCosts> resultBuilder
+                = ImmutableMap.builder();
 
-        for (final VisitableLocation origin : origins) {
-            for (final VisitableLocation destination : destinations) {
+        for (final VisitableLocation consideredPoint : consideredPoints) {
+            final PointOrderer orderer = ordererFactory.getOrderer(
+                    point, consideredPoint);
+            final VisitableLocation origin = orderer.getOrigin();
+            final VisitableLocation destination = orderer.getDestination();
 
-                final Endpoints endpoints = endpointDeterminer.getEndpoints(
-                        origin, destination);
-                final Geodetic2DPoint originPoint
-                        = endpoints.getFirstEndpoint();
-                final Geodetic2DPoint destinationPoint
-                        = endpoints.getSecondEndpoint();
-                final GHRequest req = new GHRequest(
-                        originPoint.getLatitudeAsDegrees(),
-                        originPoint.getLongitudeAsDegrees(),
-                        destinationPoint.getLatitudeAsDegrees(),
-                        destinationPoint.getLongitudeAsDegrees())
-                        .setWeighting("fastest")
-                        .setVehicle("foot")
-                        .setLocale(Locale.US);
-                final GHResponse rsp = hopper.route(req);
+            final Endpoints endpoints = endpointDeterminer.getEndpoints(
+                    origin, destination);
+            final Geodetic2DPoint originPoint
+                    = endpoints.getFirstEndpoint();
+            final Geodetic2DPoint destinationPoint
+                    = endpoints.getSecondEndpoint();
+            final GHRequest req = new GHRequest(
+                    originPoint.getLatitudeAsDegrees(),
+                    originPoint.getLongitudeAsDegrees(),
+                    destinationPoint.getLatitudeAsDegrees(),
+                    destinationPoint.getLongitudeAsDegrees())
+                    .setWeighting("fastest")
+                    .setVehicle("foot")
+                    .setLocale(Locale.US);
+            final GHResponse rsp = hopper.route(req);
 
-                if (rsp.hasErrors()) {
-                    throw new DistanceClientException(
-                            rsp.getErrors().toString());
-                }
-
-                final PathWrapper path = rsp.getBest();
-
-                double distance = path.getDistance();
-                long timeInMs = path.getTime();
-                log.debug("Getting costs between {} and {}: {} m {} ms",
-                          originPoint, destinationPoint, distance, timeInMs);
-
-                final WalkingCosts costs = new WalkingCosts(
-                        Duration.ofMillis(timeInMs), distance);
-                resultBuilder.put(origin, destination, costs);
+            if (rsp.hasErrors()) {
+                throw new DistanceClientException(
+                        rsp.getErrors().toString());
             }
+
+            final PathWrapper path = rsp.getBest();
+
+            double distance = path.getDistance();
+            long timeInMs = path.getTime();
+            log.debug("Getting costs between {} and {}: {} m {} ms",
+                      originPoint, destinationPoint, distance, timeInMs);
+
+            final WalkingCosts costs = new WalkingCosts(
+                    Duration.ofMillis(timeInMs), distance);
+            resultBuilder.put(consideredPoint, costs);
         }
+
         return resultBuilder.build();
     }
 

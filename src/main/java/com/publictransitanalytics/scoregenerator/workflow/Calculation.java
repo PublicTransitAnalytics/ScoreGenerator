@@ -16,6 +16,7 @@
 package com.publictransitanalytics.scoregenerator.workflow;
 
 import com.publictransitanalytics.scoregenerator.ModeType;
+import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceFilter;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
@@ -51,7 +52,7 @@ public class Calculation<S extends ScoreCard> {
     private final Duration longestDuration;
     private final double walkingDistanceMetersPerSecond;
     private final EndpointDeterminer endpointDeterminer;
-    private final DistanceFilter distanceFilter;
+    private final DistanceClient distanceClient;
     private final Set<Sector> sectors;
     private final Set<TransitStop> stops;
     private final Set<PointLocation> centers;

@@ -17,13 +17,13 @@ package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
+import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Table;
+import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
@@ -36,61 +36,62 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CachingDistanceClient implements DistanceClient {
 
+    private final PointOrdererFactory ordererFactory;
     private final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache;
     private final DistanceClient client;
 
     @Override
-    public Table<VisitableLocation, VisitableLocation, WalkingCosts>
-            getDistances(final Set<VisitableLocation> origins,
-                         final Set<VisitableLocation> destinations) throws
+    public Map<VisitableLocation, WalkingCosts>
+            getDistances(final VisitableLocation point,
+                         final Set<VisitableLocation> consideredPoints) throws
             DistanceClientException, InterruptedException {
 
-        final ImmutableTable.Builder<VisitableLocation, VisitableLocation, WalkingCosts> resultBuilder
-                = ImmutableTable.builder();
-        final ImmutableSet.Builder<VisitableLocation> uncachedOriginsBuilder
-                = ImmutableSet.builder();
-        final ImmutableSet.Builder<VisitableLocation> uncachedDestinationsBuilder
+        final ImmutableMap.Builder<VisitableLocation, WalkingCosts> resultBuilder
+                = ImmutableMap.builder();
+        final ImmutableSet.Builder<VisitableLocation> uncachedPointsBuilder
                 = ImmutableSet.builder();
 
-        for (final VisitableLocation origin : origins) {
-            for (VisitableLocation destination : destinations) {
-                final DistanceCacheKey key = new DistanceCacheKey(
-                        origin.getIdentifier(), destination.getIdentifier());
-                try {
-                    final WalkingDistanceMeasurement measurement
-                            = cache.get(key);
+        for (VisitableLocation consideredPoint : consideredPoints) {
+            final PointOrderer orderer = ordererFactory.getOrderer(
+                    point, consideredPoint);
+            final VisitableLocation origin = orderer.getOrigin();
+            final VisitableLocation destination = orderer.getDestination();
 
-                    if (measurement != null) {
-                        final WalkingCosts costs = new WalkingCosts(
-                                measurement.getDuration(),
-                                measurement.getDistanceMeters());
-                        resultBuilder.put(origin, destination, costs);
-                    } else {
-                        uncachedOriginsBuilder.add(origin);
-                        uncachedDestinationsBuilder.add(destination);
-                    }
-                } catch (final BitvantageStoreException e) {
-                    throw new DistanceClientException(e);
+            final DistanceCacheKey key = new DistanceCacheKey(
+                    origin.getIdentifier(), destination.getIdentifier());
+            try {
+                final WalkingDistanceMeasurement measurement
+                        = cache.get(key);
+
+                if (measurement != null) {
+                    final WalkingCosts costs = new WalkingCosts(
+                            measurement.getDuration(),
+                            measurement.getDistanceMeters());
+                    resultBuilder.put(consideredPoint, costs);
+                } else {
+                    uncachedPointsBuilder.add(consideredPoint);
                 }
+            } catch (final BitvantageStoreException e) {
+                throw new DistanceClientException(e);
             }
         }
 
-        final Table<VisitableLocation, VisitableLocation, WalkingCosts> uncachedCosts
-                = client.getDistances(uncachedOriginsBuilder.build(),
-                                      uncachedDestinationsBuilder.build());
+        final Map<VisitableLocation, WalkingCosts> uncachedCosts
+                = client.getDistances(point, uncachedPointsBuilder.build());
         resultBuilder.putAll(uncachedCosts);
-        for (final Table.Cell<VisitableLocation, VisitableLocation, WalkingCosts> cell
-             : uncachedCosts.cellSet()) {
+        for (final Map.Entry<VisitableLocation, WalkingCosts> entry
+                     : uncachedCosts.entrySet()) {
+            final PointOrderer orderer = ordererFactory.getOrderer(
+                    point, entry.getKey());
 
-            final DistanceCacheKey cacheKey
-                    = new DistanceCacheKey(cell.getRowKey().getIdentifier(),
-                                           cell.getColumnKey().getIdentifier());
-            final WalkingCosts costs = cell.getValue();
+            final DistanceCacheKey cacheKey = new DistanceCacheKey(
+                    orderer.getOrigin().getIdentifier(),
+                    orderer.getDestination().getIdentifier());
+            final WalkingCosts costs = entry.getValue();
 
             final WalkingDistanceMeasurement measurement
                     = new WalkingDistanceMeasurement(
                             costs.getDuration(), costs.getDistanceMeters());
-
             try {
                 cache.put(cacheKey, measurement);
             } catch (final BitvantageStoreException e) {

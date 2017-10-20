@@ -101,7 +101,7 @@ public class DynamicProgrammingAlgorithm {
             }
 
             if (roundUpdates == 0) {
-                log.info(
+                log.debug(
                         "Stopped processing at row {} because no updates.", i);
                 break;
             }

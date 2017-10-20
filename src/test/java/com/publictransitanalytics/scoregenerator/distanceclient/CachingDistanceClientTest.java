@@ -34,6 +34,7 @@ import com.google.common.collect.Table;
 import edu.emory.mathcs.backport.java.util.Collections;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensextant.geodesy.Geodetic2DBounds;
@@ -71,14 +72,14 @@ public class CachingDistanceClientTest {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
                 = new MapStore<>(Collections.emptyMap());
         final DistanceClient backingClient = new PreloadedDistanceClient(
-                ImmutableTable
-                        .<VisitableLocation, VisitableLocation, WalkingCosts>of());
-        final DistanceClient client
-                = new CachingDistanceClient(cache, backingClient);
+                Collections.emptyMap());
+        final DistanceClient client = new CachingDistanceClient(
+                (point, consideredPoint) -> new ForwardPointOrderer(
+                        point, consideredPoint), cache, backingClient);
 
-        Assert.assertTrue(client.getDistances(
-                Collections.singleton(origin),
-                Collections.singleton(destination)).isEmpty());
+        Assert.assertTrue(client.getDistances(origin,
+                                              Collections.singleton(destination))
+                .isEmpty());
 
     }
 
@@ -111,16 +112,16 @@ public class CachingDistanceClientTest {
                         destination.getIdentifier()).getKeyString(),
                                                  measurement));
         final DistanceClient backingClient = new PreloadedDistanceClient(
-                ImmutableTable
-                        .<VisitableLocation, VisitableLocation, WalkingCosts>of());
-        final DistanceClient client
-                = new CachingDistanceClient(cache, backingClient);
+                Collections.emptyMap());
+        final DistanceClient client = new CachingDistanceClient(
+                (point, consideredPoint) -> new ForwardPointOrderer(
+                        point, consideredPoint), cache, backingClient);
 
-        final Table<VisitableLocation, VisitableLocation, WalkingCosts> distances
-                = client.getDistances(Collections.singleton(origin),
+        final Map<VisitableLocation, WalkingCosts> distances
+                = client.getDistances(origin,
                                       Collections.singleton(destination));
         Assert.assertEquals(1, distances.size());
-        final WalkingCosts entry = distances.get(origin, destination);
+        final WalkingCosts entry = distances.get(destination);
         final WalkingCosts costs = new WalkingCosts(Duration.ZERO, 0);
         Assert.assertEquals(costs, entry);
     }
@@ -150,17 +151,17 @@ public class CachingDistanceClientTest {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
                 = new MapStore<>(new HashMap<>());
         final DistanceClient backingClient = new PreloadedDistanceClient(
-                ImmutableTable
-                        .<VisitableLocation, VisitableLocation, WalkingCosts>of(
-                                origin, destination, costs));
-        final DistanceClient client
-                = new CachingDistanceClient(cache, backingClient);
+                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                        destination, costs));
+        final DistanceClient client = new CachingDistanceClient(
+                (point, consideredPoint) -> new ForwardPointOrderer(
+                        point, consideredPoint), cache, backingClient);
 
-        final Table<VisitableLocation, VisitableLocation, WalkingCosts> distances
-                = client.getDistances(Collections.singleton(origin),
+        final Map<VisitableLocation, WalkingCosts> distances
+                = client.getDistances(origin,
                                       Collections.singleton(destination));
         Assert.assertEquals(1, distances.size());
-        final WalkingCosts entry = distances.get(origin, destination);
+        final WalkingCosts entry = distances.get(destination);
         Assert.assertEquals(costs, entry);
     }
 
@@ -189,13 +190,13 @@ public class CachingDistanceClientTest {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
                 = new MapStore<>(new HashMap<>());
         final DistanceClient backingClient = new PreloadedDistanceClient(
-                ImmutableTable
-                        .<VisitableLocation, VisitableLocation, WalkingCosts>of(
-                                origin, destination, costs));
-        final DistanceClient client
-                = new CachingDistanceClient(cache, backingClient);
+                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                        destination, costs));
+        final DistanceClient client = new CachingDistanceClient(
+                (point, consideredPoint) -> new ForwardPointOrderer(
+                        point, consideredPoint), cache, backingClient);
 
-        client.getDistances(Collections.singleton(origin),
+        client.getDistances(origin,
                             Collections.singleton(destination));
 
         final DistanceCacheKey cacheKey = new DistanceCacheKey(

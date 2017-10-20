@@ -15,18 +15,16 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.EstimateRefiningReachabilityClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceFilter;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedDistanceEstimator;
-import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedDistanceFilter;
+import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedDistanceClient;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedTimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedMap;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -45,9 +43,6 @@ import org.opensextant.geodesy.Longitude;
  */
 public class EstimateRefiningReachabilityClientTest {
 
-    private static final String LOCATION_ID_1
-            = "(122° 19' 55\" W, 47° 37' 4\" N)";
-
     private final static Sector SECTOR = new Sector(new Geodetic2DBounds(
             new Geodetic2DPoint(
                     new Longitude(-122.459696, Longitude.DEGREES),
@@ -63,20 +58,19 @@ public class EstimateRefiningReachabilityClientTest {
     private final Landmark LOCATION_1 = new Landmark(SECTOR, POINT);
 
     private final Landmark HOME
-            = new Landmark(
-                    SECTOR, new Geodetic2DPoint(
-                            new Longitude(-122.3320205, Longitude.DEGREES),
-                            new Latitude(47.6178533, Latitude.DEGREES)));
+            = new Landmark(SECTOR, new Geodetic2DPoint(
+                           new Longitude(-122.3320205, Longitude.DEGREES),
+                           new Latitude(47.6178533, Latitude.DEGREES)));
 
     @Test
-    public void testIgnoresOutOfEstimateRange() throws Exception {
+    public void testNoEstimates() throws Exception {
         final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
-                        1000.0, LOCATION_1)));
+                ImmutableSortedMap.of());
 
-        final DistanceFilter filter = new PreloadedDistanceFilter(
-                new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
-                        Duration.ZERO, LOCATION_1)), Duration.ofMinutes(2));
+        final DistanceClient filter = new PreloadedDistanceClient(
+                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                        LOCATION_1,
+                        new WalkingCosts(Duration.ofMinutes(2), 0)));
 
         final TimeTracker tracker = new PreloadedTimeTracker(
                 null, true, Duration.ofMinutes(2));
@@ -100,10 +94,10 @@ public class EstimateRefiningReachabilityClientTest {
                 new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
                         0.5, LOCATION_1)));
 
-        final DistanceFilter filter = new PreloadedDistanceFilter(
-                new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
-                        Duration.ofMinutes(3), LOCATION_1)),
-                Duration.ofMinutes(2));
+        final DistanceClient filter = new PreloadedDistanceClient(
+                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                        LOCATION_1,
+                        new WalkingCosts(Duration.ofMinutes(3), 0)));
 
         final TimeTracker tracker = new PreloadedTimeTracker(
                 null, true, Duration.ofMinutes(2));
@@ -127,10 +121,10 @@ public class EstimateRefiningReachabilityClientTest {
                 new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
                         0.5, LOCATION_1)));
 
-        final DistanceFilter filter = new PreloadedDistanceFilter(
-                new TreeMap<>(ImmutableMap.<Duration, Landmark>of(
-                        Duration.ofMinutes(1), LOCATION_1)),
-                Duration.ofMinutes(2));
+        final DistanceClient filter = new PreloadedDistanceClient(
+                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                        LOCATION_1,
+                        new WalkingCosts(Duration.ofMinutes(1), 0)));
 
         final TimeTracker tracker = new PreloadedTimeTracker(
                 null, true, Duration.ofMinutes(2));

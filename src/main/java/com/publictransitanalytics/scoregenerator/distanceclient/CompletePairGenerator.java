@@ -58,14 +58,15 @@ public class CompletePairGenerator implements PairGenerator {
         }
 
         for (final PointLocation center : centers) {
-            if (estimateStorage.getMaxStored(center) < maxDistanceMeters)
-            for (final VisitableLocation destination : destinations) {
-                if (!center.equals(destination)) {
-                    estimator.generateEstimate(center, destination);
+            final double maxStored = estimateStorage.getMaxStored(center);
+            if (maxStored < maxDistanceMeters) {
+                for (final VisitableLocation destination : destinations) {
+                    if (!center.equals(destination)) {
+                        estimator.generateEstimate(center, destination);
+                    }
                 }
             }
         }
-
     }
 
 }

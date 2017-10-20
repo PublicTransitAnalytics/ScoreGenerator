@@ -15,10 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.comparison;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ListMultimap;
 import com.publictransitanalytics.scoregenerator.distanceclient.CompositeDistanceEstimator;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
 import com.publictransitanalytics.scoregenerator.distanceclient.EstimateRefiningReachabilityClient;
@@ -35,7 +32,6 @@ import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.schedule.Patch;
 import com.publictransitanalytics.scoregenerator.schedule.PatchingTripCreator;
-import com.publictransitanalytics.scoregenerator.schedule.RouteExtension;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
 import java.util.HashSet;
 import java.util.Set;
@@ -89,7 +85,7 @@ public class CalculationTransformer {
                 original.getAllowedModes(), patchedNetwork,
                 original.isBackward(), original.getLongestDuration(),
                 original.getWalkingDistanceMetersPerSecond(),
-                original.getEndpointDeterminer(), original.getDistanceFilter(),
+                original.getEndpointDeterminer(), original.getDistanceClient(),
                 original.getSectors(), original.getStops(),
                 original.getCenters(), newDistanceEstimator,
                 newReachabilityClient, newRiderFactory);
@@ -148,7 +144,7 @@ public class CalculationTransformer {
             return original.getReachabilityClient();
         } else {
             return new EstimateRefiningReachabilityClient(
-                    original.getDistanceFilter(), newEstimator,
+                    original.getDistanceClient(), newEstimator,
                     original.getTimeTracker(),
                     original.getWalkingDistanceMetersPerSecond());
         }

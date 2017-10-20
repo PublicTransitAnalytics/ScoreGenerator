@@ -281,7 +281,7 @@ public class MapGenerator {
                                   range);
             colors = NINE_ORANGE_LEVELS;
         } else if (reachChange < -0) {
-            level = getColorLevel(NINE_BLUE_LEVELS.length, reachChange,
+            level = getColorLevel(NINE_BLUE_LEVELS.length, -reachChange,
                                   range);
             colors = NINE_BLUE_LEVELS;
         } else {

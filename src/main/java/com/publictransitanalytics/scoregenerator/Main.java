@@ -49,10 +49,7 @@ import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimato
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationDistanceKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.CachingDistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceFilter;
 import com.publictransitanalytics.scoregenerator.distanceclient.EstimateRefiningReachabilityClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.ManyDestinationsDistanceFilter;
-import com.publictransitanalytics.scoregenerator.distanceclient.ManyOriginsDistanceFilter;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
@@ -107,10 +104,13 @@ import com.publictransitanalytics.scoregenerator.geography.GeoJsonWaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.WaterStatus;
+import com.publictransitanalytics.scoregenerator.distanceclient.BackwardPointOrderer;
 import com.publictransitanalytics.scoregenerator.distanceclient.CompletePairGenerator;
 import com.publictransitanalytics.scoregenerator.distanceclient.EstimateStorage;
+import com.publictransitanalytics.scoregenerator.distanceclient.ForwardPointOrderer;
 import com.publictransitanalytics.scoregenerator.distanceclient.PairGenerator;
 import com.publictransitanalytics.scoregenerator.distanceclient.PermanentEstimateStorage;
+import com.publictransitanalytics.scoregenerator.distanceclient.PointOrdererFactory;
 import com.publictransitanalytics.scoregenerator.geography.StoredWaterDetector;
 import com.publictransitanalytics.scoregenerator.output.ComparativeNetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.ComparativePointAccessibility;
@@ -152,7 +152,6 @@ import com.publictransitanalytics.scoregenerator.workflow.ForwardMovementAssembl
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RetrospectiveMovementAssembler;
-import com.publictransitanalytics.scoregenerator.workflow.SequentialTaskExecutor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -309,10 +308,6 @@ public class Main {
                         ? new NoCacheStoreFactory()
                         : new UnboundedCacheStoreFactory();
 
-        final DistanceClient distanceClient
-                = buildDistanceClient(root, storeFactory, endpointDeterminer,
-                                      waterDetector);
-
         final Set<ModeType> modes = ImmutableSet.of(ModeType.TRANSIT,
                                                     ModeType.WALKING);
 
@@ -327,7 +322,7 @@ public class Main {
                 generatePointAccessibility(
                         namespace, root, files, storeFactory, scoreCardFactory,
                         sectorTable, backward, samplingInterval, durations,
-                        distanceClient, endpointDeterminer, modes, comparison,
+                        waterDetector, endpointDeterminer, modes, comparison,
                         publisher, serializer, mapGenerator, outputName);
             } else if ("generateNetworkAccessibility".equals(command)) {
                 final ScoreCardFactory scoreCardFactory
@@ -336,9 +331,8 @@ public class Main {
                 generateNetworkAccessibility(
                         namespace, root, files, storeFactory, scoreCardFactory,
                         sectorTable, backward, samplingInterval, durations,
-                        waterDetector, distanceClient, endpointDeterminer, modes,
-                        comparison, publisher, serializer, mapGenerator,
-                        outputName);
+                        waterDetector, endpointDeterminer, modes, comparison,
+                        publisher, serializer, mapGenerator, outputName);
             } else if ("generateSampledNetworkAccessibility".equals(command)) {
                 final ScoreCardFactory scoreCardFactory
                         = new CountScoreCardFactory();
@@ -346,9 +340,8 @@ public class Main {
                 generateSampledNetworkAccessibility(
                         namespace, root, files, storeFactory, scoreCardFactory,
                         sectorTable, backward, samplingInterval, durations,
-                        waterDetector, distanceClient, endpointDeterminer, modes,
-                        comparison, publisher, serializer, mapGenerator,
-                        outputName);
+                        waterDetector, endpointDeterminer, modes, comparison,
+                        publisher, serializer, mapGenerator, outputName);
             }
         } finally {
 
@@ -419,7 +412,6 @@ public class Main {
             final Duration samplingInterval,
             final NavigableSet<Duration> durations,
             final WaterDetector waterDetector,
-            final DistanceClient distanceClient,
             final NearestPointEndpointDeterminer endpointDeterminer,
             final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
@@ -438,21 +430,17 @@ public class Main {
                 .map(sector -> new Landmark(
                 sector, sector.getCanonicalPoint()))
                 .collect(Collectors.toSet());
-        try {
-            final BiMap<Optional<Comparison>, Calculation<CountScoreCard>> result
-                    = calculate(root, files, storeFactory, scoreCardFactory,
-                                sectorTable, centerPoints, startTime, endTime,
-                                samplingInterval, backward, distanceClient,
-                                endpointDeterminer, durations.last(),
-                                allowedModes, comparison);
-            publishNetworkAccessibility(comparison, result, sectorTable,
-                                        centerPoints, startTime, endTime,
-                                        durations, samplingInterval, backward,
-                                        publisher, serializer, mapGenerator,
-                                        outputName);
-        } finally {
-            distanceClient.close();
-        }
+        final BiMap<Optional<Comparison>, Calculation<CountScoreCard>> result
+                = calculate(root, files, storeFactory, scoreCardFactory,
+                            sectorTable, centerPoints, startTime, endTime,
+                            samplingInterval, backward, endpointDeterminer,
+                            waterDetector, durations.last(), allowedModes,
+                            comparison);
+        publishNetworkAccessibility(comparison, result, sectorTable,
+                                    centerPoints, startTime, endTime,
+                                    durations, samplingInterval, backward,
+                                    publisher, serializer, mapGenerator,
+                                    outputName);
     }
 
     private static <S extends ScoreCard> BiMap<Optional<Comparison>, Calculation<S>> calculate(
@@ -463,8 +451,8 @@ public class Main {
             final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Duration samplingInterval, final boolean backward,
-            final DistanceClient distanceClient,
             final EndpointDeterminer endpointDeterminer,
+            final WaterDetector waterDetector,
             final Duration longestDuration, final Set<ModeType> allowedModes,
             final Comparison comparison)
             throws InterruptedException, IOException, ExecutionException {
@@ -490,20 +478,28 @@ public class Main {
 
         final RiderFactory riderFactory;
         final TimeTracker timeTracker;
-        final DistanceFilter distanceFilter;
+        final PointOrdererFactory ordererFactory;
+        final DistanceClient distanceClient;
         final MovementAssembler assembler;
         if (!backward) {
             riderFactory = new ForwardRiderFactory(transitNetwork);
             timeTracker = new ForwardTimeTracker();
-            distanceFilter = new ManyDestinationsDistanceFilter(
-                    distanceClient);
+            ordererFactory = (point, consideredPoint)
+                    -> new ForwardPointOrderer(point, consideredPoint);
+            distanceClient = buildDistanceClient(
+                    root, storeFactory, endpointDeterminer, ordererFactory,
+                    waterDetector);
+
             assembler = new ForwardMovementAssembler();
         } else {
             riderFactory = new RetrospectiveRiderFactory(
                     transitNetwork);
             timeTracker = new BackwardTimeTracker();
-            distanceFilter = new ManyOriginsDistanceFilter(
-                    distanceClient);
+            ordererFactory = (point, consideredPoint)
+                    -> new BackwardPointOrderer(point, consideredPoint);
+            distanceClient = buildDistanceClient(
+                    root, storeFactory, endpointDeterminer, ordererFactory,
+                    waterDetector);
             assembler = new RetrospectiveMovementAssembler();
         }
 
@@ -518,7 +514,7 @@ public class Main {
                 startTime, endTime, samplingInterval);
 
         final ReachabilityClient reachabilityClient
-                = buildReachabilityClient(distanceFilter, distanceEstimator,
+                = buildReachabilityClient(distanceClient, distanceEstimator,
                                           timeTracker);
         final S scoreCard = scoreCardFactory.makeScoreCard(
                 taskTimes.size() * taskGroups.size());
@@ -527,7 +523,7 @@ public class Main {
                 taskGroups, taskTimes, scoreCard, timeTracker,
                 assembler, allowedModes, transitNetwork, backward,
                 longestDuration, ESTIMATE_WALK_METERS_PER_SECOND,
-                endpointDeterminer, distanceFilter, sectorTable.getSectors(),
+                endpointDeterminer, distanceClient, sectorTable.getSectors(),
                 stopIdMap.values(), centerPoints, distanceEstimator,
                 reachabilityClient, riderFactory);
         final ImmutableBiMap.Builder<Optional<Comparison>, Calculation<S>> resultBuilder
@@ -547,8 +543,8 @@ public class Main {
                 for (final ComparisonOperation operation : operations) {
                     switch (operation.getOperator()) {
                     case DELETE:
-                        final Deletion deletion 
-                                = new Deletion(operation .getRoute());
+                        final Deletion deletion
+                                = new Deletion(operation.getRoute());
                         transformer.addTripPatch(deletion);
                         break;
                     case ADD:
@@ -620,7 +616,6 @@ public class Main {
             final Duration samplingInterval,
             final NavigableSet<Duration> durations,
             final WaterDetector waterDetector,
-            final DistanceClient distanceClient,
             final EndpointDeterminer endpointDeterminer,
             final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
@@ -646,21 +641,18 @@ public class Main {
                 sector, sector.getCanonicalPoint()))
                 .collect(Collectors.toSet());
 
-        try {
-            final BiMap<Optional<Comparison>, Calculation<CountScoreCard>> result
-                    = calculate(root, files, storeFactory, scoreCardFactory,
-                                sectorTable, centerPoints, startTime, endTime,
-                                samplingInterval, backward, distanceClient,
-                                endpointDeterminer, durations.last(),
-                                allowedModes, comparison);
-            publishNetworkAccessibility(comparison, result, sectorTable,
-                                        centerPoints, startTime, endTime,
-                                        durations, samplingInterval, backward,
-                                        publisher, serializer, mapGenerator,
-                                        outputName);
-        } finally {
-            distanceClient.close();
-        }
+        final BiMap<Optional<Comparison>, Calculation<CountScoreCard>> result
+                = calculate(root, files, storeFactory, scoreCardFactory,
+                            sectorTable, centerPoints, startTime, endTime,
+                            samplingInterval, backward, endpointDeterminer,
+                            waterDetector, durations.last(), allowedModes,
+                            comparison);
+        publishNetworkAccessibility(comparison, result, sectorTable,
+                                    centerPoints, startTime, endTime,
+                                    durations, samplingInterval, backward,
+                                    publisher, serializer, mapGenerator,
+                                    outputName);
+
     }
 
     private static void publishNetworkAccessibility(
@@ -720,7 +712,7 @@ public class Main {
             final SectorTable sectorTable, final boolean backward,
             final Duration samplingInterval,
             final NavigableSet<Duration> durations,
-            final DistanceClient distanceClient,
+            final WaterDetector waterDetector,
             final NearestPointEndpointDeterminer endpointDeterminer,
             final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
@@ -748,8 +740,8 @@ public class Main {
                 = calculate(root, files, storeFactory, scoreCardFactory,
                             sectorTable, Collections.singleton(centerPoint),
                             startTime, endTime, samplingInterval, backward,
-                            distanceClient, endpointDeterminer,
-                            durations.last(), allowedModes, comparison);
+                            endpointDeterminer, waterDetector, durations.last(),
+                            allowedModes, comparison);
         final Calculation<PathScoreCard> baseCalculation
                 = calculations.get(Optional.<Comparison>empty());
         final PathScoreCard scoreCard = baseCalculation.getScoreCard();
@@ -904,7 +896,8 @@ public class Main {
 
     private static DistanceClient buildDistanceClient(
             final Path baseDirectory, final StoreFactory storeFactory,
-            final NearestPointEndpointDeterminer endpointDeterminer,
+            final EndpointDeterminer endpointDeterminer,
+            final PointOrdererFactory ordererFactory,
             final WaterDetector waterDetector) {
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceStore
                 = storeFactory.getStore(
@@ -913,22 +906,24 @@ public class Main {
 
         final GraphhopperLocalDistanceClient graphhopperDistanceClient
                 = new GraphhopperLocalDistanceClient(
+                        ordererFactory,
                         baseDirectory.resolve(SEATTLE_OSM_FILE),
                         baseDirectory.resolve(GRAPHHOPPER_DIRECTORY),
                         endpointDeterminer);
         final DistanceClient distanceClient = new CachingDistanceClient(
-                walkingDistanceStore, graphhopperDistanceClient);
+                ordererFactory, walkingDistanceStore,
+                graphhopperDistanceClient);
 
         return distanceClient;
     }
 
     private static ReachabilityClient buildReachabilityClient(
-            final DistanceFilter distanceFilter,
+            final DistanceClient distanceClient,
             final DistanceEstimator distanceEstimator,
             final TimeTracker timeTracker) {
         final ReachabilityClient reachabilityClient
                 = new EstimateRefiningReachabilityClient(
-                        distanceFilter, distanceEstimator, timeTracker,
+                        distanceClient, distanceEstimator, timeTracker,
                         ESTIMATE_WALK_METERS_PER_SECOND);
         return reachabilityClient;
     }
@@ -963,10 +958,9 @@ public class Main {
         final PairGenerator pairGenerator = new CompletePairGenerator(
                 sectorTable.getSectors(), stopIdMap.values(), centers);
 
-        final DistanceEstimator distanceEstimator
-                = new StoredDistanceEstimator(
-                        pairGenerator, maxWalkingDistance, endpointDeterminer,
-                        estimateStorage);
+        final DistanceEstimator distanceEstimator = new StoredDistanceEstimator(
+                pairGenerator, maxWalkingDistance, endpointDeterminer,
+                estimateStorage);
         return distanceEstimator;
     }
 

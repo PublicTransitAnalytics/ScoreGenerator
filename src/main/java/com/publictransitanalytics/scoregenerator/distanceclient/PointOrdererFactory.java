@@ -16,22 +16,14 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * Gets the costs of walking of the product of sets of origins and destinations.
  *
  * @author Public Transit Analytics
  */
-public interface DistanceClient {
-
-    Map<VisitableLocation, WalkingCosts> getDistances(
-            final VisitableLocation point,
-            final Set<VisitableLocation> consideredPoints)
-            throws DistanceClientException, InterruptedException;
+public interface PointOrdererFactory {
     
-    void close();
-
+    public PointOrderer getOrderer(final VisitableLocation point,
+                                   final VisitableLocation consideredPoint);
+    
 }

@@ -13,14 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.testhelpers;
+package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -28,20 +23,19 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class PreloadedDistanceClient implements DistanceClient {
+public class ForwardPointOrderer implements PointOrderer {
 
-    private final Map<VisitableLocation, WalkingCosts> map;
-
+    final VisitableLocation point;
+    final VisitableLocation consideredPoint;
+    
     @Override
-    public Map<VisitableLocation, WalkingCosts>
-            getDistances(final VisitableLocation origins,
-                         final Set<VisitableLocation> destinations)
-            throws DistanceClientException {
-        return map;
+    public VisitableLocation getOrigin() {
+        return point;
     }
 
     @Override
-    public void close() {
+    public VisitableLocation getDestination() {
+        return consideredPoint;
     }
-
+    
 }
