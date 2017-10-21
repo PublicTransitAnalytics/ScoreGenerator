@@ -26,7 +26,7 @@ import lombok.Value;
 public class Extension {
     
     private final String referenceStopId;
-    private final ExtensionType type;
+    private final OperationDirection type;
     private final Map<Integer, String> sequence;
     
 }

@@ -89,7 +89,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.publictransitanalytics.scoregenerator.comparison.Extension;
+import com.publictransitanalytics.scoregenerator.comparison.OperationDirection;
 import com.publictransitanalytics.scoregenerator.comparison.Stop;
+import com.publictransitanalytics.scoregenerator.comparison.Truncation;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
@@ -135,10 +137,10 @@ import com.publictransitanalytics.scoregenerator.workflow.Workflow;
 import java.util.Map;
 import java.util.Optional;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.Deletion;
+import com.publictransitanalytics.scoregenerator.schedule.patching.Deletion;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingTripCreator;
-import com.publictransitanalytics.scoregenerator.schedule.ExtensionType;
-import com.publictransitanalytics.scoregenerator.schedule.RouteExtension;
+import com.publictransitanalytics.scoregenerator.schedule.patching.ExtensionType;
+import com.publictransitanalytics.scoregenerator.schedule.patching.RouteExtension;
 import com.publictransitanalytics.scoregenerator.scoring.CountScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
@@ -147,6 +149,7 @@ import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.workflow.TaskGroupIdentifier;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.TripProcessingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.patching.RouteTruncation;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingAlgorithm;
 import com.publictransitanalytics.scoregenerator.workflow.ForwardMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
@@ -534,55 +537,10 @@ public class Main {
                 sectorTable, longestDuration, MAX_DEPTH);
 
         if (comparison != null) {
-            final CalculationTransformer transformer
-                    = new CalculationTransformer(calculation, scoreCardFactory);
-            final Map<String, TransitStop> newStopsById = new HashMap<>();
-            final List<ComparisonOperation> operations
-                    = comparison.getOperations();
-            if (operations != null) {
-                for (final ComparisonOperation operation : operations) {
-                    switch (operation.getOperator()) {
-                    case DELETE:
-                        final Deletion deletion
-                                = new Deletion(operation.getRoute());
-                        transformer.addTripPatch(deletion);
-                        break;
-                    case ADD:
-                        final Stop stopData = operation.getStop();
-                        final Geodetic2DPoint location
-                                = new Geodetic2DPoint(stopData.getLocation());
-                        final Sector sector = sectorTable.findSector(location);
-                        final String name = stopData.getStopId();
-                        final TransitStop newStop = new TransitStop(
-                                sector, name, name, location);
-                        newStopsById.put(name, newStop);
-                        transformer.addStop(newStop);
-                        break;
-                    case EXTEND:
-                        final String route = operation.getRoute();
-                        final Extension extension = operation.getExtension();
-                        final TransitStop referenceStop = stopIdMap.get(
-                                extension.getReferenceStopId());
-                        final ExtensionType type
-                                = mapExtensionType(extension.getType());
-                        final ImmutableMap<String, TransitStop> allStopsById
-                                = ImmutableMap.<String, TransitStop>builder()
-                                        .putAll(newStopsById).putAll(stopIdMap)
-                                        .build();
-                        final NavigableMap<Duration, TransitStop> sequence
-                                = mapSequence(extension.getSequence(),
-                                              allStopsById);
-                        final RouteExtension routeExtension
-                                = new RouteExtension(route,
-                                                     referenceStop, type,
-                                                     sequence);
-                        transformer.addTripPatch(routeExtension);
-                        break;
-                    }
-                }
-            }
 
-            final Calculation trialCalculation = transformer.transform();
+            final Calculation trialCalculation = makeTrialCalculation(
+                    calculation, scoreCardFactory, comparison, sectorTable,
+                    stopIdMap);
             log.info(
                     "Trial in service time = {}; original in service time = {} ",
                     trialCalculation.getTransitNetwork()
@@ -606,6 +564,87 @@ public class Main {
         } finally {
             distanceEstimator.close();
         }
+    }
+
+    private static Calculation makeTrialCalculation(
+            final Calculation calculation,
+            final ScoreCardFactory scoreCardFactory,
+            final Comparison comparison,
+            final SectorTable sectorTable,
+            final BiMap<String, TransitStop> stopIdMap)
+            throws InterruptedException {
+        final CalculationTransformer transformer
+                = new CalculationTransformer(calculation, scoreCardFactory);
+        final Map<String, TransitStop> allStopsById = new HashMap<>();
+        allStopsById.putAll(stopIdMap);
+        final List<ComparisonOperation> operations
+                = comparison.getOperations();
+
+        if (operations != null) {
+            for (final ComparisonOperation operation : operations) {
+                final String route = operation.getRoute();
+
+                switch (operation.getOperator()) {
+                case DELETE:
+                    final Deletion deletion
+                            = new Deletion(route);
+                    transformer.addTripPatch(deletion);
+                    break;
+                case ADD:
+                    final Stop stopData = operation.getStop();
+                    final Geodetic2DPoint location
+                            = new Geodetic2DPoint(stopData.getLocation());
+                    final Sector sector = sectorTable.findSector(location);
+                    final String name = stopData.getStopId();
+                    final TransitStop newStop = new TransitStop(
+                            sector, name, name, location);
+                    allStopsById.put(name, newStop);
+                    transformer.addStop(newStop);
+                    break;
+                case EXTEND:
+                    final Extension extension = operation.getExtension();
+
+                    final RouteExtension routeExtension = getRouteExtension(
+                            route, extension, allStopsById);
+                    transformer.addTripPatch(routeExtension);
+                    break;
+                case TRUNCATE:
+                    final Truncation truncation = operation.getTruncation();
+
+                    final RouteTruncation routeTruncation = getRouteTruncation(
+                            route, truncation, allStopsById);
+                    transformer.addTripPatch(routeTruncation);
+                    break;
+                }
+            }
+        }
+        return transformer.transform();
+    }
+
+    private static RouteTruncation getRouteTruncation(
+            final String route, final Truncation truncation,
+            final Map<String, TransitStop> stopIdMap) {
+        final ExtensionType type = mapDirection(truncation.getType());
+        final TransitStop referenceStop = stopIdMap.get(
+                truncation.getReferenceStopId());
+        final RouteTruncation routeTruncation = new RouteTruncation(
+                route, referenceStop, type);
+        return routeTruncation;
+    }
+
+    private static RouteExtension getRouteExtension(
+            final String route, final Extension extension,
+            final Map<String, TransitStop> stopIdMap) {
+        final ExtensionType type
+                = mapDirection(extension.getType());
+        final TransitStop referenceStop = stopIdMap.get(
+                extension.getReferenceStopId());
+
+        final NavigableMap<Duration, TransitStop> sequence
+                = mapSequence(extension.getSequence(), stopIdMap);
+        final RouteExtension routeExtension = new RouteExtension(
+                route, referenceStop, type, sequence);
+        return routeExtension;
     }
 
     private static void generateSampledNetworkAccessibility(
@@ -1078,8 +1117,8 @@ public class Main {
         return builder.build();
     }
 
-    private static ExtensionType mapExtensionType(
-            final com.publictransitanalytics.scoregenerator.comparison.ExtensionType type) {
+    private static ExtensionType mapDirection(
+            final com.publictransitanalytics.scoregenerator.comparison.OperationDirection type) {
         switch (type) {
         case BEFORE_FIRST:
             return ExtensionType.BEFORE_FIRST;

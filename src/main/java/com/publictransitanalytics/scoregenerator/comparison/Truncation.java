@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
+package com.publictransitanalytics.scoregenerator.comparison;
+
+import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public enum Direction {
-    INBOUND,
-    OUTBOUND
-    
+@Value
+public class Truncation {
+    private final String referenceStopId;
+    private final OperationDirection type;
 }

@@ -28,5 +28,6 @@ public class ComparisonOperation {
     final String route;
     final Stop stop;
     final Extension extension;
+    final Truncation truncation;
     
 }

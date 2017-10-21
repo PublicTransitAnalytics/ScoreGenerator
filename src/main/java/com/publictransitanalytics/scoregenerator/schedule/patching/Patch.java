@@ -13,25 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
+package com.publictransitanalytics.scoregenerator.schedule.patching;
 
-import java.time.LocalDateTime;
-import lombok.NonNull;
-import lombok.Value;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import java.util.Optional;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class StopRelativeTripDetails {
-    @NonNull
-    private final TripId tripId;
-    @NonNull
-    private final String routeId;
-    @NonNull
-    private final String serviceType;
-    @NonNull
-    private final LocalDateTime timeAtBaseStop;
+public interface Patch {
+    
+    Optional<Trip> patch(Trip original);
     
 }

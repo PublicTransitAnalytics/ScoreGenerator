@@ -23,7 +23,8 @@ public enum Operator {
     
     DELETE,
     ADD,
-    EXTEND
+    EXTEND,
+    TRUNCATE
     
     
 }

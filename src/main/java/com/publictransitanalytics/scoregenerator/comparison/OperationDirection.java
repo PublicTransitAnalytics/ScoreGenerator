@@ -13,24 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
-
-import java.util.Optional;
-import lombok.RequiredArgsConstructor;
+package com.publictransitanalytics.scoregenerator.comparison;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@RequiredArgsConstructor
-public class Deletion implements Patch {
-
-    private final String routeNumber;
-
-    @Override
-    public Optional<Trip> patch(final Trip original) {
-        return routeNumber.equals(original.getRouteNumber()) ? Optional.empty()
-                : Optional.of(original);
-    }
-
+public enum OperationDirection {
+    BEFORE_FIRST,
+    AFTER_LAST
+    
 }

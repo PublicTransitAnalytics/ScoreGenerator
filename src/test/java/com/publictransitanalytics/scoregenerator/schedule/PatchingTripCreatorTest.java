@@ -15,6 +15,10 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
+import com.publictransitanalytics.scoregenerator.schedule.patching.ExtensionType;
+import com.publictransitanalytics.scoregenerator.schedule.patching.RouteExtension;
+import com.publictransitanalytics.scoregenerator.schedule.patching.PatchingTripCreator;
+import com.publictransitanalytics.scoregenerator.schedule.patching.Deletion;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
