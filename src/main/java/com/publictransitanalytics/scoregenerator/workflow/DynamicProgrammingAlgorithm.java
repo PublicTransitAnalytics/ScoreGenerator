@@ -15,9 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
@@ -32,6 +30,8 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
+import java.util.Collections;
+import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -43,43 +43,49 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class DynamicProgrammingAlgorithm {
 
-    public Table<Integer, VisitableLocation, DynamicProgrammingRecord>
-            createTable(final LocalDateTime startTime,
-                        final LocalDateTime cutoffTime,
-                        final VisitableLocation startLocation,
-                        final TimeTracker timeTracker,
-                        final Duration duration, final int depth,
-                        final ReachabilityClient reachabilityClient,
-                        final RiderFactory riderFactory) throws
+    public Map<VisitableLocation, DynamicProgrammingRecord> getMap(
+            final LocalDateTime startTime,
+            final LocalDateTime cutoffTime,
+            final VisitableLocation startLocation,
+            final TimeTracker timeTracker,
+            final Duration duration, final int depth,
+            final ReachabilityClient reachabilityClient,
+            final RiderFactory riderFactory) throws
             InterruptedException {
-        final Table<Integer, VisitableLocation, DynamicProgrammingRecord> stateTable
-                = HashBasedTable.create();
+
+        Map<VisitableLocation, DynamicProgrammingRecord> stateMap;
+        Set<VisitableLocation> updateSet;
 
         final DynamicProgrammingRecord initialRecord
                 = new DynamicProgrammingRecord(
                         startTime, ModeInfo.NONE, null);
 
-        stateTable.put(0, startLocation, initialRecord);
+        stateMap = new HashMap<>();
+        stateMap.put(startLocation, initialRecord);
+        updateSet = Collections.singleton(startLocation);
 
-        for (int i = 1;; i++) {
-            final Map<VisitableLocation, DynamicProgrammingRecord> priorRow
-                    = stateTable.row(i - 1);
-            final Map<VisitableLocation, DynamicProgrammingRecord> currentRow
-                    = stateTable.row(i);
-            currentRow.putAll(priorRow);
+        for (int i = 0;; i++) {
 
             int roundUpdates = 0;
-            for (final VisitableLocation priorLocation : priorRow.keySet()) {
+            final ImmutableSet.Builder<VisitableLocation> updateSetBuilder
+                    = ImmutableSet.builder();
+            for (final VisitableLocation priorLocation : updateSet) {
+
                 final DynamicProgrammingRecord priorRecord
-                        = priorRow.get(priorLocation);
-                final LocalDateTime currentTime = priorRecord
-                        .getReachTime();
+                        = stateMap.get(priorLocation);
+                final LocalDateTime currentTime = priorRecord.getReachTime();
+
+                final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
+                        = ImmutableSet.builder();
 
                 final FlatTransitRideVisitor transitRideVisitor
                         = new FlatTransitRideVisitor(cutoffTime, cutoffTime,
                                                      currentTime, riderFactory);
-                final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
-                        = ImmutableSet.builder();
+                priorLocation.accept(transitRideVisitor);
+                final Set<ReachabilityOutput> transitRides
+                        = transitRideVisitor.getOutput();
+                reachabilitiesBuilder.addAll(transitRides);
+
                 if (!priorRecord.getMode().getType().equals(ModeType.WALKING)) {
                     final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
                             cutoffTime, currentTime, reachabilityClient,
@@ -89,33 +95,30 @@ public class DynamicProgrammingAlgorithm {
                             = walkVisitor.getOutput();
                     reachabilitiesBuilder.addAll(walks);
                 }
-                priorLocation.accept(transitRideVisitor);
-                final Set<ReachabilityOutput> transitRides
-                        = transitRideVisitor.getOutput();
-                reachabilitiesBuilder.addAll(transitRides);
 
-                final int updates = updateRow(reachabilitiesBuilder.build(),
-                                              currentRow, priorLocation,
-                                              timeTracker);
-                roundUpdates += updates;
+                updateSetBuilder.addAll(updateRow(
+                        reachabilitiesBuilder.build(), stateMap, priorLocation,
+                        timeTracker));
+                roundUpdates += updateSet.size();
             }
 
             if (roundUpdates == 0) {
-                log.debug(
+                log.info(
                         "Stopped processing at row {} because no updates.", i);
                 break;
             }
-
+            updateSet = updateSetBuilder.build();
         }
-        return stateTable;
+        return stateMap;
     }
 
-    private int updateRow(
+    private Set<VisitableLocation> updateRow(
             final Set<ReachabilityOutput> reachabilities,
-            final Map<VisitableLocation, DynamicProgrammingRecord> currentRow,
+            final Map<VisitableLocation, DynamicProgrammingRecord> stateMap,
             final VisitableLocation priorLocation,
             final TimeTracker timeTracker) {
-        int updates = 0;
+        final ImmutableSet.Builder<VisitableLocation> builder
+                = ImmutableSet.builder();
         for (final ReachabilityOutput reachability : reachabilities) {
             final VisitableLocation newLocation = reachability.getLocation();
             final LocalDateTime newTime = reachability.getReachTime();
@@ -126,21 +129,21 @@ public class DynamicProgrammingAlgorithm {
                     = new DynamicProgrammingRecord(
                             newTime, mode, priorLocation);
 
-            if (currentRow.containsKey(newLocation)) {
+            if (stateMap.containsKey(newLocation)) {
                 final DynamicProgrammingRecord earlierThisRoundReach
-                        = currentRow.get(newLocation);
+                        = stateMap.get(newLocation);
                 final LocalDateTime earlierThisRoundTime
                         = earlierThisRoundReach.getReachTime();
 
                 if (timeTracker.shouldReplace(earlierThisRoundTime, newTime)) {
-                    currentRow.put(newLocation, record);
-                    updates++;
+                    stateMap.put(newLocation, record);
+                    builder.add(newLocation);
                 }
             } else {
-                currentRow.put(newLocation, record);
-                updates++;
+                stateMap.put(newLocation, record);
+                builder.add(newLocation);
             }
         }
-        return updates;
+        return builder.build();
     }
 }

@@ -15,9 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
@@ -38,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import java.util.HashMap;
 
 /**
  * Task used by the dynamic programming workflow.
@@ -73,11 +72,11 @@ public class DynamicProgrammingRangeExecutor {
         final LocalDateTime latestCutoffTime = timeTracker.adjust(
                 latestStartTime, duration);
 
-        Table<Integer, VisitableLocation, DynamicProgrammingRecord> priorTable
-                = algorithm.createTable(latestStartTime, latestCutoffTime,
-                                        startLocation, timeTracker, duration,
-                                        maxDepth, reachabilityClient,
-                                        riderFactory);
+        Map<VisitableLocation, DynamicProgrammingRecord> priorMap
+                = algorithm.getMap(latestStartTime, latestCutoffTime,
+                                   startLocation, timeTracker, duration,
+                                   maxDepth, reachabilityClient,
+                                   riderFactory);
         LocalDateTime priorCutoffTime = latestCutoffTime;
 
         final TaskIdentifier latestFullTask = new TaskIdentifier(
@@ -85,24 +84,24 @@ public class DynamicProgrammingRangeExecutor {
 
         final MovementAssembler assembler = calculation.getMovementAssembler();
 
-        updateScoreCard(priorTable, latestFullTask, scoreCard, assembler);
+        updateScoreCard(priorMap, latestFullTask, scoreCard, assembler);
 
         while (timeIterator.hasNext()) {
-            final Table<Integer, VisitableLocation, DynamicProgrammingRecord> nextTable
-                    = HashBasedTable.create();
+
             final LocalDateTime nextStartTime = timeIterator.next();
             final LocalDateTime nextCutoffTime = timeTracker.adjust(
                     nextStartTime, duration);
 
-            createNextTable(priorTable, nextTable, nextStartTime,
-                            nextCutoffTime, priorCutoffTime, riderFactory,
-                            reachabilityClient, timeTracker);
+            final Map<VisitableLocation, DynamicProgrammingRecord> nextMap
+                    = createNextMap(priorMap, nextStartTime, nextCutoffTime,
+                                    priorCutoffTime, riderFactory,
+                                    reachabilityClient, timeTracker);
 
             final TaskIdentifier nextTask = new TaskIdentifier(
                     nextStartTime, startLocation);
 
-            updateScoreCard(nextTable, nextTask, scoreCard, assembler);
-            priorTable = nextTable;
+            updateScoreCard(priorMap, nextTask, scoreCard, assembler);
+            priorMap = nextMap;
             priorCutoffTime = nextCutoffTime;
         }
         final Instant profileEndTime = Instant.now();
@@ -113,309 +112,146 @@ public class DynamicProgrammingRangeExecutor {
 
     }
 
-    private void createNextTable(
-            final Table<Integer, VisitableLocation, DynamicProgrammingRecord> priorTable,
-            final Table<Integer, VisitableLocation, DynamicProgrammingRecord> newTable,
+    private Map<VisitableLocation, DynamicProgrammingRecord> createNextMap(
+            final Map<VisitableLocation, DynamicProgrammingRecord> previousMap,
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
             final LocalDateTime previousCutoffTime,
             final RiderFactory riderFactory,
             final ReachabilityClient reachabilityClient,
             final TimeTracker timeTracker) throws InterruptedException {
 
-        final Map<VisitableLocation, DynamicProgrammingRecord> firstPriorRow
-                = priorTable.row(0);
-        for (final VisitableLocation priorTableLocation
-                     : firstPriorRow.keySet()) {
-            final DynamicProgrammingRecord newFirstRecord
-                    = new DynamicProgrammingRecord(
-                            startTime, ModeInfo.NONE, null);
-            newTable.put(0, priorTableLocation, newFirstRecord);
-        }
-
-        for (int i = 1;; i++) {
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow
-                    = newTable.row(i - 1);
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow
-                    = newTable.row(i);
-            final Map<VisitableLocation, DynamicProgrammingRecord> priorTablePreviousRow
-                    = priorTable.row(i - 1);
-            final Map<VisitableLocation, DynamicProgrammingRecord> priorTableCurrentRow
-                    = priorTable.row(i);
-
-            newTableCurrentRow.putAll(newTablePreviousRow);
-            final int merges = mergeRowFromPriorTableRow(
-                    priorTableCurrentRow, priorTablePreviousRow,
-                    newTableCurrentRow, newTablePreviousRow, cutoffTime,
-                    timeTracker);
-            final int updates = updateFromPreviousRow(
-                    newTableCurrentRow, newTablePreviousRow,
-                    priorTablePreviousRow, cutoffTime, previousCutoffTime,
-                    riderFactory, reachabilityClient, timeTracker);
-            if (merges == 0 && updates == 0) {
-                log.debug("Stopped processing at row {} because no updates.",
-                          i);
-                break;
+        final Map<VisitableLocation, DynamicProgrammingRecord> newMap
+                = new HashMap<>(previousMap.size());
+        for (final Map.Entry<VisitableLocation, DynamicProgrammingRecord> entry
+                     : previousMap.entrySet()) {
+            final DynamicProgrammingRecord record = entry.getValue();
+            if (timeTracker.meetsCutoff(record.getReachTime(), cutoffTime)) {
+                newMap.put(entry.getKey(), record);
             }
         }
-    }
 
-    private int updateFromPreviousRow(
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow,
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow,
-            final Map<VisitableLocation, DynamicProgrammingRecord> priorTablePreviousRow,
-            final LocalDateTime cutoffTime, final LocalDateTime priorCutoffTime,
-            final RiderFactory riderFactory,
-            final ReachabilityClient reachabilityClient,
-            final TimeTracker timeTracker) throws InterruptedException {
-        int replacements = 0;
+        Set<VisitableLocation> updateSet = ImmutableSet.copyOf(newMap.keySet());
 
-        for (final VisitableLocation newTablePreviousRowLocation
-                     : newTablePreviousRow.keySet()) {
-            final DynamicProgrammingRecord newTablePreviousRowRecord
-                    = newTablePreviousRow.get(newTablePreviousRowLocation);
-            final LocalDateTime newTableReachTime
-                    = newTablePreviousRowRecord.getReachTime();
+        for (int i = 0;; i++) {
 
-            final Set<ReachabilityOutput> reachabilities;
-            if (priorTablePreviousRow.containsKey(
-                    newTablePreviousRowLocation)) {
-                final DynamicProgrammingRecord priorTablePreviousRowRecord
-                        = priorTablePreviousRow.get(newTablePreviousRowLocation);
+            int roundUpdates = 0;
+            final ImmutableSet.Builder<VisitableLocation> updateSetBuilder
+                    = ImmutableSet.builder();
+            for (final VisitableLocation priorLocation : updateSet) {
+                final DynamicProgrammingRecord priorRecord
+                        = newMap.get(priorLocation);
+                final LocalDateTime newReachTime = priorRecord.getReachTime();
 
-                final LocalDateTime priorTableReachTime
-                        = priorTablePreviousRowRecord.getReachTime();
-                log.debug(
-                        "{} was reached in previous table at {} and reached at {} in new table.",
-                        newTablePreviousRowLocation, newTableReachTime,
-                        priorTableReachTime);
-                /* If we arrived at the prior stop earlier, check for bus trips
-                   in that window. */
-                final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
-                        = ImmutableSet.builder();
-                if (timeTracker.shouldReplace(priorTableReachTime,
-                                              newTableReachTime)) {
-                    log.debug(
-                            "Generating transit trips at {} starting from {} to {} with cutoff at {}",
-                            newTablePreviousRowLocation, newTableReachTime,
-                            priorTableReachTime, cutoffTime);
-
-                    final FlatTransitRideVisitor transitRideVisitor
-                            = new FlatTransitRideVisitor(
-                                    cutoffTime, priorTableReachTime,
-                                    newTableReachTime, riderFactory);
-                    newTablePreviousRowLocation.accept(transitRideVisitor);
-                    final Set<ReachabilityOutput> transitRides
-                            = transitRideVisitor.getOutput();
-                    reachabilitiesBuilder.addAll(transitRides);
+                final DynamicProgrammingRecord previousPriorRecord
+                        = previousMap.get(priorLocation);
+                final LocalDateTime waitCutoffTime;
+                final boolean previouslyReachable;
+                if (previousPriorRecord == null) {
+                    waitCutoffTime = cutoffTime;
+                    previouslyReachable = false;
+                } else {
+                    waitCutoffTime = previousPriorRecord.getReachTime();
+                    previouslyReachable = true;
                 }
 
-                if (!newTablePreviousRowRecord.getMode().getType()
-                        .equals(ModeType.WALKING)) {
-                    /* If we have more walking time than previously, look for 
-                       new  walks. */
-                    final Duration priorWalkDuration = timeTracker.getDuration(
-                            priorTableReachTime, priorCutoffTime);
-                    final Duration walkDuration = timeTracker.getDuration(
-                            newTableReachTime, cutoffTime);
+                final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
+                        = ImmutableSet.builder();
+                final FlatTransitRideVisitor transitRideVisitor
+                        = new FlatTransitRideVisitor(cutoffTime, waitCutoffTime,
+                                                     newReachTime,
+                                                     riderFactory);
+                priorLocation.accept(transitRideVisitor);
+                final Set<ReachabilityOutput> transitRides = transitRideVisitor
+                        .getOutput();
+                reachabilitiesBuilder.addAll(transitRides);
 
-                    if (walkDuration.compareTo(priorWalkDuration) > 0) {
-                        log.debug(
-                                "Generating walk from {} because there was {} duration rather than {}",
-                                newTablePreviousRowLocation, priorWalkDuration,
-                                walkDuration);
+                if (!priorRecord.getMode().getType().equals(ModeType.WALKING)) {
+                    if (!previouslyReachable || hasMoreTime(
+                            timeTracker, previousPriorRecord.getReachTime(),
+                            previousCutoffTime, newReachTime, cutoffTime)) {
+
                         final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
-                                cutoffTime, newTableReachTime,
+                                cutoffTime, newReachTime,
                                 reachabilityClient, timeTracker);
-                        newTablePreviousRowLocation.accept(walkVisitor);
+                        priorLocation.accept(walkVisitor);
                         final Set<ReachabilityOutput> walks
                                 = walkVisitor.getOutput();
                         reachabilitiesBuilder.addAll(walks);
                     }
                 }
-                reachabilities = reachabilitiesBuilder.build();
-            } else {
-                log.debug("Reached {} in new table and not in prior.",
-                          newTablePreviousRowLocation);
-                final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
-                        = ImmutableSet.builder();
-                final FlatTransitRideVisitor transitRideVisitor
-                        = new FlatTransitRideVisitor(
-                                cutoffTime, cutoffTime, newTableReachTime,
-                                riderFactory);
-                newTablePreviousRowLocation.accept(transitRideVisitor);
-                final Set<ReachabilityOutput> transitRides
-                        = transitRideVisitor.getOutput();
-                reachabilitiesBuilder.addAll(transitRides);
 
-                if (!newTablePreviousRowRecord.getMode().getType()
-                        .equals(ModeType.WALKING)) {
-                    final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
-                            cutoffTime, newTableReachTime, reachabilityClient,
-                            timeTracker);
-                    newTablePreviousRowLocation.accept(walkVisitor);
-                    final Set<ReachabilityOutput> walks
-                            = walkVisitor.getOutput();
-                    reachabilitiesBuilder.addAll(walks);
-                }
-                reachabilities = reachabilitiesBuilder.build();
+                updateSetBuilder.addAll(updateRow(
+                        reachabilitiesBuilder.build(), newMap, priorLocation,
+                        timeTracker));
+                roundUpdates += updateSet.size();
             }
 
-            for (final ReachabilityOutput reachability : reachabilities) {
-                final VisitableLocation newLocation
-                        = reachability.getLocation();
-                final LocalDateTime newTime = reachability.getReachTime();
-                final ModeInfo mode = reachability.getModeInfo();
-
-                final DynamicProgrammingRecord record
-                        = new DynamicProgrammingRecord(
-                                newTime, mode, newTablePreviousRowLocation);
-                replacements += replaceIfBetter(newTableCurrentRow, newLocation,
-                                                record, cutoffTime,
-                                                timeTracker);
+            if (roundUpdates == 0) {
+                log.info(
+                        "Stopped processing at row {} because no updates.", i);
+                break;
             }
-
+            updateSet = updateSetBuilder.build();
         }
-        return replacements;
+        return newMap;
     }
 
-    private int mergeRowFromPriorTableRow(
-            final Map<VisitableLocation, DynamicProgrammingRecord> priorTableCurrentRow,
-            final Map<VisitableLocation, DynamicProgrammingRecord> priorTablePreviousRow,
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow,
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTablePreviousRow,
-            final LocalDateTime cutoffTime, final TimeTracker timeTracker) {
-        int replacements = 0;
-        for (final VisitableLocation priorTableCurrentLocation
-                     : priorTableCurrentRow.keySet()) {
-            final DynamicProgrammingRecord priorTableCurrentRecord
-                    = priorTableCurrentRow.get(priorTableCurrentLocation);
-
-            final VisitableLocation predecessorLocation
-                    = priorTableCurrentRecord.getPredecessor();
-            /* If the predecessor is null, this is the starting point. It should
-               already be in place by bringing down the previous row. Thus it
-               can be skippid in this path. */
-            if (predecessorLocation != null) {
-
-                /* The new table will not contain the predecessor if the 
-                   predecessor is beyond the new cutoff time. Do not copy this 
-                   path. */
-                if (newTablePreviousRow.containsKey(predecessorLocation)) {
-                    final DynamicProgrammingRecord newTablePredecessorRecord
-                            = newTablePreviousRow.get(predecessorLocation);
-                    final LocalDateTime newTablePredecessorReachTime
-                            = newTablePredecessorRecord.getReachTime();
-
-                    final ModeInfo mode = priorTableCurrentRecord.getMode();
-                    final ModeType type = mode.getType();
-                    if (type.equals(ModeType.WALKING)) {
-
-                        /* Do not copy the path if it would create a walk to a
-                           walk. It will just be replaced by a direct walk.
-                         */
-                        if (!newTablePredecessorRecord.getMode().getType()
-                                .equals(ModeType.WALKING)) {
-
-                            // Adjust walk for changed predecessor arrival time.
-                            final DynamicProgrammingRecord priorTablePredecessorRecord
-                                    = priorTablePreviousRow.get(
-                                            predecessorLocation);
-                            final LocalDateTime priorTableReachTime
-                                    = priorTableCurrentRecord.getReachTime();
-                            final LocalDateTime priorTablePredecessorReachTime
-                                    = priorTablePredecessorRecord.getReachTime();
-                            final Duration walkDuration = timeTracker
-                                    .getDuration(
-                                            priorTablePredecessorReachTime,
-                                            priorTableReachTime);
-
-                            final LocalDateTime reachTime = timeTracker.adjust(
-                                    newTablePredecessorReachTime,
-                                    walkDuration);
-                            log.debug(
-                                    "Adjusting walk for {} time to {} as predecessor arrival time has changed from {} to {}.",
-                                    priorTableCurrentLocation, reachTime,
-                                    priorTablePredecessorReachTime,
-                                    newTablePredecessorReachTime);
-                            final DynamicProgrammingRecord newTableMergedRecord
-                                    = new DynamicProgrammingRecord(
-                                            reachTime, mode,
-                                            priorTableCurrentRecord
-                                                    .getPredecessor());
-                            replacements += replaceIfBetter(
-                                    newTableCurrentRow,
-                                    priorTableCurrentLocation,
-                                    newTableMergedRecord, cutoffTime,
-                                    timeTracker);
-                        }
-                    } else if (type.equals(ModeType.NONE)) {
-                        // Adjust to be predecessor arrival time.
-                        final LocalDateTime reachTime
-                                = newTablePredecessorReachTime;
-                        final DynamicProgrammingRecord newTableMergedRecord
-                                = new DynamicProgrammingRecord(
-                                        reachTime, mode,
-                                        priorTableCurrentRecord.getPredecessor());
-                        replacements += replaceIfBetter(
-                                newTableCurrentRow, priorTableCurrentLocation,
-                                newTableMergedRecord, cutoffTime, timeTracker);
-                    } else {
-                        /* No adjustment, as arrival does not depend on 
-                           predecessor time. */
-                        final LocalDateTime reachTime
-                                = priorTableCurrentRecord.getReachTime();
-                        final DynamicProgrammingRecord newTableMergedRecord
-                                = new DynamicProgrammingRecord(
-                                        reachTime, mode,
-                                        priorTableCurrentRecord.getPredecessor());
-                        replacements += replaceIfBetter(
-                                newTableCurrentRow, priorTableCurrentLocation,
-                                newTableMergedRecord, cutoffTime, timeTracker);
-                    }
-                }
-            }
-        }
-        return replacements;
+    private static boolean hasMoreTime(
+            final TimeTracker timeTracker,
+            final LocalDateTime previousPriorReachTime,
+            final LocalDateTime previousCutoffTime,
+            final LocalDateTime newReachTime, final LocalDateTime cutoffTime) {
+        final Duration priorWalkDuration = timeTracker.getDuration(
+                previousPriorReachTime, previousCutoffTime);
+        final Duration walkDuration = timeTracker.getDuration(
+                newReachTime, cutoffTime);
+        return walkDuration.compareTo(priorWalkDuration) > 0;
     }
 
-    private static int replaceIfBetter(
-            final Map<VisitableLocation, DynamicProgrammingRecord> newTableCurrentRow,
-            final VisitableLocation location,
-            final DynamicProgrammingRecord newRecord,
-            final LocalDateTime cutoffTime,
+    private static Set<VisitableLocation> updateRow(
+            final Set<ReachabilityOutput> reachabilities,
+            final Map<VisitableLocation, DynamicProgrammingRecord> stateMap,
+            final VisitableLocation priorLocation,
             final TimeTracker timeTracker) {
-        int replacements = 0;
-        final LocalDateTime newTime = newRecord.getReachTime();
-        if (timeTracker.meetsCutoff(newTime, cutoffTime)) {
-            if (newTableCurrentRow.containsKey(location)) {
-                final DynamicProgrammingRecord currentNewRecord
-                        = newTableCurrentRow.get(location);
-                if (timeTracker.shouldReplace(currentNewRecord.getReachTime(),
+        final ImmutableSet.Builder<VisitableLocation> builder
+                = ImmutableSet.builder();
+        for (final ReachabilityOutput reachability : reachabilities) {
+            final VisitableLocation newLocation = reachability.getLocation();
+            final LocalDateTime newTime = reachability.getReachTime();
+
+            final ModeInfo mode = reachability.getModeInfo();
+
+            final DynamicProgrammingRecord newRecord
+                    = new DynamicProgrammingRecord(
+                            newTime, mode, priorLocation);
+
+            if (stateMap.containsKey(newLocation)) {
+                final DynamicProgrammingRecord currentRecord
+                        = stateMap.get(newLocation);
+                if (timeTracker.shouldReplace(currentRecord.getReachTime(),
                                               newTime)) {
-                    newTableCurrentRow.put(location, newRecord);
-                    replacements++;
+                    stateMap.put(newLocation, newRecord);
+                    builder.add(newLocation);
                 }
             } else {
-                newTableCurrentRow.put(location, newRecord);
-                replacements++;
+                stateMap.put(newLocation, newRecord);
+                builder.add(newLocation);
             }
+
         }
-        return replacements;
+        return builder.build();
     }
 
     private void updateScoreCard(
-            final Table<Integer, VisitableLocation, DynamicProgrammingRecord> table,
+            final Map<VisitableLocation, DynamicProgrammingRecord> map,
             final TaskIdentifier task, final ScoreCard scoreCard,
             final MovementAssembler assembler)
             throws InterruptedException {
-        final Map<VisitableLocation, DynamicProgrammingRecord> lastRow
-                = table.row(table.rowKeySet().size() - 1);
-        final Set<VisitableLocation> reachedLocations = lastRow.keySet();
+
+        final Set<VisitableLocation> reachedLocations = map.keySet();
 
         for (final VisitableLocation reachedLocation : reachedLocations) {
-
-            final MovementPath path = assembler.assemble(reachedLocation,
-                                                         lastRow);
+            final MovementPath path = assembler.assemble(reachedLocation, map);
             scoreCard.putPath(reachedLocation, task, path);
         }
     }

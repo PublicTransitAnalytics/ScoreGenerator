@@ -24,20 +24,16 @@ import com.esri.core.geometry.OperatorImportFromGeoJson;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.SpatialReference;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.SectorTable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.stream.Stream;
 import org.json.JSONException;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  * Uses a GeoJson file of water polygons to detect water. Naively does a linear
