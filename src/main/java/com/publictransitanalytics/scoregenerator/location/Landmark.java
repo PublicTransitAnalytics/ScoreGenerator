@@ -20,14 +20,17 @@ import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
  * A visitable point of significance.
- * 
+ *
  * @author Public Transit Analytics.
  */
 public class Landmark extends PointLocation {
 
-    public Landmark(final Sector containingSector, 
+    private final String name;
+
+    public Landmark(final Sector containingSector,
                     final Geodetic2DPoint location) {
         super(containingSector, location);
+        name = location.toString();
     }
 
     @Override
@@ -37,17 +40,17 @@ public class Landmark extends PointLocation {
 
     @Override
     public String getIdentifier() {
-        return getLocation().toString();
+        return name;
     }
 
     @Override
     public String getCommonName() {
-        return getLocation().toString();
+        return name;
     }
-    
+
     @Override
     public String toString() {
-        return getLocation().toString();
+        return name;
     }
 
 }

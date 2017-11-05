@@ -48,4 +48,9 @@ public class PreloadedTransitNetwork implements TransitNetwork {
         return Duration.ZERO;
     }
 
+    @Override
+    public Set<EntryPoint> getEntryPoints(TransitStop stop) {
+        return Collections.emptySet();
+    }
+
 }

@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
@@ -99,9 +100,11 @@ public class PointAccessibility {
                     }
                 }
                 final Bounds bounds = new Bounds(sector);
+                final Set<LocalDateTime> reachTimes = scoreCard.getReachedTimes(
+                        sector);
                 final SectorReachInformation information
                         = new SectorReachInformation(
-                                bestPathsBuilder.build(), count);
+                                bestPathsBuilder.build(), count, reachTimes);
                 informationBuilder.put(bounds, information);
             }
         }

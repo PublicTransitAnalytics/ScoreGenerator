@@ -18,10 +18,12 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.TreeMultimap;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Describes the information pertaining to the rider's arrival at a Sector over
@@ -33,13 +35,17 @@ public class SectorReachInformation {
 
     private final int reachCount;
     private final Map<SimplePath, Integer> pathCounts;
+    private final Set<String> reachTimes;
 
     public SectorReachInformation(
-            final Set<MovementPath> bestPaths, final int count) 
-            throws InterruptedException {
+            final Set<MovementPath> bestPaths, final int count,
+            final Set<LocalDateTime> reachTimes) throws InterruptedException {
 
         reachCount = count;
-       
+        this.reachTimes = reachTimes.stream()
+                .map(time -> time.toLocalTime().toString())
+                .collect(Collectors.toSet());
+
         final TreeMultimap<Integer, SimplePath> frequencyMap
                 = TreeMultimap.create(
                         Integer::compareTo,

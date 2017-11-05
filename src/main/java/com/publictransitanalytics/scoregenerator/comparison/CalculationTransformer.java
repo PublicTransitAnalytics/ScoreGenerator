@@ -115,16 +115,19 @@ public class CalculationTransformer {
         } else {
             final ImmutableSet.Builder<DistanceEstimator> builder
                     = ImmutableSet.builder();
+            final double maxDistance
+                    = original.getLongestDuration().getSeconds() * 
+                      original.getWalkingDistanceMetersPerSecond();
             builder.add(original.getDistanceEstimator());
             for (final TransitStop stop : addedStops) {
-                final double maxDistance
-                        = original.getLongestDuration().getSeconds() * original
-                        .getWalkingDistanceMetersPerSecond();
                 final EstimateStorage storage
                         = new SingletonEphemeralEstimateStorage(stop);
+                final Set<TransitStop> stops = ImmutableSet.builder().addAll(
+                        original.getStops()).addAll(addedStops).build();
+
                 final PairGenerator pairGenerator
                         = new SupplementalPairGenerator(
-                                original.getSectors(), original.getStops(),
+                                original.getSectors(), stops,
                                 original.getCenters(),
                                 Collections.singleton(stop));
 

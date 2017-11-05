@@ -103,8 +103,9 @@ public class DynamicProgrammingAlgorithm {
             }
 
             if (roundUpdates == 0) {
-                log.info(
-                        "Stopped processing at row {} because no updates.", i);
+                log.debug(
+                        "Stopped processing at round {} because no updates.",
+                        i);
                 break;
             }
             updateSet = updateSetBuilder.build();

@@ -18,7 +18,6 @@ package com.publictransitanalytics.scoregenerator.workflow;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceFilter;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;

@@ -13,26 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
-
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Set;
+package com.publictransitanalytics.scoregenerator.workflow;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface TransitNetwork {
-
-    Set<EntryPoint> getEntryPoints(TransitStop stop, LocalDateTime startTime,
-                                   LocalDateTime endTime);
+public interface RangeExecutor {
     
-    Set<EntryPoint> getEntryPoints(TransitStop stop);
-    
-    Duration getInServiceTime();
-    
-    Set<Trip> getTrips();
+    void executeRange(final Calculation calculation,
+                      final TaskGroupIdentifier taskGroup) throws
+            InterruptedException;
     
 }

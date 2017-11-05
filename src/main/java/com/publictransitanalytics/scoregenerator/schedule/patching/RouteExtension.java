@@ -15,7 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
-import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
@@ -46,6 +45,7 @@ public class RouteExtension implements Patch {
         final List<ScheduledLocation> schedule = original.getSchedule();
         final Trip newTrip;
         if (routeNumber.equals(original.getRouteNumber())) {
+
             if (schedule.isEmpty()) {
                 newTrip = original;
                 log.info("Trip {} was not extended because it is empty.",
@@ -68,9 +68,9 @@ public class RouteExtension implements Patch {
                     }
                 } else {
                     newTrip = original;
-                    log.info("Refenece stop {} was not found in "
-                                     + "singleton trip {}",
-                             stop.getIdentifier(), newTrip.getTripId());
+                    log.info(
+                            "Reference stop {} was not found in singleton trip {}",
+                            stop.getIdentifier(), newTrip.getTripId());
                 }
             } else {
                 if (type.equals(ExtensionType.AFTER_LAST)) {
@@ -98,8 +98,8 @@ public class RouteExtension implements Patch {
                     } else {
                         newTrip = original;
                         log.info(
-                                "Refenece stop {} not first in trip {} ({} was)",
-                                referenceStop.getIdentifier(),
+                                "Reference stop {} not first in trip {} ({} was)",
+                                referenceStop.getIdentifier(), 
                                 newTrip.getTripId(), firstStop.getIdentifier());
                     }
                 } else {

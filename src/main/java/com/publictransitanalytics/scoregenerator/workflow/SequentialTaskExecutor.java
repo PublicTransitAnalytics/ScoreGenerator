@@ -27,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class SequentialTaskExecutor<S extends ScoreCard>
         implements Workflow<S> {
 
-    private final DynamicProgrammingRangeExecutor timeRangeExecutor;
+    private final ProgressiveRangeExecutor timeRangeExecutor;
 
     @Override
     public void calculate(final Set<Calculation<S>> rangeCalculations)

@@ -13,26 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
-
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Set;
+package com.publictransitanalytics.scoregenerator;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface TransitNetwork {
+public interface NetworkConsole {
 
-    Set<EntryPoint> getEntryPoints(TransitStop stop, LocalDateTime startTime,
-                                   LocalDateTime endTime);
-    
-    Set<EntryPoint> getEntryPoints(TransitStop stop);
-    
-    Duration getInServiceTime();
-    
-    Set<Trip> getTrips();
+    void enterConsole();
     
 }

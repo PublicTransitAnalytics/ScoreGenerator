@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -45,11 +46,12 @@ import java.util.HashMap;
  */
 @RequiredArgsConstructor
 @Slf4j
-public class DynamicProgrammingRangeExecutor {
+public class ProgressiveRangeExecutor implements RangeExecutor {
 
     private final DynamicProgrammingAlgorithm algorithm;
     private final Environment environment;
 
+    @Override
     public void executeRange(final Calculation calculation,
                              final TaskGroupIdentifier taskGroup)
             throws InterruptedException {
@@ -94,13 +96,14 @@ public class DynamicProgrammingRangeExecutor {
 
             final Map<VisitableLocation, DynamicProgrammingRecord> nextMap
                     = createNextMap(priorMap, nextStartTime, nextCutoffTime,
-                                    priorCutoffTime, riderFactory,
-                                    reachabilityClient, timeTracker);
+                                    priorCutoffTime, startLocation,
+                                    riderFactory, reachabilityClient,
+                                    timeTracker);
 
             final TaskIdentifier nextTask = new TaskIdentifier(
                     nextStartTime, startLocation);
 
-            updateScoreCard(priorMap, nextTask, scoreCard, assembler);
+            updateScoreCard(nextMap, nextTask, scoreCard, assembler);
             priorMap = nextMap;
             priorCutoffTime = nextCutoffTime;
         }
@@ -116,21 +119,27 @@ public class DynamicProgrammingRangeExecutor {
             final Map<VisitableLocation, DynamicProgrammingRecord> previousMap,
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
             final LocalDateTime previousCutoffTime,
+            final VisitableLocation startLocation,
             final RiderFactory riderFactory,
             final ReachabilityClient reachabilityClient,
             final TimeTracker timeTracker) throws InterruptedException {
 
-        final Map<VisitableLocation, DynamicProgrammingRecord> newMap
+        final Map<VisitableLocation, DynamicProgrammingRecord> stateMap
                 = new HashMap<>(previousMap.size());
         for (final Map.Entry<VisitableLocation, DynamicProgrammingRecord> entry
                      : previousMap.entrySet()) {
+
             final DynamicProgrammingRecord record = entry.getValue();
+
             if (timeTracker.meetsCutoff(record.getReachTime(), cutoffTime)) {
-                newMap.put(entry.getKey(), record);
+                stateMap.put(entry.getKey(), record);
             }
         }
 
-        Set<VisitableLocation> updateSet = ImmutableSet.copyOf(newMap.keySet());
+        final DynamicProgrammingRecord newStartRecord
+                = new DynamicProgrammingRecord(startTime, ModeInfo.NONE, null);
+        stateMap.put(startLocation, newStartRecord);
+        Set<VisitableLocation> updateSet = Collections.singleton(startLocation);
 
         for (int i = 0;; i++) {
 
@@ -139,19 +148,16 @@ public class DynamicProgrammingRangeExecutor {
                     = ImmutableSet.builder();
             for (final VisitableLocation priorLocation : updateSet) {
                 final DynamicProgrammingRecord priorRecord
-                        = newMap.get(priorLocation);
+                        = stateMap.get(priorLocation);
                 final LocalDateTime newReachTime = priorRecord.getReachTime();
 
                 final DynamicProgrammingRecord previousPriorRecord
                         = previousMap.get(priorLocation);
                 final LocalDateTime waitCutoffTime;
-                final boolean previouslyReachable;
                 if (previousPriorRecord == null) {
                     waitCutoffTime = cutoffTime;
-                    previouslyReachable = false;
                 } else {
                     waitCutoffTime = previousPriorRecord.getReachTime();
-                    previouslyReachable = true;
                 }
 
                 final ImmutableSet.Builder<ReachabilityOutput> reachabilitiesBuilder
@@ -166,46 +172,30 @@ public class DynamicProgrammingRangeExecutor {
                 reachabilitiesBuilder.addAll(transitRides);
 
                 if (!priorRecord.getMode().getType().equals(ModeType.WALKING)) {
-                    if (!previouslyReachable || hasMoreTime(
-                            timeTracker, previousPriorRecord.getReachTime(),
-                            previousCutoffTime, newReachTime, cutoffTime)) {
-
-                        final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
-                                cutoffTime, newReachTime,
-                                reachabilityClient, timeTracker);
-                        priorLocation.accept(walkVisitor);
-                        final Set<ReachabilityOutput> walks
-                                = walkVisitor.getOutput();
-                        reachabilitiesBuilder.addAll(walks);
-                    }
+                    final FlatWalkVisitor walkVisitor = new FlatWalkVisitor(
+                            cutoffTime, newReachTime,
+                            reachabilityClient, timeTracker);
+                    priorLocation.accept(walkVisitor);
+                    final Set<ReachabilityOutput> walks
+                            = walkVisitor.getOutput();
+                    reachabilitiesBuilder.addAll(walks);
                 }
 
-                updateSetBuilder.addAll(updateRow(
-                        reachabilitiesBuilder.build(), newMap, priorLocation,
-                        timeTracker));
+                updateSetBuilder.addAll(updateRow(reachabilitiesBuilder.build(),
+                                                  stateMap, priorLocation,
+                                                  timeTracker));
                 roundUpdates += updateSet.size();
             }
 
             if (roundUpdates == 0) {
-                log.info(
-                        "Stopped processing at row {} because no updates.", i);
+                log.debug(
+                        "Stopped processing at round {} because no updates.",
+                        i);
                 break;
             }
             updateSet = updateSetBuilder.build();
         }
-        return newMap;
-    }
-
-    private static boolean hasMoreTime(
-            final TimeTracker timeTracker,
-            final LocalDateTime previousPriorReachTime,
-            final LocalDateTime previousCutoffTime,
-            final LocalDateTime newReachTime, final LocalDateTime cutoffTime) {
-        final Duration priorWalkDuration = timeTracker.getDuration(
-                previousPriorReachTime, previousCutoffTime);
-        final Duration walkDuration = timeTracker.getDuration(
-                newReachTime, cutoffTime);
-        return walkDuration.compareTo(priorWalkDuration) > 0;
+        return stateMap;
     }
 
     private static Set<VisitableLocation> updateRow(

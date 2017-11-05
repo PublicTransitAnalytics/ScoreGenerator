@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
-import edu.emory.mathcs.backport.java.util.Collections;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -68,6 +68,7 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
         } else {
             final Map<VisitableLocation, WalkingCosts> costs
                     = distanceClient.getDistances(location, candidateLocations);
+            
             return costs.entrySet().stream()
                     .filter(entry -> entry.getValue().getDuration().compareTo(
                     duration) <= 0)

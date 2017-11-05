@@ -52,13 +52,17 @@ public class SupplementalPairGenerator implements PairGenerator {
         for (final PointLocation newPoint : newPoints) {
             for (final VisitableLocation existingDestination
                          : existingDestinations) {
-                estimator.generateEstimate(newPoint, existingDestination);
+                if (!newPoint.equals(existingDestination)) {
+                    estimator.generateEstimate(newPoint, existingDestination);
+                }
             }
         }
 
         for (final PointLocation existingOrigin : existingOrigins) {
             for (final PointLocation newPoint : newPoints) {
-                estimator.generateEstimate(existingOrigin, newPoint);
+                if (!newPoint.equals(existingOrigin)) {
+                    estimator.generateEstimate(existingOrigin, newPoint);
+                }
             }
         }
     }

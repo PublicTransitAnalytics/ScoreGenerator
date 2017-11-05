@@ -21,11 +21,13 @@ import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  *
  * @author Public Transit Analytics
  */
+@Slf4j
 public class CompletePairGenerator implements PairGenerator {
 
     private final Set<TransitStop> stops;
@@ -65,6 +67,9 @@ public class CompletePairGenerator implements PairGenerator {
                         estimator.generateEstimate(center, destination);
                     }
                 }
+                estimateStorage.updateMaxStored(center, maxDistanceMeters);
+            } else {
+                log.debug("Not regenerating estimates for {}", center);
             }
         }
     }

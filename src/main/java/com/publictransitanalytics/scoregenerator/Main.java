@@ -85,11 +85,9 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.publictransitanalytics.scoregenerator.comparison.Extension;
-import com.publictransitanalytics.scoregenerator.comparison.OperationDirection;
 import com.publictransitanalytics.scoregenerator.comparison.Stop;
 import com.publictransitanalytics.scoregenerator.comparison.Truncation;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
@@ -127,7 +125,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import org.opensextant.geodesy.Geodetic2DBounds;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
-import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRangeExecutor;
+import com.publictransitanalytics.scoregenerator.workflow.ProgressiveRangeExecutor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.stream.Collectors;
@@ -154,6 +152,7 @@ import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingAlgo
 import com.publictransitanalytics.scoregenerator.workflow.ForwardMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
+import com.publictransitanalytics.scoregenerator.workflow.RepeatedRangeExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RetrospectiveMovementAssembler;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -212,7 +211,7 @@ public class Main {
 
     private static final String WATER_BODIES_FILE = "water.json";
 
-    private static final String SEATTLE_OSM_FILE = "washington-latest.osm.pbf";
+    private static final String SEATTLE_OSM_FILE = "king_county.osm.pbf";
     private static final String GRAPHHOPPER_DIRECTORY = "graphhopper_files";
 
     public static void main(String[] args) throws FileNotFoundException,
@@ -229,6 +228,7 @@ public class Main {
         parser.addArgument("-d", "--baseDirectory");
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
         parser.addArgument("-n", "--inMemCache").action(Arguments.storeTrue());
+        parser.addArgument("-t", "--interactive").action(Arguments.storeTrue());
         parser.addArgument("-c", "--comparisonFile");
         parser.addArgument("-o", "--outputName");
 
@@ -283,6 +283,10 @@ public class Main {
         final boolean backward
                 = (backwardObject == null) ? false : backwardObject;
 
+        final Boolean interactiveObject = namespace.getBoolean("interactive");
+        final boolean interactive
+                = (interactiveObject == null) ? false : interactiveObject;
+
         final String samplingIntervalString = namespace.get(
                 "samplingInterval");
         final Duration samplingInterval = (samplingIntervalString != null)
@@ -326,7 +330,8 @@ public class Main {
                         namespace, root, files, storeFactory, scoreCardFactory,
                         sectorTable, backward, samplingInterval, durations,
                         waterDetector, endpointDeterminer, modes, comparison,
-                        publisher, serializer, mapGenerator, outputName);
+                        publisher, serializer, mapGenerator, outputName,
+                        interactive);
             } else if ("generateNetworkAccessibility".equals(command)) {
                 final ScoreCardFactory scoreCardFactory
                         = new CountScoreCardFactory();
@@ -335,7 +340,8 @@ public class Main {
                         namespace, root, files, storeFactory, scoreCardFactory,
                         sectorTable, backward, samplingInterval, durations,
                         waterDetector, endpointDeterminer, modes, comparison,
-                        publisher, serializer, mapGenerator, outputName);
+                        publisher, serializer, mapGenerator, outputName,
+                        interactive);
             } else if ("generateSampledNetworkAccessibility".equals(command)) {
                 final ScoreCardFactory scoreCardFactory
                         = new CountScoreCardFactory();
@@ -344,7 +350,8 @@ public class Main {
                         namespace, root, files, storeFactory, scoreCardFactory,
                         sectorTable, backward, samplingInterval, durations,
                         waterDetector, endpointDeterminer, modes, comparison,
-                        publisher, serializer, mapGenerator, outputName);
+                        publisher, serializer, mapGenerator, outputName,
+                        interactive);
             }
         } finally {
 
@@ -418,7 +425,8 @@ public class Main {
             final NearestPointEndpointDeterminer endpointDeterminer,
             final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
-            final MapGenerator mapGenerator, final String outputName)
+            final MapGenerator mapGenerator, final String outputName,
+            final boolean interactive)
             throws IOException, InterruptedException, ExecutionException {
 
         final LocalDateTime startTime
@@ -438,7 +446,7 @@ public class Main {
                             sectorTable, centerPoints, startTime, endTime,
                             samplingInterval, backward, endpointDeterminer,
                             waterDetector, durations.last(), allowedModes,
-                            comparison);
+                            comparison, interactive);
         publishNetworkAccessibility(comparison, result, sectorTable,
                                     centerPoints, startTime, endTime,
                                     durations, samplingInterval, backward,
@@ -457,7 +465,7 @@ public class Main {
             final EndpointDeterminer endpointDeterminer,
             final WaterDetector waterDetector,
             final Duration longestDuration, final Set<ModeType> allowedModes,
-            final Comparison comparison)
+            final Comparison comparison, final boolean interactive)
             throws InterruptedException, IOException, ExecutionException {
 
         final StopDetailsDirectory stopDetailsDirectory
@@ -540,9 +548,9 @@ public class Main {
 
             final Calculation trialCalculation = makeTrialCalculation(
                     calculation, scoreCardFactory, comparison, sectorTable,
-                    stopIdMap);
+                    stopIdMap, interactive);
             log.info(
-                    "Trial in service time = {}; original in service time = {} ",
+                    "Trial in service time = {}; original in service time = {}.",
                     trialCalculation.getTransitNetwork()
                             .getInServiceTime(),
                     calculation.getTransitNetwork().getInServiceTime());
@@ -554,7 +562,7 @@ public class Main {
         try {
 
             final Workflow workflow = new ParallelTaskExecutor(
-                    new DynamicProgrammingRangeExecutor(
+                    new ProgressiveRangeExecutor(
                             new DynamicProgrammingAlgorithm(),
                             environment));
 
@@ -569,9 +577,9 @@ public class Main {
     private static Calculation makeTrialCalculation(
             final Calculation calculation,
             final ScoreCardFactory scoreCardFactory,
-            final Comparison comparison,
-            final SectorTable sectorTable,
-            final BiMap<String, TransitStop> stopIdMap)
+            final Comparison comparison, final SectorTable sectorTable,
+            final BiMap<String, TransitStop> stopIdMap,
+            final boolean interactive)
             throws InterruptedException {
         final CalculationTransformer transformer
                 = new CalculationTransformer(calculation, scoreCardFactory);
@@ -586,8 +594,7 @@ public class Main {
 
                 switch (operation.getOperator()) {
                 case DELETE:
-                    final Deletion deletion
-                            = new Deletion(route);
+                    final Deletion deletion = new Deletion(route);
                     transformer.addTripPatch(deletion);
                     break;
                 case ADD:
@@ -618,7 +625,14 @@ public class Main {
                 }
             }
         }
-        return transformer.transform();
+        final Calculation trialCalculation = transformer.transform();
+        if (interactive) {
+            final InteractiveNetworkConsole console
+                    = new InteractiveNetworkConsole(
+                            trialCalculation.getTransitNetwork(), allStopsById);
+            console.enterConsole();
+        }
+        return trialCalculation;
     }
 
     private static RouteTruncation getRouteTruncation(
@@ -658,7 +672,8 @@ public class Main {
             final EndpointDeterminer endpointDeterminer,
             final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
-            final MapGenerator mapGenerator, final String outputName)
+            final MapGenerator mapGenerator, final String outputName,
+            final boolean interactive)
             throws IOException, InterruptedException, ExecutionException {
 
         final LocalDateTime startTime
@@ -685,7 +700,7 @@ public class Main {
                             sectorTable, centerPoints, startTime, endTime,
                             samplingInterval, backward, endpointDeterminer,
                             waterDetector, durations.last(), allowedModes,
-                            comparison);
+                            comparison, interactive);
         publishNetworkAccessibility(comparison, result, sectorTable,
                                     centerPoints, startTime, endTime,
                                     durations, samplingInterval, backward,
@@ -755,7 +770,8 @@ public class Main {
             final NearestPointEndpointDeterminer endpointDeterminer,
             final Set<ModeType> allowedModes, final Comparison comparison,
             final LocalFilePublisher publisher, final Gson serializer,
-            final MapGenerator mapGenerator, final String outputName)
+            final MapGenerator mapGenerator, final String outputName,
+            final boolean interactive)
             throws IOException, InterruptedException, ExecutionException {
 
         final String coordinateString = namespace.get("coordinate");
@@ -780,7 +796,7 @@ public class Main {
                             sectorTable, Collections.singleton(centerPoint),
                             startTime, endTime, samplingInterval, backward,
                             endpointDeterminer, waterDetector, durations.last(),
-                            allowedModes, comparison);
+                            allowedModes, comparison, interactive);
         final Calculation<PathScoreCard> baseCalculation
                 = calculations.get(Optional.<Comparison>empty());
         final PathScoreCard scoreCard = baseCalculation.getScoreCard();

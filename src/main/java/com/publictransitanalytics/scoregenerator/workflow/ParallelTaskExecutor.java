@@ -29,11 +29,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
 
-    private final DynamicProgrammingRangeExecutor timeRangeExecutor;
+    private final RangeExecutor timeRangeExecutor;
     private final ExecutorService pool;
 
     public ParallelTaskExecutor(
-            final DynamicProgrammingRangeExecutor timeRangeExecutor) {
+            final RangeExecutor timeRangeExecutor) {
 
         this.timeRangeExecutor = timeRangeExecutor;
         pool = Executors.newWorkStealingPool();

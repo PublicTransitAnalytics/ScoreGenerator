@@ -58,6 +58,11 @@ public class TripProcessingTransitNetwork implements TransitNetwork {
         }
         return builder.build();
     }
+    
+    @Override
+    public Set<EntryPoint> getEntryPoints(final TransitStop stop) {
+        return ImmutableSet.copyOf(entryPoints.row(stop).values());
+    }
 
     @Override
     public Duration getInServiceTime() {
