@@ -62,14 +62,14 @@ public class RepeatedRangeExecutor implements RangeExecutor {
                 = timeTracker.getTimeIterator(calculation.getTimes());
 
         while (timeIterator.hasNext()) {
-             final LocalDateTime startTime = timeIterator.next();
+            final LocalDateTime startTime = timeIterator.next();
             final LocalDateTime cutoffTime = timeTracker.adjust(
                     startTime, duration);
             Map<VisitableLocation, DynamicProgrammingRecord> map
-                    = algorithm.getMap(startTime, cutoffTime,
-                                       startLocation, timeTracker, duration,
-                                       maxDepth, reachabilityClient,
-                                       riderFactory);
+                    = algorithm.getOutput(startTime, cutoffTime,
+                                          startLocation, timeTracker, duration,
+                                          maxDepth, reachabilityClient,
+                                          riderFactory).getMap();
 
             final TaskIdentifier latestFullTask = new TaskIdentifier(
                     startTime, startLocation);
@@ -85,7 +85,7 @@ public class RepeatedRangeExecutor implements RangeExecutor {
                  profileEndTime.toString(),
                  Duration.between(profileStartTime, profileEndTime));
     }
-    
+
     private void updateScoreCard(
             final Map<VisitableLocation, DynamicProgrammingRecord> map,
             final TaskIdentifier task, final ScoreCard scoreCard,

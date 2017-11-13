@@ -76,7 +76,7 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
 
         final Sector sector = location.getContainingSector();
         outputBuilder.add(new ReachabilityOutput(
-                sector, currentTime, currentTime, ModeInfo.NONE));
+                sector, currentTime, ModeInfo.NONE));
 
         final Map<VisitableLocation, WalkingCosts> walkCosts
                 = getWalkCosts(location);
@@ -93,7 +93,7 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
                 
 
                 outputBuilder.add(new ReachabilityOutput(
-                        walkableLocation, newTime, currentTime,
+                        walkableLocation, newTime, 
                         new ModeInfo(ModeType.WALKING, null, costs)));
             }
         }

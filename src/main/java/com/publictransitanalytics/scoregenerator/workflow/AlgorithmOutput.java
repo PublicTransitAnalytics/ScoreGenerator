@@ -13,20 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.visitors;
+package com.publictransitanalytics.scoregenerator.workflow;
 
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import java.time.LocalDateTime;
+import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
+import java.util.Map;
+import java.util.Set;
 import lombok.Value;
 
 /**
- * The output of a visitor.
- * 
+ *
  * @author Public Transit Analytics
  */
 @Value
-public class ReachabilityOutput {
-    private final VisitableLocation location;
-    private final LocalDateTime reachTime;
-    private final ModeInfo modeInfo;
+public class AlgorithmOutput {
+    private final Map<VisitableLocation, DynamicProgrammingRecord> map;
+    private final Map<VisitableLocation, WalkingCosts> initialWalks;
+    private final Set<VisitableLocation> implicitLocations;
+    
 }

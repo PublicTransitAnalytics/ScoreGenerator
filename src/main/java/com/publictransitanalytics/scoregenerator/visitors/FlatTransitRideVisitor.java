@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import java.time.Month;
 
 /**
  * Visitor for transit rides that does not recurse.
@@ -65,7 +64,7 @@ public class FlatTransitRideVisitor
         
         final Sector sector = transitStop.getContainingSector();
         outputBuilder.add(new ReachabilityOutput(
-                sector, currentTime, currentTime, ModeInfo.NONE));
+                sector, currentTime, ModeInfo.NONE));
 
         final ScheduleReader reader = riderFactory.getScheduleReader();
         final Set<EntryPoint> entryPoints = reader.getEntryPoints(
@@ -85,7 +84,7 @@ public class FlatTransitRideVisitor
                 final TransitStop newStop = status.getStop();
 
                 outputBuilder.add(new ReachabilityOutput(
-                        newStop, newTime, entryTime, 
+                        newStop, newTime, 
                         new ModeInfo(ModeType.TRANSIT, entryPoint, null)));
             }
         }

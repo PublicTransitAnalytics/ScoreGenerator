@@ -36,7 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import java.util.Collections;
+import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.util.HashMap;
 
 /**
@@ -74,19 +74,23 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
         final LocalDateTime latestCutoffTime = timeTracker.adjust(
                 latestStartTime, duration);
 
-        Map<VisitableLocation, DynamicProgrammingRecord> priorMap
-                = algorithm.getMap(latestStartTime, latestCutoffTime,
-                                   startLocation, timeTracker, duration,
-                                   maxDepth, reachabilityClient,
-                                   riderFactory);
-        LocalDateTime priorCutoffTime = latestCutoffTime;
+        final AlgorithmOutput output = algorithm.getOutput(
+                latestStartTime, latestCutoffTime, startLocation, timeTracker,
+                duration, maxDepth, reachabilityClient, riderFactory);
+        Map<VisitableLocation, DynamicProgrammingRecord> map
+                = output.getMap();
 
         final TaskIdentifier latestFullTask = new TaskIdentifier(
                 latestStartTime, startLocation);
 
         final MovementAssembler assembler = calculation.getMovementAssembler();
 
-        updateScoreCard(priorMap, latestFullTask, scoreCard, assembler);
+        updateScoreCard(map, latestFullTask, scoreCard, assembler);
+
+        final Map<VisitableLocation, WalkingCosts> initialWalks
+                = output.getInitialWalks();
+        final Set<VisitableLocation> implicitLocations
+                = output.getImplicitLocations();
 
         while (timeIterator.hasNext()) {
 
@@ -95,17 +99,16 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
                     nextStartTime, duration);
 
             final Map<VisitableLocation, DynamicProgrammingRecord> nextMap
-                    = createNextMap(priorMap, nextStartTime, nextCutoffTime,
-                                    priorCutoffTime, startLocation,
-                                    riderFactory, reachabilityClient,
-                                    timeTracker);
+                    = createNextMap(map, nextStartTime, nextCutoffTime,
+                                    startLocation, riderFactory,
+                                    reachabilityClient, timeTracker,
+                                    initialWalks, implicitLocations);
 
             final TaskIdentifier nextTask = new TaskIdentifier(
                     nextStartTime, startLocation);
 
             updateScoreCard(nextMap, nextTask, scoreCard, assembler);
-            priorMap = nextMap;
-            priorCutoffTime = nextCutoffTime;
+            map = nextMap;
         }
         final Instant profileEndTime = Instant.now();
 
@@ -118,11 +121,13 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
     private Map<VisitableLocation, DynamicProgrammingRecord> createNextMap(
             final Map<VisitableLocation, DynamicProgrammingRecord> previousMap,
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
-            final LocalDateTime previousCutoffTime,
             final VisitableLocation startLocation,
             final RiderFactory riderFactory,
             final ReachabilityClient reachabilityClient,
-            final TimeTracker timeTracker) throws InterruptedException {
+            final TimeTracker timeTracker,
+            final Map<VisitableLocation, WalkingCosts> initialWalks,
+            final Set<VisitableLocation> implicitLocations)
+            throws InterruptedException {
 
         final Map<VisitableLocation, DynamicProgrammingRecord> stateMap
                 = new HashMap<>(previousMap.size());
@@ -139,9 +144,48 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
         final DynamicProgrammingRecord newStartRecord
                 = new DynamicProgrammingRecord(startTime, ModeInfo.NONE, null);
         stateMap.put(startLocation, newStartRecord);
-        Set<VisitableLocation> updateSet = Collections.singleton(startLocation);
 
-        for (int i = 0;; i++) {
+        final ImmutableSet.Builder<VisitableLocation> initialUpdateSetBuilder
+                = ImmutableSet.builder();
+        for (final Map.Entry<VisitableLocation, WalkingCosts> entry
+                     : initialWalks.entrySet()) {
+            final WalkingCosts walk = entry.getValue();
+            final LocalDateTime newReachTime = timeTracker.adjust(
+                    startTime, walk.getDuration());
+
+            final VisitableLocation location = entry.getKey();
+            final ModeInfo newModeInfo = new ModeInfo(ModeType.WALKING, null,
+                                                      walk);
+            final DynamicProgrammingRecord newWalkRecord
+                    = new DynamicProgrammingRecord(
+                            newReachTime, newModeInfo, startLocation);
+
+            if (!stateMap.containsKey(location)) {
+                stateMap.put(location, newWalkRecord);
+                initialUpdateSetBuilder.add(location);
+            } else {
+                final LocalDateTime reachTime
+                        = stateMap.get(location).getReachTime();
+                
+                if (timeTracker.shouldReplace(reachTime, newReachTime)) {
+                    stateMap.put(location, newWalkRecord);
+                    initialUpdateSetBuilder.add(location);
+                }
+            }
+        }
+        for (final VisitableLocation location : implicitLocations) {
+            final ModeInfo newModeInfo = new ModeInfo(ModeType.NONE, null,
+                                                      null);
+            final DynamicProgrammingRecord newRecord
+                    = new DynamicProgrammingRecord(startTime, newModeInfo,
+                                                   startLocation);
+            initialUpdateSetBuilder.add(location);
+            stateMap.put(location, newRecord);
+        }
+
+        Set<VisitableLocation> updateSet = initialUpdateSetBuilder.build();
+
+        for (int i = 1;; i++) {
 
             int roundUpdates = 0;
             final ImmutableSet.Builder<VisitableLocation> updateSetBuilder
