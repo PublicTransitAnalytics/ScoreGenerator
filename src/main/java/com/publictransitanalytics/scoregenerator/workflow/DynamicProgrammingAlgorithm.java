@@ -49,7 +49,7 @@ public class DynamicProgrammingAlgorithm {
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
             final VisitableLocation startLocation,
             final TimeTracker timeTracker,
-            final Duration duration, final int depth,
+            final Duration duration, 
             final ReachabilityClient reachabilityClient,
             final RiderFactory riderFactory) throws InterruptedException {
 

@@ -46,7 +46,6 @@ public class RepeatedRangeExecutor implements RangeExecutor {
     public void executeRange(final Calculation calculation,
                              final TaskGroupIdentifier taskGroup) throws
             InterruptedException {
-        final int maxDepth = environment.getMaxDepth();
         final Duration duration = environment.getLongestDuration();
 
         final ScoreCard scoreCard = calculation.getScoreCard();
@@ -66,10 +65,10 @@ public class RepeatedRangeExecutor implements RangeExecutor {
             final LocalDateTime cutoffTime = timeTracker.adjust(
                     startTime, duration);
             Map<VisitableLocation, DynamicProgrammingRecord> map
-                    = algorithm.getOutput(startTime, cutoffTime,
-                                          startLocation, timeTracker, duration,
-                                          maxDepth, reachabilityClient,
-                                          riderFactory).getMap();
+                    = algorithm.getOutput(
+                            startTime, cutoffTime, startLocation, timeTracker,
+                            duration, reachabilityClient, riderFactory)
+                            .getMap();
 
             final TaskIdentifier latestFullTask = new TaskIdentifier(
                     startTime, startLocation);

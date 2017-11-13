@@ -55,7 +55,6 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
     public void executeRange(final Calculation calculation,
                              final TaskGroupIdentifier taskGroup)
             throws InterruptedException {
-        final int maxDepth = environment.getMaxDepth();
         final Duration duration = environment.getLongestDuration();
 
         final ScoreCard scoreCard = calculation.getScoreCard();
@@ -76,7 +75,7 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
         final AlgorithmOutput output = algorithm.getOutput(
                 latestStartTime, latestCutoffTime, startLocation, timeTracker,
-                duration, maxDepth, reachabilityClient, riderFactory);
+                duration, reachabilityClient, riderFactory);
         Map<VisitableLocation, DynamicProgrammingRecord> map
                 = output.getMap();
 

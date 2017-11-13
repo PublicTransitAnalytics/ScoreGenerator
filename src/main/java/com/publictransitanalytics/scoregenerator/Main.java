@@ -151,6 +151,7 @@ import com.publictransitanalytics.scoregenerator.schedule.patching.RouteTruncati
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingAlgorithm;
 import com.publictransitanalytics.scoregenerator.workflow.ForwardMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
+import com.publictransitanalytics.scoregenerator.workflow.NullMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RepeatedRangeExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RetrospectiveMovementAssembler;
@@ -181,8 +182,6 @@ public class Main {
     private static final int NUM_LONGITUDE_SECTORS = 100;
 
     private static final double ESTIMATE_WALK_METERS_PER_SECOND = 2.0;
-
-    private static final int MAX_DEPTH = 10;
 
     private static final String WALKING_DISTANCE_STORE
             = "new_walking_distance_store";
@@ -441,12 +440,13 @@ public class Main {
                 .map(sector -> new Landmark(
                 sector, sector.getCanonicalPoint()))
                 .collect(Collectors.toSet());
+        final MovementAssembler assembler = new NullMovementAssembler();
         final BiMap<Optional<Comparison>, Calculation<CountScoreCard>> result
                 = calculate(root, files, storeFactory, scoreCardFactory,
-                            sectorTable, centerPoints, startTime, endTime,
-                            samplingInterval, backward, endpointDeterminer,
-                            waterDetector, durations.last(), allowedModes,
-                            comparison, interactive);
+                            assembler, sectorTable, centerPoints, startTime,
+                            endTime, samplingInterval, backward,
+                            endpointDeterminer, waterDetector, durations.last(),
+                            allowedModes, comparison, interactive);
         publishNetworkAccessibility(comparison, result, sectorTable,
                                     centerPoints, startTime, endTime,
                                     durations, samplingInterval, backward,
@@ -458,6 +458,7 @@ public class Main {
             final Path root, final String files,
             final StoreFactory storeFactory,
             final ScoreCardFactory<S> scoreCardFactory,
+            final MovementAssembler assembler,
             final SectorTable sectorTable,
             final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
@@ -491,7 +492,6 @@ public class Main {
         final TimeTracker timeTracker;
         final PointOrdererFactory ordererFactory;
         final DistanceClient distanceClient;
-        final MovementAssembler assembler;
         if (!backward) {
             riderFactory = new ForwardRiderFactory(transitNetwork);
             timeTracker = new ForwardTimeTracker();
@@ -501,7 +501,6 @@ public class Main {
                     root, storeFactory, endpointDeterminer, ordererFactory,
                     waterDetector);
 
-            assembler = new ForwardMovementAssembler();
         } else {
             riderFactory = new RetrospectiveRiderFactory(
                     transitNetwork);
@@ -511,7 +510,6 @@ public class Main {
             distanceClient = buildDistanceClient(
                     root, storeFactory, endpointDeterminer, ordererFactory,
                     waterDetector);
-            assembler = new RetrospectiveMovementAssembler();
         }
 
         final DistanceEstimator distanceEstimator
@@ -542,7 +540,7 @@ public class Main {
         resultBuilder.put(Optional.empty(), calculation);
 
         final Environment environment = new Environment(
-                sectorTable, longestDuration, MAX_DEPTH);
+                sectorTable, longestDuration);
 
         if (comparison != null) {
 
@@ -695,12 +693,14 @@ public class Main {
                 sector, sector.getCanonicalPoint()))
                 .collect(Collectors.toSet());
 
+        final MovementAssembler assembler = new NullMovementAssembler();
+        
         final BiMap<Optional<Comparison>, Calculation<CountScoreCard>> result
                 = calculate(root, files, storeFactory, scoreCardFactory,
-                            sectorTable, centerPoints, startTime, endTime,
-                            samplingInterval, backward, endpointDeterminer,
-                            waterDetector, durations.last(), allowedModes,
-                            comparison, interactive);
+                            assembler, sectorTable, centerPoints, startTime,
+                            endTime, samplingInterval, backward,
+                            endpointDeterminer, waterDetector, durations.last(),
+                            allowedModes, comparison, interactive);
         publishNetworkAccessibility(comparison, result, sectorTable,
                                     centerPoints, startTime, endTime,
                                     durations, samplingInterval, backward,
@@ -791,10 +791,19 @@ public class Main {
         final LocalDateTime endTime
                 = (span == null) ? null : startTime.plus(span);
 
+        final MovementAssembler assembler;
+        if (!backward) {
+            assembler = new ForwardMovementAssembler();
+
+        } else {
+            assembler = new RetrospectiveMovementAssembler();
+        }
+
         final Map<Optional<Comparison>, Calculation<PathScoreCard>> calculations
                 = calculate(root, files, storeFactory, scoreCardFactory,
-                            sectorTable, Collections.singleton(centerPoint),
-                            startTime, endTime, samplingInterval, backward,
+                            assembler, sectorTable,
+                            Collections.singleton(centerPoint), startTime,
+                            endTime, samplingInterval, backward,
                             endpointDeterminer, waterDetector, durations.last(),
                             allowedModes, comparison, interactive);
         final Calculation<PathScoreCard> baseCalculation

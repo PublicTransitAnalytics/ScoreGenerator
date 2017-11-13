@@ -15,16 +15,21 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
-import java.time.Duration;
-import lombok.Value;
+import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import java.util.Map;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class Environment {
-    final SectorTable sectorTable;
-    final Duration longestDuration;
+public class NullMovementAssembler implements MovementAssembler {
+
+    @Override
+    public MovementPath assemble(
+            final VisitableLocation terminal,
+            final Map<VisitableLocation, DynamicProgrammingRecord> lastRow) {
+        return null;
+    }
+
 }
