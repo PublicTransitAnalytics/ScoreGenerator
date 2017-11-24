@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
@@ -51,6 +50,10 @@ public class ComparativePointAccessibility {
 
     private final String endTime;
 
+    private final String trialStartTime;
+
+    private final String trialEndTime;
+
     private final String samplingInterval;
 
     private final String tripDuration;
@@ -67,17 +70,22 @@ public class ComparativePointAccessibility {
             final int taskCount, final int trialTaskCount,
             final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
             final SectorTable sectorTable, final PointLocation centerPoint,
-            final LocalDateTime startTime, final LocalDateTime lastTime,
-            final Duration samplingInterval, final Duration tripDuration,
-            final boolean backward, final String trialName)
-            throws InterruptedException {
+            final LocalDateTime startTime, final LocalDateTime endTime,
+            final LocalDateTime trialStartTime,
+            final LocalDateTime trialEndTime, final Duration samplingInterval, 
+            final Duration tripDuration, final boolean backward, 
+            final String trialName) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(sectorTable);
         center = new Point(centerPoint);
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
-        this.endTime = lastTime.format(DateTimeFormatter.ofPattern(
+        this.endTime = endTime.format(DateTimeFormatter.ofPattern(
+                "YYYY-MM-dd HH:mm:ss"));
+        this.trialStartTime = trialStartTime.format(DateTimeFormatter.ofPattern(
+                "YYYY-MM-dd HH:mm:ss"));
+        this.trialEndTime = trialEndTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.samplingInterval = DurationFormatUtils.formatDurationWords(
                 samplingInterval.toMillis(), true, true);

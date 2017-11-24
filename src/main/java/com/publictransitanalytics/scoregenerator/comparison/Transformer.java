@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.comparison;
 
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.distanceclient.CompositeDistanceEstimator;
+import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
 import com.publictransitanalytics.scoregenerator.distanceclient.EstimateRefiningReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.SingletonEphemeralEstimateStorage;
@@ -25,19 +26,22 @@ import com.publictransitanalytics.scoregenerator.distanceclient.PairGenerator;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.StoredDistanceEstimator;
 import com.publictransitanalytics.scoregenerator.distanceclient.SupplementalPairGenerator;
+import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.workflow.Calculation;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
 import com.publictransitanalytics.scoregenerator.schedule.patching.PatchingTripCreator;
-import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.TripProcessingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -47,17 +51,53 @@ import java.util.List;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class CalculationTransformer {
+public class Transformer {
 
-    private final Calculation original;
-    private final ScoreCardFactory scoreCardFactory;
     private final List<Patch> tripPatches;
     private final Set<TransitStop> addedStops;
 
-    public CalculationTransformer(final Calculation original,
-                                  final ScoreCardFactory scoreCardFactory) {
-        this.original = original;
-        this.scoreCardFactory = scoreCardFactory;
+    private final TimeTracker timeTracker;
+    private final TransitNetwork originalTransitNetwork;
+    private final boolean backward;
+    private final Duration longestDuration;
+    private final double walkingMetersPerSecond;
+    private final EndpointDeterminer endpointDeterminer;
+    private final DistanceClient distanceClient;
+    private final Set<Sector> sectors;
+    private final Set<TransitStop> stops;
+    private final Set<PointLocation> centers;
+    private final DistanceEstimator originalDistanceEstimator;
+    private final ReachabilityClient originalReachabilityClient;
+    private final RiderFactory originalRiderFactory;
+
+    public Transformer(final TimeTracker timeTracker,
+                       final TransitNetwork transitNetwork,
+                       final boolean backward,
+                       final Duration longestDuration,
+                       final double walkingMetersPerSecond,
+                       final EndpointDeterminer endpointDeterminer,
+                       final DistanceClient distanceClient,
+                       final Set<Sector> sectors,
+                       final Set<TransitStop> stops,
+                       final Set<PointLocation> centers,
+                       final DistanceEstimator distanceEstimator,
+                       final ReachabilityClient reachabilityClient,
+                       final RiderFactory riderFactory) {
+
+        this.timeTracker = timeTracker;
+        originalTransitNetwork = transitNetwork;
+        this.backward = backward;
+        this.longestDuration = longestDuration;
+        this.walkingMetersPerSecond = walkingMetersPerSecond;
+        this.endpointDeterminer = endpointDeterminer;
+        this.distanceClient = distanceClient;
+        this.sectors = sectors;
+        this.stops = stops;
+        this.centers = centers;
+        originalDistanceEstimator = distanceEstimator;
+        originalReachabilityClient = reachabilityClient;
+        originalRiderFactory = riderFactory;
+
         tripPatches = new ArrayList<>();
         addedStops = new HashSet<>();
     }
@@ -70,86 +110,64 @@ public class CalculationTransformer {
         addedStops.add(stop);
     }
 
-    public Calculation transform() throws InterruptedException {
-        final TransitNetwork patchedNetwork = getPatchedNetwork();
-        final RiderFactory newRiderFactory = getRiderFactory(patchedNetwork);
-        final int newTaskCount = original.getTaskCount();
-        final DistanceEstimator newDistanceEstimator = getDistanceEstimator();
-        final ReachabilityClient newReachabilityClient
-                = getReachabilityClient(newDistanceEstimator);
-
-        return new Calculation(
-                original.getTaskGroups(), original.getTimes(),
-                scoreCardFactory.makeScoreCard(newTaskCount),
-                original.getTimeTracker(), original.getMovementAssembler(),
-                original.getAllowedModes(), patchedNetwork,
-                original.isBackward(), original.getLongestDuration(),
-                original.getWalkingDistanceMetersPerSecond(),
-                original.getEndpointDeterminer(), original.getDistanceClient(),
-                original.getSectors(), original.getStops(),
-                original.getCenters(), newDistanceEstimator,
-                newReachabilityClient, newRiderFactory);
-    }
-
-    private TransitNetwork getPatchedNetwork() throws InterruptedException {
+    public TransitNetwork getTransitNetwork() throws InterruptedException {
 
         return new TripProcessingTransitNetwork(new PatchingTripCreator(
-                tripPatches, original.getTransitNetwork()));
+                tripPatches, originalTransitNetwork));
     }
 
-    private RiderFactory getRiderFactory(final TransitNetwork newNetwork) {
+    public RiderFactory getRiderFactory() throws InterruptedException {
         // TODO: Account for direction changes
-        if (newNetwork == original.getTransitNetwork()) {
-            return original.getRiderFactory();
+        final TransitNetwork transitNetwork = getTransitNetwork();
+        if (transitNetwork != originalTransitNetwork) {
+            return backward ? new RetrospectiveRiderFactory(transitNetwork)
+                    : new ForwardRiderFactory(transitNetwork);
         } else {
-            return original.isBackward() ? new RetrospectiveRiderFactory(
-                    newNetwork) : new ForwardRiderFactory(newNetwork);
+            return originalRiderFactory;
         }
 
     }
 
-    private DistanceEstimator getDistanceEstimator()
+    public DistanceEstimator getDistanceEstimator()
             throws InterruptedException {
         if (addedStops.isEmpty()) {
-            return original.getDistanceEstimator();
+            return originalDistanceEstimator;
         } else {
             final ImmutableSet.Builder<DistanceEstimator> builder
                     = ImmutableSet.builder();
             final double maxDistance
-                    = original.getLongestDuration().getSeconds() * 
-                      original.getWalkingDistanceMetersPerSecond();
-            builder.add(original.getDistanceEstimator());
+                    = longestDuration.getSeconds() * walkingMetersPerSecond;
+            builder.add(originalDistanceEstimator);
             for (final TransitStop stop : addedStops) {
                 final EstimateStorage storage
                         = new SingletonEphemeralEstimateStorage(stop);
-                final Set<TransitStop> stops = ImmutableSet.builder().addAll(
-                        original.getStops()).addAll(addedStops).build();
+                final Set<TransitStop> allStops
+                        = ImmutableSet.<TransitStop>builder()
+                                .addAll(stops).addAll(addedStops).build();
 
                 final PairGenerator pairGenerator
                         = new SupplementalPairGenerator(
-                                original.getSectors(), stops,
-                                original.getCenters(),
+                                sectors, allStops, centers,
                                 Collections.singleton(stop));
 
                 final StoredDistanceEstimator addedLocationEstimator
                         = new StoredDistanceEstimator(
-                                pairGenerator, maxDistance,
-                                original.getEndpointDeterminer(), storage);
+                                pairGenerator, maxDistance, endpointDeterminer,
+                                storage);
                 builder.add(addedLocationEstimator);
             }
             return new CompositeDistanceEstimator(builder.build());
         }
     }
 
-    private ReachabilityClient getReachabilityClient(
-            final DistanceEstimator newEstimator) {
+    public ReachabilityClient getReachabilityClient()
+            throws InterruptedException {
         if (addedStops.isEmpty()) {
-            return original.getReachabilityClient();
+            return originalReachabilityClient;
         } else {
             return new EstimateRefiningReachabilityClient(
-                    original.getDistanceClient(), newEstimator,
-                    original.getTimeTracker(),
-                    original.getWalkingDistanceMetersPerSecond());
+                    distanceClient, getDistanceEstimator(), timeTracker,
+                    walkingMetersPerSecond);
         }
     }
 

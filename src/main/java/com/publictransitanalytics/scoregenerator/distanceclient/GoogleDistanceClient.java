@@ -68,7 +68,7 @@ public class GoogleDistanceClient implements DistanceClient {
 
     @Override
     public Map<VisitableLocation, WalkingCosts> getDistances(
-            final VisitableLocation point, 
+            final VisitableLocation point,
             final Set<VisitableLocation> consideredPoints)
             throws DistanceClientException, InterruptedException {
 

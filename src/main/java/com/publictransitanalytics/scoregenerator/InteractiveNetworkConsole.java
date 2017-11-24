@@ -17,7 +17,11 @@ package com.publictransitanalytics.scoregenerator;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
@@ -52,6 +56,12 @@ public class InteractiveNetworkConsole implements NetworkConsole {
                             entryPoint.getTrip().getRouteNumber()));
                 }
                 break;
+            case "deltas":
+                final String route = scanner.next();
+                final String beginningStopId = scanner.next();
+                final String endingStopId = scanner.next();
+                showDeltas(route, beginningStopId, endingStopId);
+                break;
             case "exit":
                 exitted = true;
                 break;
@@ -60,4 +70,41 @@ public class InteractiveNetworkConsole implements NetworkConsole {
         scanner.close();
     }
 
+    private void showDeltas(final String route,
+                            final String beginningStopId,
+                            final String endingStopId) {
+        final TransitStop beginningStop
+                = stopIdMap.get(beginningStopId);
+        final TransitStop endingStop = stopIdMap.get(endingStopId);
+        final Set<EntryPoint> entryPoints
+                = transitNetwork.getEntryPoints(beginningStop);
+        for (final EntryPoint entryPoint : entryPoints) {
+            final Trip trip = entryPoint.getTrip();
+            if (trip.getRouteNumber().equals(route)) {
+                final String tripId = trip.getTripId().toString();
+                final LocalDateTime beginningTime = entryPoint.getTime();
+
+                System.out.println(String.format("Trip %s %s", tripId,
+                                                 beginningTime));
+                TransitStop stop = beginningStop;
+                LocalDateTime time = beginningTime;
+                while (!stop.equals(endingStop)) {
+                    final ScheduledLocation nextScheduledLocation
+                            = trip.getNextScheduledLocation(stop, time);
+                    final LocalDateTime nextTime
+                            = nextScheduledLocation.getScheduledTime();
+                    final TransitStop nextStop
+                            = nextScheduledLocation.getLocation();
+                    final Duration delta = Duration.between(time, nextTime);
+                    System.out.println(String.format(
+                            "%s -> %s: %s", stop.getStopId(),
+                            nextStop.getStopId(), delta));
+                    stop = nextStop;
+                    time = nextTime;
+                }
+                System.out.println("---");
+            }
+        }
+
+    }
 }

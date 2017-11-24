@@ -45,24 +45,37 @@ public class ComparativeTimeQualifiedPointAccessibility {
     private final Map<Bounds, ComparativeFullSectorReachInformation> sectorPaths;
 
     private final String time;
+    
+    private final String trialTime;
 
     private final String tripDuration;
 
     private final int totalSectors;
+    
+    private final String name;
 
     private final String trialName;
+    
+    private final long inServiceSeconds;
+    
+    private final long trialInServiceSeconds;
 
     public ComparativeTimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
             final SectorTable sectorTable, final PointLocation centerPoint,
-            final LocalDateTime time, final Duration tripDuration,
-            final boolean backward, final String name)
+            final LocalDateTime time, LocalDateTime trialTime, 
+            final Duration tripDuration, final boolean backward, 
+            final String name, final String trialName,
+            final Duration inServiceTime, final Duration trialInServiceTime)
             throws InterruptedException {
+        
         type = AccessibilityType.COMPARATIVE_TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(sectorTable);
         center = new Point(centerPoint);
         this.time = time.format(DateTimeFormatter.ofPattern(
+                "YYYY-MM-dd HH:mm:ss"));
+        this.trialTime = trialTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
 
         this.tripDuration = DurationFormatUtils.formatDurationWords(
@@ -86,6 +99,9 @@ public class ComparativeTimeQualifiedPointAccessibility {
         }
         sectorPaths = builder.build();
         totalSectors = sectorTable.getSectors().size();
-        trialName = name;
+        this.name = name;
+        this.trialName = trialName;
+        inServiceSeconds = inServiceTime.getSeconds();
+        trialInServiceSeconds = trialInServiceTime.getSeconds();
     }
 }

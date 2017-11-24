@@ -16,23 +16,20 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Table;
 import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.PathWrapper;
-import com.graphhopper.reader.osm.GraphHopperOSM;
-import com.graphhopper.routing.util.EncodingManager;
 import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
 import com.publictransitanalytics.scoregenerator.geography.Endpoints;
+import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensextant.geodesy.Geodetic2DPoint;
 
@@ -42,27 +39,13 @@ import org.opensextant.geodesy.Geodetic2DPoint;
  * @author Public Transit Analytics
  */
 @Slf4j
+@RequiredArgsConstructor
 public class GraphhopperLocalDistanceClient implements DistanceClient {
 
     private final PointOrdererFactory ordererFactory;
     private final GraphHopper hopper;
     private final EndpointDeterminer endpointDeterminer;
-
-    public GraphhopperLocalDistanceClient(
-            final PointOrdererFactory ordererFactory,
-            final Path osmFile, final Path graphFolder,
-            final EndpointDeterminer endpointDeterminer) {
-        this.ordererFactory = ordererFactory;
-        hopper = new GraphHopperOSM().forServer();
-        hopper.setDataReaderFile(osmFile.toString());
-        hopper.setGraphHopperLocation(graphFolder.toString());
-        hopper.setEncodingManager(new EncodingManager("foot"));
-        hopper.setElevation(true);
-
-        hopper.importOrLoad();
-
-        this.endpointDeterminer = endpointDeterminer;
-    }
+    private final WaterDetector waterDetector;
 
     @Override
     public Map<VisitableLocation, WalkingCosts> getDistances(
@@ -85,6 +68,7 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
                     = endpoints.getFirstEndpoint();
             final Geodetic2DPoint destinationPoint
                     = endpoints.getSecondEndpoint();
+
             final GHRequest req = new GHRequest(
                     originPoint.getLatitudeAsDegrees(),
                     originPoint.getLongitudeAsDegrees(),
@@ -105,7 +89,8 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
             double distance = path.getDistance();
             long timeInMs = path.getTime();
             log.debug("Getting costs between {} and {}: {} m {} ms",
-                      originPoint, destinationPoint, distance, timeInMs);
+                      originPoint, destinationPoint, distance,
+                      timeInMs);
 
             final WalkingCosts costs = new WalkingCosts(
                     Duration.ofMillis(timeInMs), distance);

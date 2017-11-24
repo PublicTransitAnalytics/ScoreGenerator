@@ -23,10 +23,11 @@ import lombok.Value;
  * @author Public Transit Analytics
  */
 @Value
-public class Comparison {
+public class OperationDescription {
     
     private final String name;
     private final String files;
+    private String startTime;
     private final List<ComparisonOperation> operations;
     
 }

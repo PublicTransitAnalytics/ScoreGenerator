@@ -52,6 +52,10 @@ public class ComparativeNetworkAccessibility {
 
     private final String endTime;
 
+    private final String trialStartTime;
+
+    private final String trialEndTime;
+
     private final String samplingInterval;
 
     private final String tripDuration;
@@ -70,9 +74,10 @@ public class ComparativeNetworkAccessibility {
             final SectorTable sectorTable,
             final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
-            final Duration tripDuration, final Duration samplingInterval,
-            final boolean backward, final String trialName)
-            throws InterruptedException {
+            final LocalDateTime trialStartTime, 
+            final LocalDateTime trialEndTime, final Duration tripDuration, 
+            final Duration samplingInterval, final boolean backward, 
+            final String trialName) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_NETWORK_ACCESSIBILITY;
 
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
@@ -81,6 +86,10 @@ public class ComparativeNetworkAccessibility {
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.endTime = endTime.format(DateTimeFormatter.ofPattern(
+                "YYYY-MM-dd HH:mm:ss"));
+        this.trialStartTime = trialStartTime.format(DateTimeFormatter.ofPattern(
+                "YYYY-MM-dd HH:mm:ss"));
+        this.trialEndTime = trialEndTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.samplingInterval = DurationFormatUtils.formatDurationWords(
                 samplingInterval.toMillis(), true, true);
@@ -112,7 +121,7 @@ public class ComparativeNetworkAccessibility {
         this.centerPoints = centerPoints.stream().map(
                 point -> new Point(point)).collect(Collectors.toSet());
         sampleCount = centerPoints.size();
-        
+
         this.trialName = trialName;
     }
 }
