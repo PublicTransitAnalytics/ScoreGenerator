@@ -67,6 +67,10 @@ public class ComparativeNetworkAccessibility {
     private final int totalSectors;
 
     private final String trialName;
+    
+    private final long inServiceSeconds;
+    
+    private final long trialInServiceSeconds;
 
     public ComparativeNetworkAccessibility(
             final int taskCount, final int trialTaskCount,
@@ -77,7 +81,8 @@ public class ComparativeNetworkAccessibility {
             final LocalDateTime trialStartTime, 
             final LocalDateTime trialEndTime, final Duration tripDuration, 
             final Duration samplingInterval, final boolean backward, 
-            final String trialName) throws InterruptedException {
+            final String trialName, final Duration inServiceTime,
+            final Duration trialInServiceTime) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_NETWORK_ACCESSIBILITY;
 
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
@@ -123,5 +128,8 @@ public class ComparativeNetworkAccessibility {
         sampleCount = centerPoints.size();
 
         this.trialName = trialName;
+        
+        inServiceSeconds = inServiceTime.getSeconds();
+        trialInServiceSeconds = trialInServiceTime.getSeconds();
     }
 }

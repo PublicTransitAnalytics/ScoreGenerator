@@ -417,23 +417,25 @@ public class Main {
             final boolean backward, final LocalFilePublisher publisher,
             final Gson serializer, final MapGenerator mapGenerator,
             final String outputName) throws InterruptedException, IOException {
-        final Calculation calculation = calculations.get(base);
+        final Calculation baseCalculation = calculations.get(base);
 
-        final ScoreCard scoreCard = calculation.getScoreCard();
-        final int taskCount = calculation.getTaskCount();
+        final ScoreCard scoreCard = baseCalculation.getScoreCard();
+        final Duration inServiceTime = baseCalculation
+                .getTransitNetwork().getInServiceTime();
+        final int taskCount = baseCalculation.getTaskCount();
         final LocalDateTime startTime
                 = LocalDateTime.parse(base.getStartTime());
         final LocalDateTime endTime = startTime.plus(span);
-
+        final Set<PointLocation> markedPoints = markCenters
+                ? centerPoints : Collections.emptySet();
         if (comparison == null) {
             final NetworkAccessibility map = new NetworkAccessibility(
                     taskCount, scoreCard, sectorTable, centerPoints,
                     startTime, endTime, durations.last(), samplingInterval,
-                    backward);
+                    backward, inServiceTime);
             publisher.publish(outputName, serializer.toJson(map));
-            mapGenerator.makeRangeMap(sectorTable, scoreCard,
-                                      markCenters ? centerPoints : Collections
-                                                      .emptySet(),
+
+            mapGenerator.makeRangeMap(sectorTable, scoreCard, markedPoints,
                                       0, 0.2, outputName);
         } else {
             for (final OperationDescription trialComparison
@@ -442,6 +444,8 @@ public class Main {
                 final String name = comparison.getName();
                 final Calculation trialCalculation
                         = calculations.get(trialComparison);
+                final Duration trialInServiceTime = trialCalculation
+                        .getTransitNetwork().getInServiceTime();
                 final ScoreCard trialScoreCard
                         = trialCalculation.getScoreCard();
                 final int trialTaskCount = trialCalculation.getTaskCount();
@@ -456,12 +460,12 @@ public class Main {
                                 centerPoints, startTime, endTime,
                                 trialStartTime, trialEndTime,
                                 durations.last(), samplingInterval,
-                                backward, name);
+                                backward, name, inServiceTime,
+                                trialInServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeComparativeMap(
                         outputName, sectorTable, scoreCard, trialScoreCard,
-                        markCenters ? centerPoints : Collections.emptySet(),
-                        0.2, outputName);
+                        markedPoints, 0.2, outputName);
 
             }
         }
@@ -521,7 +525,7 @@ public class Main {
                 final PointAccessibility map = new PointAccessibility(
                         taskCount, scoreCard, sectorTable, centerPoint,
                         startTime, endTime, samplingInterval, durations.last(),
-                        backward);
+                        backward, inServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeRangeMap(sectorTable, scoreCard,
                                           Collections.singleton(centerPoint), 0,
@@ -530,7 +534,8 @@ public class Main {
                 final TimeQualifiedPointAccessibility map
                         = new TimeQualifiedPointAccessibility(
                                 scoreCard, sectorTable, centerPoint,
-                                startTime, durations.last(), backward);
+                                startTime, durations.last(), backward,
+                                inServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeRangeMap(sectorTable, scoreCard,
                                           Collections.singleton(centerPoint), 0,
@@ -562,7 +567,8 @@ public class Main {
                                     centerPoint, startTime, endTime,
                                     trialStartTime, trialEndTime,
                                     samplingInterval, durations.last(),
-                                    backward, trialName);
+                                    backward, trialName, inServiceTime,
+                                    trialInServiceTime);
                     publisher.publish(outputName, serializer.toJson(map));
                 } else {
                     final ComparativeTimeQualifiedPointAccessibility map

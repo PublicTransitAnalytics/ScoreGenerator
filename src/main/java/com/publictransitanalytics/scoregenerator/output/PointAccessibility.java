@@ -58,13 +58,15 @@ public class PointAccessibility {
     private final int taskCount;
     
     private final int totalSectors;
+    
+    private final long inServiceSeconds;
 
     public PointAccessibility(
             final int taskCount, final PathScoreCard scoreCard,
             final SectorTable sectorTable, final PointLocation centerPoint, 
             final LocalDateTime startTime, final LocalDateTime lastTime, 
             final Duration samplingInterval, final Duration tripDuration,
-            final boolean backward)
+            final boolean backward, final Duration inServiceTime)
             throws InterruptedException {
         type = AccessibilityType.POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
@@ -109,5 +111,7 @@ public class PointAccessibility {
             }
         }
         sectorPaths = informationBuilder.build();
+        
+        inServiceSeconds = inServiceTime.getSeconds();
     }
 }

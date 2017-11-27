@@ -50,11 +50,14 @@ public class TimeQualifiedPointAccessibility {
     private final String tripDuration;
 
     private final int totalSectors;
+    
+    private final long inServiceSeconds;
 
     public TimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final SectorTable sectorTable,
             final PointLocation centerPoint, final LocalDateTime time, 
-            final Duration tripDuration, final boolean backward) 
+            final Duration tripDuration, final boolean backward,
+            final Duration inServiceTime) 
             throws InterruptedException {
         type = AccessibilityType.TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
@@ -81,6 +84,7 @@ public class TimeQualifiedPointAccessibility {
         }
         sectorPaths = builder.build();
         totalSectors = sectorTable.getSectors().size();
+        inServiceSeconds = inServiceTime.getSeconds();
     }
 
 }

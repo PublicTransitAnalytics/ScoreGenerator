@@ -65,6 +65,10 @@ public class ComparativePointAccessibility {
     private final int totalSectors;
 
     private final String trialName;
+    
+    private final long inServiceSeconds;
+    
+    private final long trialInServiceSeconds;
 
     public ComparativePointAccessibility(
             final int taskCount, final int trialTaskCount,
@@ -74,7 +78,8 @@ public class ComparativePointAccessibility {
             final LocalDateTime trialStartTime,
             final LocalDateTime trialEndTime, final Duration samplingInterval, 
             final Duration tripDuration, final boolean backward, 
-            final String trialName) throws InterruptedException {
+            final String trialName, final Duration inServiceTime,
+            final Duration trialInServiceTime) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(sectorTable);
@@ -127,6 +132,9 @@ public class ComparativePointAccessibility {
         }
         sectorPaths = informationBuilder.build();
         this.trialName = trialName;
+        
+        inServiceSeconds = inServiceTime.getSeconds();
+        trialInServiceSeconds = trialInServiceTime.getSeconds();
     }
 
     private static Set<MovementPath> getBestPathSet(

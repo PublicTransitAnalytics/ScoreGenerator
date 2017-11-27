@@ -60,14 +60,17 @@ public class NetworkAccessibility {
     private final int taskCount;
     
     private final int totalSectors;
-
+    
+    private final long inServiceSeconds;
+    
     public NetworkAccessibility(
             final int taskCount, final ScoreCard scoreCard,
             final SectorTable sectorTable, 
             final Set<PointLocation> centerPoints, 
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Duration tripDuration, final Duration samplingInterval,
-            final boolean backward) throws InterruptedException {
+            final boolean backward, final Duration inServiceTime) 
+            throws InterruptedException {
         type = AccessibilityType.NETWORK_ACCESSIBILITY;
 
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
@@ -100,5 +103,7 @@ public class NetworkAccessibility {
         this.centerPoints = centerPoints.stream().map(
                 point -> new Point(point)).collect(Collectors.toSet());
         sampleCount = centerPoints.size();
+        
+        inServiceSeconds = inServiceTime.getSeconds();
     }
 }
