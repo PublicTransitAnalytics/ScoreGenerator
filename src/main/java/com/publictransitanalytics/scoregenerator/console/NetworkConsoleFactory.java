@@ -13,25 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule.patching;
+package com.publictransitanalytics.scoregenerator.console;
 
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import java.util.Optional;
-import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
+import java.util.Map;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@RequiredArgsConstructor
-public class Deletion implements Patch {
-
-    private final String routeNumber;
-
-    @Override
-    public Optional<Trip> patch(final Trip original) {
-        return routeNumber.equals(original.getRouteNumber()) ? Optional.empty()
-                : Optional.of(original);
-    }
-
+public interface NetworkConsoleFactory {
+    
+    public NetworkConsole getConsole(final TransitNetwork network, 
+                                     final Map<String, TransitStop> stopIdMap);
+    
 }

@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
+import com.publictransitanalytics.scoregenerator.environment.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.geography.AllLandWaterDetector;
 import junit.framework.Assert;

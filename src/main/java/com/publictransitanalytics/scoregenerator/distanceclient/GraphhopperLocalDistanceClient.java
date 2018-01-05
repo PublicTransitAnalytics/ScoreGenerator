@@ -78,7 +78,7 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
                     .setVehicle("foot")
                     .setLocale(Locale.US);
             final GHResponse rsp = hopper.route(req);
-
+            
             if (rsp.hasErrors()) {
                 throw new DistanceClientException(
                         rsp.getErrors().toString());

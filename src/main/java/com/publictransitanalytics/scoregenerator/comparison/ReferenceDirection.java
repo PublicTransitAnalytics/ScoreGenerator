@@ -19,7 +19,7 @@ package com.publictransitanalytics.scoregenerator.comparison;
  *
  * @author Public Transit Analytics
  */
-public enum OperationDirection {
+public enum ReferenceDirection {
     BEFORE_FIRST,
     AFTER_LAST
     

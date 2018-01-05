@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.SectorTable;
 import java.time.Duration;
 import lombok.Value;
 

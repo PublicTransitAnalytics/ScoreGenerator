@@ -19,7 +19,7 @@ package com.publictransitanalytics.scoregenerator.schedule.patching;
  *
  * @author Public Transit Analytics
  */
-public enum ExtensionType {
+public enum ReferenceDirection {
     BEFORE_FIRST,
     AFTER_LAST
     

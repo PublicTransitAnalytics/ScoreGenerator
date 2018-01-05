@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.comparison;
-
-import lombok.Value;
+package com.publictransitanalytics.scoregenerator.console;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class Truncation {
-    private final String referenceStopId;
-    private final ReferenceDirection direction;
+public class DummyNetworkConsole implements NetworkConsole {
+
+    @Override
+    public void enterConsole() {
+    }
+    
 }

@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.comparison;
+package com.publictransitanalytics.scoregenerator.console;
 
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import lombok.Value;
 
 /**
@@ -22,7 +23,7 @@ import lombok.Value;
  * @author Public Transit Analytics
  */
 @Value
-public class Truncation {
-    private final String referenceStopId;
-    private final ReferenceDirection direction;
+public class Hop {
+    private final TransitStop start;
+    private final TransitStop end;
 }

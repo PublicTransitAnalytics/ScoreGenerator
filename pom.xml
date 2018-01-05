@@ -122,6 +122,41 @@
             <artifactId>java-uuid-generator</artifactId>
             <version>3.1.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.openstreetmap.osmosis</groupId>
+            <artifactId>osmosis-core</artifactId>
+            <version>0.46</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openstreetmap.osmosis</groupId>
+            <artifactId>osmosis-pbf2</artifactId>
+            <version>0.46</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openstreetmap.osmosis</groupId>
+            <artifactId>osmosis-areafilter</artifactId>
+            <version>0.46</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openstreetmap.osmosis</groupId>
+            <artifactId>osmosis-tagfilter</artifactId>
+            <version>0.46</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openstreetmap.osmosis</groupId>
+            <artifactId>osmosis-osm-binary</artifactId>
+            <version>0.46</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.sgr</groupId>
+            <artifactId>s2-geometry-library-java</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

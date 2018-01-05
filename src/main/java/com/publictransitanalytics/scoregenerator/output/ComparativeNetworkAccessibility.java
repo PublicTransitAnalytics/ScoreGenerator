@@ -16,10 +16,14 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.google.common.collect.Sets;
+import com.publictransitanalytics.scoregenerator.environment.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -67,9 +71,9 @@ public class ComparativeNetworkAccessibility {
     private final int totalSectors;
 
     private final String trialName;
-    
+
     private final long inServiceSeconds;
-    
+
     private final long trialInServiceSeconds;
 
     public ComparativeNetworkAccessibility(
@@ -78,9 +82,9 @@ public class ComparativeNetworkAccessibility {
             final SectorTable sectorTable,
             final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
-            final LocalDateTime trialStartTime, 
-            final LocalDateTime trialEndTime, final Duration tripDuration, 
-            final Duration samplingInterval, final boolean backward, 
+            final LocalDateTime trialStartTime,
+            final LocalDateTime trialEndTime, final Duration tripDuration,
+            final Duration samplingInterval, final boolean backward,
             final String trialName, final Duration inServiceTime,
             final Duration trialInServiceTime) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_NETWORK_ACCESSIBILITY;
@@ -113,6 +117,7 @@ public class ComparativeNetworkAccessibility {
                     ? scoreCard.getReachedCount(sector) : 0;
             final int trialCount = trialScoreCard.hasPath(sector)
                     ? trialScoreCard.getReachedCount(sector) : 0;
+
             if (count != 0 && trialCount != 0) {
                 final Bounds bounds = new Bounds(sector);
                 final CountComparison comparison
@@ -128,7 +133,7 @@ public class ComparativeNetworkAccessibility {
         sampleCount = centerPoints.size();
 
         this.trialName = trialName;
-        
+
         inServiceSeconds = inServiceTime.getSeconds();
         trialInServiceSeconds = trialInServiceTime.getSeconds();
     }

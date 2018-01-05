@@ -24,7 +24,7 @@ public enum Operator {
     DELETE,
     ADD,
     EXTEND,
-    TRUNCATE
-    
+    TRUNCATE,
+    REROUTE
     
 }

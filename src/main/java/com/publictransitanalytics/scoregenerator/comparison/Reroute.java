@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.comparison;
 
+import java.util.List;
 import lombok.Value;
 
 /**
@@ -22,7 +23,12 @@ import lombok.Value;
  * @author Public Transit Analytics
  */
 @Value
-public class Truncation {
+public class Reroute {
+
     private final String referenceStopId;
     private final ReferenceDirection direction;
+    private final List<SequenceItem> sequence;
+    private final String returnStopId;
+    private final String returnDelta;
+
 }

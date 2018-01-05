@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;

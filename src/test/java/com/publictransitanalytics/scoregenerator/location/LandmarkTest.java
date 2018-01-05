@@ -15,8 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.testhelpers.CountingVisitor;
 import org.junit.Assert;
 import org.junit.Test;

@@ -15,6 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
+import com.publictransitanalytics.scoregenerator.environment.SectorTable;
+import com.publictransitanalytics.scoregenerator.console.NetworkConsoleFactory;
+import com.publictransitanalytics.scoregenerator.console.DummyNetworkConsole;
+import com.publictransitanalytics.scoregenerator.console.InteractiveNetworkConsole;
+import com.publictransitanalytics.scoregenerator.console.NetworkConsole;
 import com.publictransitanalytics.scoregenerator.comparison.OperationDescription;
 import com.publictransitanalytics.scoregenerator.workflow.Environment;
 import com.publictransitanalytics.scoregenerator.workflow.Calculation;
@@ -48,6 +53,9 @@ import org.opensextant.geodesy.Latitude;
 import org.opensextant.geodesy.Longitude;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.EnvironmentDataDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceDataDirectory;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
+import com.publictransitanalytics.scoregenerator.environment.Segment;
+import com.publictransitanalytics.scoregenerator.environment.SegmentFinder;
 import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
 import com.publictransitanalytics.scoregenerator.geography.NearestPointEndpointDeterminer;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
@@ -81,6 +89,7 @@ import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.NullMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RetrospectiveMovementAssembler;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -231,6 +240,13 @@ public class Main {
 
         final SectorTable sectorTable = generateSectors(
                 environmentDirectory.getWaterDetector());
+
+        final File osmFile = environmentDirectory.getOsmPath().toFile();
+        final SegmentFinder segmentFinder = new SegmentFinder(
+                osmFile, sectorTable.getBounds());
+        final Set<Segment> segments = segmentFinder.getSegments();
+        final Grid grid = new Grid(segments, sectorTable.getBounds(), 100, 100);
+        final Set<PointLocation> gridPoints = grid.getGridPoints();
 
         final MapGenerator mapGenerator = new MapGenerator();
 
@@ -464,8 +480,8 @@ public class Main {
                                 trialInServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeComparativeMap(
-                        outputName, sectorTable, scoreCard, trialScoreCard,
-                        markedPoints, 0.2, outputName);
+                        sectorTable, scoreCard, trialScoreCard, markedPoints,
+                        0.2, outputName);
 
             }
         }
@@ -553,13 +569,13 @@ public class Main {
                 final int trialTaskCount = trialCalculation.getTaskCount();
                 final LocalDateTime trialStartTime = LocalDateTime.parse(
                         comparison.getStartTime());
-                final LocalDateTime trialEndTime
-                        = trialStartTime.plus(span);
                 final Duration trialInServiceTime = trialCalculation
                         .getTransitNetwork().getInServiceTime();
 
                 if (span != null) {
                     final LocalDateTime endTime = startTime.plus(span);
+                    final LocalDateTime trialEndTime
+                            = trialStartTime.plus(span);
                     final ComparativePointAccessibility map
                             = new ComparativePointAccessibility(
                                     taskCount, trialTaskCount, scoreCard,
@@ -581,7 +597,7 @@ public class Main {
                     publisher.publish(outputName, serializer.toJson(map));
                 }
                 mapGenerator.makeComparativeMap(
-                        outputName, sectorTable, scoreCard, trialScoreCard,
+                        sectorTable, scoreCard, trialScoreCard,
                         Collections.singleton(centerPoint), 0.2, outputName);
             }
         }

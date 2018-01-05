@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.console;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public class DummyNetworkConsole implements NetworkConsole {
+public interface NetworkConsole {
 
-    @Override
-    public void enterConsole() {
-    }
+    void enterConsole();
     
 }

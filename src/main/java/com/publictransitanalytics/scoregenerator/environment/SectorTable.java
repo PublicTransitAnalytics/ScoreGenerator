@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.environment;
 
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.collect.TreeBasedTable;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import java.util.Map;
@@ -48,19 +49,19 @@ public class SectorTable {
     public SectorTable(final Geodetic2DBounds bounds,
                        final int numLatitudeSectors,
                        final int numLongitudeSectors,
-                       final WaterDetector waterDetector) 
+                       final WaterDetector waterDetector)
             throws InterruptedException {
         sectorTable = TreeBasedTable.create();
         this.bounds = bounds;
 
-        final Angle latitudeDifference = bounds.getSouthLat().difference(bounds
-                .getNorthLat());
+        final Angle latitudeDifference = bounds.getSouthLat()
+                .difference(bounds.getNorthLat());
         final double latitudeDeltaDegrees = latitudeDifference.inDegrees()
                                                     / numLatitudeSectors;
         latitudeDelta = new Angle(latitudeDeltaDegrees, Latitude.DEGREES);
 
-        final Angle longitudeDifference = bounds.getWestLon().difference(bounds
-                .getEastLon());
+        final Angle longitudeDifference = bounds.getWestLon()
+                .difference(bounds.getEastLon());
         final double longitudeDeltaDegrees = longitudeDifference.inDegrees()
                                                      / numLongitudeSectors;
         longitudeDelta = new Angle(longitudeDeltaDegrees, Longitude.DEGREES);

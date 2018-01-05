@@ -13,19 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.comparison;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
-import java.util.Map;
+import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface NetworkConsoleFactory {
-    
-    public NetworkConsole getConsole(final TransitNetwork network, 
-                                     final Map<String, TransitStop> stopIdMap);
-    
+@Value
+public class SequenceItem {
+    private final String delta;
+    private final String stopId;
 }

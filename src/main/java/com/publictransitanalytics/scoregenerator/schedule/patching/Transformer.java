@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.comparison;
+package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.distanceclient.CompositeDistanceEstimator;
@@ -33,8 +33,6 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
-import com.publictransitanalytics.scoregenerator.schedule.patching.PatchingTripCreator;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
