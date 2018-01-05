@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.comparison;
+package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.distanceclient.CompositeDistanceEstimator;
@@ -26,15 +26,12 @@ import com.publictransitanalytics.scoregenerator.distanceclient.PairGenerator;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.StoredDistanceEstimator;
 import com.publictransitanalytics.scoregenerator.distanceclient.SupplementalPairGenerator;
-import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
-import com.publictransitanalytics.scoregenerator.schedule.patching.PatchingTripCreator;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -55,15 +52,13 @@ public class Transformer {
 
     private final List<Patch> tripPatches;
     private final Set<TransitStop> addedStops;
-
     private final TimeTracker timeTracker;
     private final TransitNetwork originalTransitNetwork;
     private final boolean backward;
     private final Duration longestDuration;
     private final double walkingMetersPerSecond;
-    private final EndpointDeterminer endpointDeterminer;
     private final DistanceClient distanceClient;
-    private final Set<Sector> sectors;
+    private final Set<GridPoint> gridPoints;
     private final Set<TransitStop> stops;
     private final Set<PointLocation> centers;
     private final DistanceEstimator originalDistanceEstimator;
@@ -72,12 +67,10 @@ public class Transformer {
 
     public Transformer(final TimeTracker timeTracker,
                        final TransitNetwork transitNetwork,
-                       final boolean backward,
-                       final Duration longestDuration,
+                       final boolean backward, final Duration longestDuration,
                        final double walkingMetersPerSecond,
-                       final EndpointDeterminer endpointDeterminer,
                        final DistanceClient distanceClient,
-                       final Set<Sector> sectors,
+                       final Set<GridPoint> gridPoints,
                        final Set<TransitStop> stops,
                        final Set<PointLocation> centers,
                        final DistanceEstimator distanceEstimator,
@@ -89,11 +82,10 @@ public class Transformer {
         this.backward = backward;
         this.longestDuration = longestDuration;
         this.walkingMetersPerSecond = walkingMetersPerSecond;
-        this.endpointDeterminer = endpointDeterminer;
         this.distanceClient = distanceClient;
-        this.sectors = sectors;
         this.stops = stops;
         this.centers = centers;
+        this.gridPoints = gridPoints;
         originalDistanceEstimator = distanceEstimator;
         originalReachabilityClient = reachabilityClient;
         originalRiderFactory = riderFactory;
@@ -147,13 +139,12 @@ public class Transformer {
 
                 final PairGenerator pairGenerator
                         = new SupplementalPairGenerator(
-                                sectors, allStops, centers,
+                                gridPoints, allStops, centers,
                                 Collections.singleton(stop));
 
                 final StoredDistanceEstimator addedLocationEstimator
                         = new StoredDistanceEstimator(
-                                pairGenerator, maxDistance, endpointDeterminer,
-                                storage);
+                                pairGenerator, maxDistance, storage);
                 builder.add(addedLocationEstimator);
             }
             return new CompositeDistanceEstimator(builder.build());

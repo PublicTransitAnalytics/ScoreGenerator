@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.util.Map;
 import java.util.Set;
@@ -27,9 +27,9 @@ import java.util.Set;
  */
 public interface DistanceClient {
 
-    Map<VisitableLocation, WalkingCosts> getDistances(
-            final VisitableLocation point,
-            final Set<VisitableLocation> consideredPoints)
+    Map<PointLocation, WalkingCosts> getDistances(
+            final PointLocation point,
+            final Set<PointLocation> consideredPoints)
             throws DistanceClientException, InterruptedException;
     
     void close();

@@ -15,9 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import java.util.Map;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -32,12 +34,12 @@ public abstract class ScoreCard {
     @Getter
     private final int taskCount;
 
-    public abstract int getReachedCount(VisitableLocation location);
+    public abstract int getReachedCount(final Sector location);
 
-    public abstract boolean hasPath(final VisitableLocation location);
+    public abstract boolean hasPath(final Sector location);
 
-    public abstract void putPath(final VisitableLocation location,
-                                 final TaskIdentifier task, 
-                                 final MovementPath path);
+    public abstract void scoreTask(
+            final TaskIdentifier task,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap);
 
 }

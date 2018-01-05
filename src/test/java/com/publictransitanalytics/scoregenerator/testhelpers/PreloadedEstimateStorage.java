@@ -17,8 +17,7 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.distanceclient.EstimateStorage;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import edu.emory.mathcs.backport.java.util.Collections;
+import java.util.Collections;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
@@ -34,12 +33,12 @@ public class PreloadedEstimateStorage implements EstimateStorage {
 
     @Override
     public void put(final PointLocation origin, 
-                    final VisitableLocation destination,
+                    final PointLocation destination,
                     final double distanceMeters) throws InterruptedException {
     }
 
     @Override
-    public Set<VisitableLocation> getReachable(final PointLocation origin,
+    public Set<PointLocation> getReachable(final PointLocation origin,
                                                final double distanceMeters) 
             throws InterruptedException {
         return Collections.emptySet();

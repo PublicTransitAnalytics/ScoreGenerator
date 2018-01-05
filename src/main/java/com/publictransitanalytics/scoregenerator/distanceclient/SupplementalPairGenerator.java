@@ -16,10 +16,9 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Set;
 
 /**
@@ -29,17 +28,18 @@ import java.util.Set;
 public class SupplementalPairGenerator implements PairGenerator {
 
     private final Set<PointLocation> existingOrigins;
-    private final Set<VisitableLocation> existingDestinations;
+    private final Set<PointLocation> existingDestinations;
     private final Set<PointLocation> newPoints;
 
-    public SupplementalPairGenerator(final Set<Sector> existingSectors,
-                                     final Set<TransitStop> existingStops,
-                                     final Set<PointLocation> existingCenters,
-                                     final Set<PointLocation> newPoints) {
+    public SupplementalPairGenerator(
+            final Set<GridPoint> existingGridPoints,
+            final Set<TransitStop> existingStops,
+            final Set<PointLocation> existingCenters,
+            final Set<PointLocation> newPoints) {
         existingOrigins = ImmutableSet.<PointLocation>builder()
                 .addAll(existingCenters).addAll(existingStops).build();
-        existingDestinations = ImmutableSet.<VisitableLocation>builder()
-                .addAll(existingSectors).addAll(existingStops).build();
+        existingDestinations = ImmutableSet.<PointLocation>builder()
+                .addAll(existingGridPoints).addAll(existingStops).build();
         this.newPoints = newPoints;
     }
 
@@ -50,7 +50,7 @@ public class SupplementalPairGenerator implements PairGenerator {
             throws InterruptedException {
 
         for (final PointLocation newPoint : newPoints) {
-            for (final VisitableLocation existingDestination
+            for (final PointLocation existingDestination
                          : existingDestinations) {
                 if (!newPoint.equals(existingDestination)) {
                     estimator.generateEstimate(newPoint, existingDestination);

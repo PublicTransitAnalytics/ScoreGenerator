@@ -16,9 +16,13 @@
 package com.publictransitanalytics.scoregenerator.scoring;
 
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Table;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
+import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -32,15 +36,22 @@ import java.util.stream.Collectors;
  */
 public class PathScoreCard extends ScoreCard {
 
-    private final Table<VisitableLocation, TaskIdentifier, MovementPath> bestPaths;
+    private final Table<Sector, TaskIdentifier, MovementPath> bestPaths;
+    private final SetMultimap<PointLocation, Sector> pointSectorMap;
+    private final MovementAssembler assembler;
 
-    public PathScoreCard(final int taskCount) {
+    public PathScoreCard(
+            final int taskCount,
+            final SetMultimap<PointLocation, Sector> pointSectorMap,
+            final MovementAssembler assembler) {
         super(taskCount);
         bestPaths = HashBasedTable.create();
+        this.pointSectorMap = pointSectorMap;
+        this.assembler = assembler;
     }
 
     public synchronized boolean hasNoBetterPath(
-            final VisitableLocation location, final TaskIdentifier task,
+            final PointLocation location, final TaskIdentifier task,
             final MovementPath path) {
         if (!bestPaths.contains(location, task)) {
             return true;
@@ -51,41 +62,45 @@ public class PathScoreCard extends ScoreCard {
     }
 
     @Override
-    public synchronized void putPath(final VisitableLocation location,
-                                     final TaskIdentifier task,
-                                     final MovementPath path) {
-        bestPaths.put(location, task, path);
+    public synchronized void scoreTask(
+            final TaskIdentifier task,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
+        for (final PointLocation location : stateMap.keySet()) {
+            for (final Sector sector : pointSectorMap.get(location)) {
+                bestPaths.put(sector, task,
+                              assembler.assemble(location, stateMap));
+            }
+        }
     }
 
     public synchronized MovementPath getBestPath(
-            final VisitableLocation location, final TaskIdentifier task) {
+            final Sector location, final TaskIdentifier task) {
         return bestPaths.get(location, task);
     }
 
     public synchronized Map<TaskIdentifier, MovementPath> getBestPaths(
-            final VisitableLocation location) {
+            final Sector location) {
         return bestPaths.row(location);
     }
 
     @Override
-    public synchronized int getReachedCount(
-            final VisitableLocation location) {
+    public synchronized int getReachedCount(final Sector location) {
         return bestPaths.row(location).size();
     }
 
     public synchronized Set<LocalDateTime> getReachedTimes(
-            final VisitableLocation location) {
+            final Sector location) {
         return bestPaths.row(location).keySet().stream()
                 .map(task -> task.getTime()).collect(Collectors.toSet());
     }
 
-    public synchronized boolean hasPath(final VisitableLocation location,
+    public synchronized boolean hasPath(final Sector location,
                                         final TaskIdentifier task) {
         return bestPaths.contains(location, task);
     }
 
     @Override
-    public synchronized boolean hasPath(final VisitableLocation location) {
+    public synchronized boolean hasPath(final Sector location) {
         return bestPaths.containsRow(location);
     }
 

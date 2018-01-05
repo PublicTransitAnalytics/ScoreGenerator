@@ -18,8 +18,10 @@ package com.publictransitanalytics.scoregenerator.workflow;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.visitors.FlatTransitRideVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.FlatWalkVisitor;
@@ -76,19 +78,17 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
         final AlgorithmOutput output = algorithm.getOutput(
                 latestStartTime, latestCutoffTime, startLocation, timeTracker,
                 duration, reachabilityClient, riderFactory);
-        Map<VisitableLocation, DynamicProgrammingRecord> map
+        Map<PointLocation, DynamicProgrammingRecord> map
                 = output.getMap();
 
         final TaskIdentifier latestFullTask = new TaskIdentifier(
                 latestStartTime, startLocation);
 
-        final MovementAssembler assembler = calculation.getMovementAssembler();
+        scoreCard.scoreTask(latestFullTask, map);
 
-        updateScoreCard(map, latestFullTask, scoreCard, assembler);
-
-        final Map<VisitableLocation, WalkingCosts> initialWalks
+        final Map<PointLocation, WalkingCosts> initialWalks
                 = output.getInitialWalks();
-        final Set<VisitableLocation> implicitLocations
+        final Set<PointLocation> implicitLocations
                 = output.getImplicitLocations();
 
         while (timeIterator.hasNext()) {
@@ -97,7 +97,7 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
             final LocalDateTime nextCutoffTime = timeTracker.adjust(
                     nextStartTime, duration);
 
-            final Map<VisitableLocation, DynamicProgrammingRecord> nextMap
+            final Map<PointLocation, DynamicProgrammingRecord> nextMap
                     = createNextMap(map, nextStartTime, nextCutoffTime,
                                     startLocation, riderFactory,
                                     reachabilityClient, timeTracker,
@@ -106,7 +106,7 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
             final TaskIdentifier nextTask = new TaskIdentifier(
                     nextStartTime, startLocation);
 
-            updateScoreCard(nextMap, nextTask, scoreCard, assembler);
+            scoreCard.scoreTask(nextTask, nextMap);
             map = nextMap;
         }
         final Instant profileEndTime = Instant.now();
@@ -117,20 +117,20 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
     }
 
-    private Map<VisitableLocation, DynamicProgrammingRecord> createNextMap(
-            final Map<VisitableLocation, DynamicProgrammingRecord> previousMap,
+    private Map<PointLocation, DynamicProgrammingRecord> createNextMap(
+            final Map<PointLocation, DynamicProgrammingRecord> previousMap,
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
-            final VisitableLocation startLocation,
+            final PointLocation startLocation,
             final RiderFactory riderFactory,
             final ReachabilityClient reachabilityClient,
             final TimeTracker timeTracker,
-            final Map<VisitableLocation, WalkingCosts> initialWalks,
-            final Set<VisitableLocation> implicitLocations)
+            final Map<PointLocation, WalkingCosts> initialWalks,
+            final Set<PointLocation> implicitLocations)
             throws InterruptedException {
 
-        final Map<VisitableLocation, DynamicProgrammingRecord> stateMap
+        final Map<PointLocation, DynamicProgrammingRecord> stateMap
                 = new HashMap<>(previousMap.size());
-        for (final Map.Entry<VisitableLocation, DynamicProgrammingRecord> entry
+        for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
                      : previousMap.entrySet()) {
 
             final DynamicProgrammingRecord record = entry.getValue();
@@ -144,15 +144,15 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
                 = new DynamicProgrammingRecord(startTime, ModeInfo.NONE, null);
         stateMap.put(startLocation, newStartRecord);
 
-        final ImmutableSet.Builder<VisitableLocation> initialUpdateSetBuilder
+        final ImmutableSet.Builder<PointLocation> initialUpdateSetBuilder
                 = ImmutableSet.builder();
-        for (final Map.Entry<VisitableLocation, WalkingCosts> entry
+        for (final Map.Entry<PointLocation, WalkingCosts> entry
                      : initialWalks.entrySet()) {
             final WalkingCosts walk = entry.getValue();
             final LocalDateTime newReachTime = timeTracker.adjust(
                     startTime, walk.getDuration());
 
-            final VisitableLocation location = entry.getKey();
+            final PointLocation location = entry.getKey();
             final ModeInfo newModeInfo = new ModeInfo(ModeType.WALKING, null,
                                                       walk);
             final DynamicProgrammingRecord newWalkRecord
@@ -165,14 +165,14 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
             } else {
                 final LocalDateTime reachTime
                         = stateMap.get(location).getReachTime();
-                
+
                 if (timeTracker.shouldReplace(reachTime, newReachTime)) {
                     stateMap.put(location, newWalkRecord);
                     initialUpdateSetBuilder.add(location);
                 }
             }
         }
-        for (final VisitableLocation location : implicitLocations) {
+        for (final PointLocation location : implicitLocations) {
             final ModeInfo newModeInfo = new ModeInfo(ModeType.NONE, null,
                                                       null);
             final DynamicProgrammingRecord newRecord
@@ -182,14 +182,14 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
             stateMap.put(location, newRecord);
         }
 
-        Set<VisitableLocation> updateSet = initialUpdateSetBuilder.build();
+        Set<PointLocation> updateSet = initialUpdateSetBuilder.build();
 
         for (int i = 1;; i++) {
 
             int roundUpdates = 0;
-            final ImmutableSet.Builder<VisitableLocation> updateSetBuilder
+            final ImmutableSet.Builder<PointLocation> updateSetBuilder
                     = ImmutableSet.builder();
-            for (final VisitableLocation priorLocation : updateSet) {
+            for (final PointLocation priorLocation : updateSet) {
                 final DynamicProgrammingRecord priorRecord
                         = stateMap.get(priorLocation);
                 final LocalDateTime newReachTime = priorRecord.getReachTime();
@@ -241,15 +241,15 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
         return stateMap;
     }
 
-    private static Set<VisitableLocation> updateRow(
+    private static Set<PointLocation> updateRow(
             final Set<ReachabilityOutput> reachabilities,
-            final Map<VisitableLocation, DynamicProgrammingRecord> stateMap,
-            final VisitableLocation priorLocation,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap,
+            final PointLocation priorLocation,
             final TimeTracker timeTracker) {
-        final ImmutableSet.Builder<VisitableLocation> builder
+        final ImmutableSet.Builder<PointLocation> builder
                 = ImmutableSet.builder();
         for (final ReachabilityOutput reachability : reachabilities) {
-            final VisitableLocation newLocation = reachability.getLocation();
+            final PointLocation newLocation = reachability.getLocation();
             final LocalDateTime newTime = reachability.getReachTime();
 
             final ModeInfo mode = reachability.getModeInfo();
@@ -273,20 +273,6 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
         }
         return builder.build();
-    }
-
-    private void updateScoreCard(
-            final Map<VisitableLocation, DynamicProgrammingRecord> map,
-            final TaskIdentifier task, final ScoreCard scoreCard,
-            final MovementAssembler assembler)
-            throws InterruptedException {
-
-        final Set<VisitableLocation> reachedLocations = map.keySet();
-
-        for (final VisitableLocation reachedLocation : reachedLocations) {
-            final MovementPath path = assembler.assemble(reachedLocation, map);
-            scoreCard.putPath(reachedLocation, task, path);
-        }
     }
 
 }

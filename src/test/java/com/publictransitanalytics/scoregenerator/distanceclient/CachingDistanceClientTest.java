@@ -15,32 +15,25 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.CachingDistanceClient;
-import com.bitvantage.bitvantagecaching.Cache;
 import com.bitvantage.bitvantagecaching.Store;
-import com.bitvantage.bitvantagecaching.mocks.MapCache;
 import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedDistanceClient;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Table;
-import edu.emory.mathcs.backport.java.util.Collections;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  *
@@ -48,26 +41,24 @@ import org.opensextant.geodesy.Longitude;
  */
 public class CachingDistanceClientTest {
 
+    private static final GeoPoint ORIGIN_POINT = new GeoPoint(
+            new GeoLongitude("-122.32370",
+                                    AngleUnit.DEGREES),
+            new GeoLatitude("47.654656",
+                                   AngleUnit.DEGREES));
+
+    private static final GeoPoint DESTINATION_POINT
+            = new GeoPoint(
+                    new GeoLongitude("-122.32899",
+                                            AngleUnit.DEGREES),
+                    new GeoLatitude("47.664286",
+                                           AngleUnit.DEGREES));
+
     @Test
     public void testHandlesAbsence() throws Exception {
-        final Sector sector = new Sector(new Geodetic2DBounds(
-                new Geodetic2DPoint(
-                        new Longitude(-122.459696, Longitude.DEGREES),
-                        new Latitude(47.734145, Latitude.DEGREES)),
-                new Geodetic2DPoint(
-                        new Longitude(-122.224433, Longitude.DEGREES),
-                        new Latitude(47.48172, Latitude.DEGREES))));
 
-        final Geodetic2DPoint originPoint = new Geodetic2DPoint(
-                new Longitude(-122.3236954, Longitude.DEGREES),
-                new Latitude(47.6546556, Latitude.DEGREES));
-
-        final Geodetic2DPoint destinationPoint = new Geodetic2DPoint(
-                new Longitude(-122.328989, Longitude.DEGREES),
-                new Latitude(47.6642855, Latitude.DEGREES));
-
-        final Landmark origin = new Landmark(sector, destinationPoint);
-        final Landmark destination = new Landmark(sector, originPoint);
+        final Landmark origin = new Landmark(DESTINATION_POINT);
+        final Landmark destination = new Landmark(ORIGIN_POINT);
 
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
                 = new MapStore<>(Collections.emptyMap());
@@ -77,32 +68,14 @@ public class CachingDistanceClientTest {
                 (point, consideredPoint) -> new ForwardPointOrderer(
                         point, consideredPoint), cache, backingClient);
 
-        Assert.assertTrue(client.getDistances(origin,
-                                              Collections.singleton(destination))
-                .isEmpty());
-
+        Assert.assertTrue(client.getDistances(
+                origin, Collections.singleton(destination)).isEmpty());
     }
 
     @Test
     public void testReadsFromCache() throws Exception {
-        final Sector sector = new Sector(new Geodetic2DBounds(
-                new Geodetic2DPoint(
-                        new Longitude(-122.459696, Longitude.DEGREES),
-                        new Latitude(47.734145, Latitude.DEGREES)),
-                new Geodetic2DPoint(
-                        new Longitude(-122.224433, Longitude.DEGREES),
-                        new Latitude(47.48172, Latitude.DEGREES))));
-
-        final Geodetic2DPoint originPoint = new Geodetic2DPoint(
-                new Longitude(-122.3236954, Longitude.DEGREES),
-                new Latitude(47.6546556, Latitude.DEGREES));
-
-        final Geodetic2DPoint destinationPoint = new Geodetic2DPoint(
-                new Longitude(-122.328989, Longitude.DEGREES),
-                new Latitude(47.6642855, Latitude.DEGREES));
-
-        final Landmark origin = new Landmark(sector, destinationPoint);
-        final Landmark destination = new Landmark(sector, originPoint);
+        final Landmark origin = new Landmark(DESTINATION_POINT);
+        final Landmark destination = new Landmark(ORIGIN_POINT);
         final WalkingDistanceMeasurement measurement
                 = new WalkingDistanceMeasurement(Duration.ZERO, 0);
 
@@ -117,7 +90,7 @@ public class CachingDistanceClientTest {
                 (point, consideredPoint) -> new ForwardPointOrderer(
                         point, consideredPoint), cache, backingClient);
 
-        final Map<VisitableLocation, WalkingCosts> distances
+        final Map<PointLocation, WalkingCosts> distances
                 = client.getDistances(origin,
                                       Collections.singleton(destination));
         Assert.assertEquals(1, distances.size());
@@ -128,36 +101,20 @@ public class CachingDistanceClientTest {
 
     @Test
     public void testFallsBackToClient() throws Exception {
-        final Sector sector = new Sector(new Geodetic2DBounds(
-                new Geodetic2DPoint(
-                        new Longitude(-122.459696, Longitude.DEGREES),
-                        new Latitude(47.734145, Latitude.DEGREES)),
-                new Geodetic2DPoint(
-                        new Longitude(-122.224433, Longitude.DEGREES),
-                        new Latitude(47.48172, Latitude.DEGREES))));
-
-        final Geodetic2DPoint originPoint = new Geodetic2DPoint(
-                new Longitude(-122.3236954, Longitude.DEGREES),
-                new Latitude(47.6546556, Latitude.DEGREES));
-
-        final Geodetic2DPoint destinationPoint = new Geodetic2DPoint(
-                new Longitude(-122.328989, Longitude.DEGREES),
-                new Latitude(47.6642855, Latitude.DEGREES));
-
-        final Landmark origin = new Landmark(sector, destinationPoint);
-        final Landmark destination = new Landmark(sector, originPoint);
+        final Landmark origin = new Landmark(DESTINATION_POINT);
+        final Landmark destination = new Landmark(ORIGIN_POINT);
         final WalkingCosts costs = new WalkingCosts(Duration.ZERO, 0);
 
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
                 = new MapStore<>(new HashMap<>());
         final DistanceClient backingClient = new PreloadedDistanceClient(
-                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                ImmutableMap.<PointLocation, WalkingCosts>of(
                         destination, costs));
         final DistanceClient client = new CachingDistanceClient(
                 (point, consideredPoint) -> new ForwardPointOrderer(
                         point, consideredPoint), cache, backingClient);
 
-        final Map<VisitableLocation, WalkingCosts> distances
+        final Map<PointLocation, WalkingCosts> distances
                 = client.getDistances(origin,
                                       Collections.singleton(destination));
         Assert.assertEquals(1, distances.size());
@@ -167,30 +124,14 @@ public class CachingDistanceClientTest {
 
     @Test
     public void testPopulatesCache() throws Exception {
-        final Sector sector = new Sector(new Geodetic2DBounds(
-                new Geodetic2DPoint(
-                        new Longitude(-122.459696, Longitude.DEGREES),
-                        new Latitude(47.734145, Latitude.DEGREES)),
-                new Geodetic2DPoint(
-                        new Longitude(-122.224433, Longitude.DEGREES),
-                        new Latitude(47.48172, Latitude.DEGREES))));
-
-        final Geodetic2DPoint originPoint = new Geodetic2DPoint(
-                new Longitude(-122.3236954, Longitude.DEGREES),
-                new Latitude(47.6546556, Latitude.DEGREES));
-
-        final Geodetic2DPoint destinationPoint = new Geodetic2DPoint(
-                new Longitude(-122.328989, Longitude.DEGREES),
-                new Latitude(47.6642855, Latitude.DEGREES));
-
-        final Landmark origin = new Landmark(sector, destinationPoint);
-        final Landmark destination = new Landmark(sector, originPoint);
+        final Landmark origin = new Landmark(DESTINATION_POINT);
+        final Landmark destination = new Landmark(ORIGIN_POINT);
         final WalkingCosts costs = new WalkingCosts(Duration.ZERO, 0);
 
         final Store<DistanceCacheKey, WalkingDistanceMeasurement> cache
                 = new MapStore<>(new HashMap<>());
         final DistanceClient backingClient = new PreloadedDistanceClient(
-                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                ImmutableMap.<PointLocation, WalkingCosts>of(
                         destination, costs));
         final DistanceClient client = new CachingDistanceClient(
                 (point, consideredPoint) -> new ForwardPointOrderer(

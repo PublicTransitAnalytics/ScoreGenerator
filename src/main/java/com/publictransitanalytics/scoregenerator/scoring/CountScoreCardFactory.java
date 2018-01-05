@@ -15,6 +15,10 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
+import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
+
 /**
  *
  * @author Public Transit Analytics
@@ -22,8 +26,10 @@ package com.publictransitanalytics.scoregenerator.scoring;
 public class CountScoreCardFactory implements ScoreCardFactory<CountScoreCard> {
 
     @Override
-    public CountScoreCard makeScoreCard(final int taskCount) {
-        return new CountScoreCard(taskCount);
+    public CountScoreCard makeScoreCard(
+            final int taskCount,
+            final SetMultimap<PointLocation, Sector> pointSectorMap) {
+        return new CountScoreCard(taskCount, pointSectorMap);
     }
-    
+
 }

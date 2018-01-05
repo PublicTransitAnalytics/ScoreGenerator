@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.testhelpers;
+package com.publictransitanalytics.scoregenerator.schedule.patching;
 
-import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
-import com.publictransitanalytics.scoregenerator.geography.Endpoints;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -25,14 +24,14 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class PreloadedEndpointDeterminer implements EndpointDeterminer {
+public class RouteDeletion implements Patch {
 
-    private final Endpoints endpoints;
+    private final String routeNumber;
 
     @Override
-    public Endpoints getEndpoints(final VisitableLocation firstLocation,
-                                  final VisitableLocation secondLocation) {
-        return endpoints;
+    public Optional<Trip> patch(final Trip original) {
+        return routeNumber.equals(original.getRouteNumber()) ? Optional.empty()
+                : Optional.of(original);
     }
 
 }

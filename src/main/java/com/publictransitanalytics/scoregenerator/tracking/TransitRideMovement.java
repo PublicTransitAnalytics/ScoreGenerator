@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 import lombok.Value;
@@ -29,9 +29,9 @@ import lombok.Value;
 public class TransitRideMovement implements Movement {
 
     private final Trip trip;
-    private final VisitableLocation boardStop;
+    private final PointLocation boardStop;
     private final LocalDateTime boardTime;
-    private final VisitableLocation deboardStop;
+    private final PointLocation deboardStop;
     private final LocalDateTime deboardTime;
 
     @Override

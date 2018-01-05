@@ -15,41 +15,28 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 import lombok.Getter;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
- * A location that exists at a single coordinate.
+ * Describes a place, whether a point or region, that a person can reach.
  *
  * @author Public Transit Analytics
  */
-public abstract class PointLocation extends VisitableLocation {
+public abstract class PointLocation {
 
     @Getter
-    private final Sector containingSector;
-    @Getter
-    private final Geodetic2DPoint location;
+    private final GeoPoint location;
 
-    public PointLocation(final Sector containingSector,
-                         final Geodetic2DPoint location) {
-        this.containingSector = containingSector;
+    public PointLocation(final GeoPoint location) {
         this.location = location;
     }
-
-    @Override
-    public Geodetic2DPoint getNearestPoint(final Geodetic2DPoint givenLocation) {
-        return location;
-    }
-
-    @Override
-    public Geodetic2DPoint getCanonicalPoint() {
-        return location;
-    }
     
-    @Override
-    public Geodetic2DBounds getBounds() {
-        return new Geodetic2DBounds(location, location); 
-    }
+    public abstract String getIdentifier();
+
+    public abstract String getCommonName();
+
+    public abstract void accept(Visitor visitor) throws InterruptedException;
 
 }

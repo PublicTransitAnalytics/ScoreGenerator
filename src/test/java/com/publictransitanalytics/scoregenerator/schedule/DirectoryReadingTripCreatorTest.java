@@ -20,6 +20,10 @@ import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedStopTimesD
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedTripDetailsDirectory;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.RouteDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
@@ -31,7 +35,6 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Tri
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStop;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedServiceTypeCalendar;
 import java.time.LocalDate;
@@ -41,10 +44,6 @@ import java.util.Collections;
 import java.util.Map;
 import junit.framework.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  *
@@ -52,18 +51,9 @@ import org.opensextant.geodesy.Longitude;
  */
 public class DirectoryReadingTripCreatorTest {
 
-    private final static Sector SECTOR = new Sector(
-            new Geodetic2DBounds(
-                    new Geodetic2DPoint(
-                            new Longitude(-122.459696, Longitude.DEGREES),
-                            new Latitude(47.734145, Latitude.DEGREES)),
-                    new Geodetic2DPoint(
-                            new Longitude(-122.224433, Longitude.DEGREES),
-                            new Latitude(47.48172, Latitude.DEGREES))));
-
-    private final static Geodetic2DPoint POINT = new Geodetic2DPoint(
-            new Longitude(-122.3361768, Longitude.DEGREES), new Latitude(
-                    47.6206914, Latitude.DEGREES));
+    private final static GeoPoint POINT = new GeoPoint(
+            new GeoLongitude("-122.33618", AngleUnit.DEGREES), 
+            new GeoLatitude("47.620691", AngleUnit.DEGREES));
 
     private final String STOP_ID = "stop";
     private final String STOP_NAME = "stop";
@@ -108,7 +98,7 @@ public class DirectoryReadingTripCreatorTest {
                                 WEEKDAY_SERVICE))));
 
         final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
+                = new TransitStop(STOP_ID, STOP_NAME, POINT);
 
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
@@ -143,7 +133,7 @@ public class DirectoryReadingTripCreatorTest {
                                 WEEKDAY_SERVICE))));
 
         final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
+                = new TransitStop(STOP_ID, STOP_NAME, POINT);
 
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
@@ -183,7 +173,7 @@ public class DirectoryReadingTripCreatorTest {
                                 WEEKDAY_SERVICE))));
 
         final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
+                = new TransitStop(STOP_ID, STOP_NAME, POINT);
 
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop);
@@ -219,10 +209,9 @@ public class DirectoryReadingTripCreatorTest {
                                 WEEKDAY_SERVICE))));
 
         final TransitStop transitStop
-                = new TransitStop(SECTOR, STOP_ID, STOP_NAME, POINT);
+                = new TransitStop(STOP_ID, STOP_NAME, POINT);
         final TransitStop anotherTransitStop
-                = new TransitStop(SECTOR, ANOTHER_STOP_ID, ANOTHER_STOP_NAME,
-                                  POINT);
+                = new TransitStop(ANOTHER_STOP_ID, ANOTHER_STOP_NAME, POINT);
 
         final Map<String, TransitStop> stopIdMap
                 = ImmutableMap.of(STOP_ID, transitStop,

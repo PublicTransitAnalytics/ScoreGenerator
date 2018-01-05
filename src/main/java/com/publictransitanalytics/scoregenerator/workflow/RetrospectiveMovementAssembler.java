@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.workflow;
 
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.ModeType;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.tracking.FixedPath;
 import com.publictransitanalytics.scoregenerator.tracking.Movement;
@@ -39,13 +39,13 @@ public class RetrospectiveMovementAssembler implements MovementAssembler {
 
     @Override
     public MovementPath assemble(
-            final VisitableLocation terminal,
-            final Map<VisitableLocation, DynamicProgrammingRecord> lastRow) {
+            final PointLocation terminal,
+            final Map<PointLocation, DynamicProgrammingRecord> lastRow) {
 
         final ImmutableList.Builder<Movement> movementsBuilder
                 = ImmutableList.builder();
 
-        VisitableLocation location = terminal;
+        PointLocation location = terminal;
         DynamicProgrammingRecord record = lastRow.get(location);
 
         while (record != null) {
@@ -59,7 +59,7 @@ public class RetrospectiveMovementAssembler implements MovementAssembler {
                 movementsBuilder.add(movement);
             } else if (type.equals(ModeType.WALKING)) {
                 final WalkingCosts costs = mode.getWalkCosts();
-                final VisitableLocation predecessor
+                final PointLocation predecessor
                         = record.getPredecessor();
                 final LocalDateTime predecessorReachTime = lastRow.get(
                         predecessor).getReachTime();

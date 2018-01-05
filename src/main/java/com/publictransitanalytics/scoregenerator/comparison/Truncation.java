@@ -24,5 +24,5 @@ import lombok.Value;
 @Value
 public class Truncation {
     private final String referenceStopId;
-    private final OperationDirection type;
+    private final ReferenceDirection direction;
 }

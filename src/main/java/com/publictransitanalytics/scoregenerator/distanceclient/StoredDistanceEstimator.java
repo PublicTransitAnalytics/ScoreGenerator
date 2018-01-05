@@ -15,15 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
-import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
-import com.publictransitanalytics.scoregenerator.geography.Endpoints;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.opensextant.geodesy.Geodetic2DArc;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  * Distance estimation directory that creates an exhaustive store under a
@@ -36,23 +32,20 @@ public class StoredDistanceEstimator implements CalculatingDistanceEstimator {
 
     private final double maxDistanceMeters;
     private final EstimateStorage estimateStorage;
-    private final EndpointDeterminer endpointDeterminer;
 
     public StoredDistanceEstimator(
             final PairGenerator pairStorer, final double maxDistanceMeters,
-            final EndpointDeterminer endpointDeterminer,
             final EstimateStorage estimateStorage)
             throws InterruptedException {
 
         this.estimateStorage = estimateStorage;
-        this.endpointDeterminer = endpointDeterminer;
         this.maxDistanceMeters = maxDistanceMeters;
 
         pairStorer.storeEstimates(this, estimateStorage, maxDistanceMeters);
     }
 
     @Override
-    public Set<VisitableLocation> getReachableLocations(
+    public Set<PointLocation> getReachableLocations(
             final PointLocation origin, final double distanceMeters)
             throws InterruptedException {
 
@@ -72,15 +65,13 @@ public class StoredDistanceEstimator implements CalculatingDistanceEstimator {
 
     @Override
     public void generateEstimate(
-            final PointLocation origin, final VisitableLocation destination)
+            final PointLocation origin, final PointLocation destination)
             throws InterruptedException {
 
         if (!origin.equals(destination)) {
-            final Endpoints endpoints = endpointDeterminer.
-                    getEndpoints(origin, destination);
+            
             final double distanceMeters = estimateDistanceMeters(
-                    endpoints.getFirstEndpoint(),
-                    endpoints.getSecondEndpoint());
+                    origin.getLocation(), destination.getLocation());
 
             if (distanceMeters <= maxDistanceMeters) {
                 estimateStorage.put(origin, destination, distanceMeters);
@@ -88,9 +79,8 @@ public class StoredDistanceEstimator implements CalculatingDistanceEstimator {
         }
     }
 
-    private static double estimateDistanceMeters(final Geodetic2DPoint a,
-                                                 final Geodetic2DPoint b) {
-        final Geodetic2DArc arc = new Geodetic2DArc(b, a);
-        return arc.getDistanceInMeters();
+    private static double estimateDistanceMeters(final GeoPoint a,
+                                                 final GeoPoint b) {
+        return a.getDistanceMeters(b);
     }
 }

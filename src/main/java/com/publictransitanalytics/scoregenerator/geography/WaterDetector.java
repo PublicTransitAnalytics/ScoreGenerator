@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 
 /**
  * Detects whether points or regions are on water.
@@ -25,10 +25,10 @@ import org.opensextant.geodesy.Geodetic2DPoint;
  */
 public interface WaterDetector {
 
-    boolean isOnWater(final Geodetic2DPoint point) 
+    boolean isOnWater(final GeoPoint point) 
             throws WaterDetectorException, InterruptedException;
 
-    boolean isEntirelyWater(final Geodetic2DBounds bounds) 
+    boolean isEntirelyWater(final GeoBounds bounds) 
             throws WaterDetectorException, InterruptedException;
 
 }

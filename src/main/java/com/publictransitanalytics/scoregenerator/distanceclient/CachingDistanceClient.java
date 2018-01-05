@@ -20,7 +20,7 @@ import com.bitvantage.bitvantagecaching.Store;
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
 import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import com.google.common.collect.ImmutableSet;
 import java.util.Map;
@@ -41,21 +41,21 @@ public class CachingDistanceClient implements DistanceClient {
     private final DistanceClient client;
 
     @Override
-    public Map<VisitableLocation, WalkingCosts>
-            getDistances(final VisitableLocation point,
-                         final Set<VisitableLocation> consideredPoints) throws
+    public Map<PointLocation, WalkingCosts>
+            getDistances(final PointLocation point,
+                         final Set<PointLocation> consideredPoints) throws
             DistanceClientException, InterruptedException {
 
-        final ImmutableMap.Builder<VisitableLocation, WalkingCosts> resultBuilder
+        final ImmutableMap.Builder<PointLocation, WalkingCosts> resultBuilder
                 = ImmutableMap.builder();
-        final ImmutableSet.Builder<VisitableLocation> uncachedPointsBuilder
+        final ImmutableSet.Builder<PointLocation> uncachedPointsBuilder
                 = ImmutableSet.builder();
 
-        for (VisitableLocation consideredPoint : consideredPoints) {
+        for (PointLocation consideredPoint : consideredPoints) {
             final PointOrderer orderer = ordererFactory.getOrderer(
                     point, consideredPoint);
-            final VisitableLocation origin = orderer.getOrigin();
-            final VisitableLocation destination = orderer.getDestination();
+            final PointLocation origin = orderer.getOrigin();
+            final PointLocation destination = orderer.getDestination();
 
             final DistanceCacheKey key = new DistanceCacheKey(
                     origin.getIdentifier(), destination.getIdentifier());
@@ -76,10 +76,10 @@ public class CachingDistanceClient implements DistanceClient {
             }
         }
 
-        final Map<VisitableLocation, WalkingCosts> uncachedCosts
+        final Map<PointLocation, WalkingCosts> uncachedCosts
                 = client.getDistances(point, uncachedPointsBuilder.build());
         resultBuilder.putAll(uncachedCosts);
-        for (final Map.Entry<VisitableLocation, WalkingCosts> entry
+        for (final Map.Entry<PointLocation, WalkingCosts> entry
                      : uncachedCosts.entrySet()) {
             final PointOrderer orderer = ordererFactory.getOrderer(
                     point, entry.getKey());

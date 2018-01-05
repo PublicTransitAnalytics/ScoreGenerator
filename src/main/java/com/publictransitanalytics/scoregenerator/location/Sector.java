@@ -15,83 +15,43 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 import lombok.Getter;
-import lombok.ToString;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
-import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
  * A Sector is a portion of the grid overlayed on the service region.
  *
  * @author Public Transit Analytics
  */
-public class Sector extends VisitableLocation {
+public class Sector {
 
     @Getter
-    private final Geodetic2DBounds bounds;
+    private final GeoBounds bounds;
     
     private final String boundsString;
+    private final String boundsDegreeString;
     
-    public Sector(final Geodetic2DBounds bounds) {
+    public Sector(final GeoBounds bounds) {
         this.bounds = bounds;
         boundsString = bounds.toString();
+        boundsDegreeString = bounds.toDegreeString();
     }
     
-    public boolean contains(final Geodetic2DPoint location) {
+    public boolean contains(final GeoPoint location) {
         return bounds.contains(location);
     }
 
-    @Override
     public String getIdentifier() {
         return boundsString;
     }
 
-    @Override
     public String getCommonName() {
-        return boundsString;
+        return boundsDegreeString;
     }
-
-    @Override
-    public Geodetic2DPoint getNearestPoint(
-            final Geodetic2DPoint givenLocation) {
-        if (bounds.contains(givenLocation)) {
-            return givenLocation;
-        }
-
-        final Latitude latitude = givenLocation.getLatitude();
-        final Latitude targetLatitude;
-        if (latitude.compareTo(bounds.getNorthLat()) > 0) {
-            targetLatitude = bounds.getNorthLat();
-        } else if (latitude.compareTo(bounds.getSouthLat()) < 0) {
-            targetLatitude = bounds.getSouthLat();
-        } else {
-            targetLatitude = latitude;
-        }
-
-        final Longitude longitude = givenLocation.getLongitude();
-        final Longitude targetLongitude;
-        if (longitude.compareTo(bounds.getEastLon()) > 0) {
-            targetLongitude = bounds.getEastLon();
-        } else if (longitude.compareTo(bounds.getWestLon()) < 0) {
-            targetLongitude = bounds.getWestLon();
-        } else {
-            targetLongitude = longitude;
-        }
-
-        return new Geodetic2DPoint(targetLongitude, targetLatitude);
-    }
-
-    @Override
-    public Geodetic2DPoint getCanonicalPoint() {
+    
+    public GeoPoint getCenter() {
         return bounds.getCenter();
-    }
-
-    @Override
-    public void accept(Visitor visitor) throws InterruptedException {
-        visitor.visit(this);
     }
     
     @Override

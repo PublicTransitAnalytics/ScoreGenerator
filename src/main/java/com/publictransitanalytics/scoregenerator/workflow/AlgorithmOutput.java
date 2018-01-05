@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.util.Map;
 import java.util.Set;
@@ -27,8 +27,8 @@ import lombok.Value;
  */
 @Value
 public class AlgorithmOutput {
-    private final Map<VisitableLocation, DynamicProgrammingRecord> map;
-    private final Map<VisitableLocation, WalkingCosts> initialWalks;
-    private final Set<VisitableLocation> implicitLocations;
+    private final Map<PointLocation, DynamicProgrammingRecord> map;
+    private final Map<PointLocation, WalkingCosts> initialWalks;
+    private final Set<PointLocation> implicitLocations;
     
 }

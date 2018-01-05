@@ -36,9 +36,9 @@ public class TransitRideMovementTest {
             new TripId(TRIP_ID, null), "Somewhere via Elsewhere", ROUTE_NUMBER, 
             Collections.emptySet());
     private static final TransitStop BEGINNING_STOP 
-            = new TransitStop(null, "0", "Origin", null);
+            = new TransitStop("0", "Origin", null);
         private static final TransitStop END_STOP 
-            = new TransitStop(null, "1", "Elsewhere", null);
+            = new TransitStop("1", "Elsewhere", null);
 
     @Test
     public void testShortName() throws Exception {

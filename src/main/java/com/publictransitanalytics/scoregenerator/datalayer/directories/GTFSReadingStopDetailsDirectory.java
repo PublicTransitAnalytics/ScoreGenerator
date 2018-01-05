@@ -54,10 +54,8 @@ public class GTFSReadingStopDetailsDirectory implements StopDetailsDirectory {
                         stopDetailsReader, CSVFormat.DEFAULT.withHeader());
                 final List<CSVRecord> stopDetailsRecords = parser.getRecords();
                 for (CSVRecord record : stopDetailsRecords) {
-                    final double latitude = Double.valueOf(record
-                            .get("stop_lat"));
-                    final double longitude = Double.valueOf(record.get(
-                            "stop_lon"));
+                    final String latitude = record.get("stop_lat");
+                    final String longitude = record.get("stop_lon");
                     final String stopId = record.get("stop_id");
                     final StopDetails stopDetails = new StopDetails(
                             stopId, record.get("stop_name"),

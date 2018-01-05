@@ -15,9 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
-import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 
 /**
  *
@@ -26,12 +25,12 @@ import org.opensextant.geodesy.Geodetic2DPoint;
 public class AllLandWaterDetector implements WaterDetector {
 
     @Override
-    public boolean isOnWater(final Geodetic2DPoint point) {
+    public boolean isOnWater(final GeoPoint point) {
         return false;
     }
 
     @Override
-    public boolean isEntirelyWater(final Geodetic2DBounds bounds) {
+    public boolean isEntirelyWater(final GeoBounds bounds) {
         return false;
     }
     

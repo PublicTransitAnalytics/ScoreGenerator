@@ -18,42 +18,54 @@ package com.publictransitanalytics.scoregenerator.scoring;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import java.util.Map;
 
 /**
- *  ScoreCard that identifies which experiments reached Sectors.
- * 
+ * ScoreCard that identifies which experiments reached Sectors.
+ *
  * @author Public Transit Analytics
  */
 public class ExperimentScoreCard extends ScoreCard {
 
-    final Multimap<VisitableLocation, TaskIdentifier> reachedTasks;
+    private final Multimap<Sector, TaskIdentifier> reachedTasks;
+    private final SetMultimap<PointLocation, Sector> pointSectorMap;
 
-    public ExperimentScoreCard(final int taskCount) {
+    public ExperimentScoreCard(
+            final int taskCount,
+            final SetMultimap<PointLocation, Sector> pointSectorMap) {
         super(taskCount);
         reachedTasks = Multimaps.synchronizedMultimap(HashMultimap.create());
+        this.pointSectorMap = pointSectorMap;
     }
 
     @Override
-    public int getReachedCount(final VisitableLocation location) {
+    public int getReachedCount(final Sector location) {
         return reachedTasks.get(location).size();
     }
 
-    public boolean hasPath(final VisitableLocation location,
+    public boolean hasPath(final Sector location,
                            final TaskIdentifier task) {
         return reachedTasks.containsEntry(location, task);
     }
 
     @Override
-    public void putPath(VisitableLocation location, TaskIdentifier task,
-                        MovementPath path) {
-        reachedTasks.put(location, task);
+    public synchronized void scoreTask(
+            final TaskIdentifier task,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
+        for (final PointLocation location : stateMap.keySet()) {
+            for (final Sector sector : pointSectorMap.get(location)) {
+                reachedTasks.put(sector, task);
+            }
+        }
     }
 
     @Override
-    public boolean hasPath(final VisitableLocation location) {
+    public boolean hasPath(final Sector location) {
         return reachedTasks.containsKey(location);
     }
 

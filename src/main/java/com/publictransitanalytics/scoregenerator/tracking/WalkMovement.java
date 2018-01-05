@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.time.LocalDateTime;
 import lombok.Value;
 
@@ -29,14 +29,14 @@ public class WalkMovement implements Movement {
 
     private final LocalDateTime startTime;
     private final double walkingDistance;
-    private final VisitableLocation startLocation;
+    private final PointLocation startLocation;
     private final LocalDateTime endTime;
-    private final VisitableLocation endLocation;
+    private final PointLocation endLocation;
 
     public WalkMovement(
             final LocalDateTime startTime, final double walkingDistance,
-            final VisitableLocation startLocation, final LocalDateTime endTime,
-            final VisitableLocation endLocation) {
+            final PointLocation startLocation, final LocalDateTime endTime,
+            final PointLocation endLocation) {
         this.startTime = startTime;
         this.walkingDistance = walkingDistance;
         this.startLocation = startLocation;

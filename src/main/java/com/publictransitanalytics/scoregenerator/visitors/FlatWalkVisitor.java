@@ -20,11 +20,10 @@ import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
@@ -36,7 +35,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * A walking visitor that does not recurse.
- * 
+ *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
@@ -55,18 +54,19 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
     }
 
     @Override
-    public void visit(Sector sector) throws InterruptedException {
-        output = Collections.emptySet();
-    }
-
-    @Override
-    public void visit(TransitStop transitStop) throws InterruptedException {
+    public void visit(final TransitStop transitStop)
+            throws InterruptedException {
         walkFrom(transitStop);
     }
 
     @Override
-    public void visit(Landmark point) throws InterruptedException {
+    public void visit(final Landmark point) throws InterruptedException {
         walkFrom(point);
+    }
+
+    @Override
+    public void visit(final GridPoint gridPoint) {
+        output = Collections.emptySet();
     }
 
     private void walkFrom(final PointLocation location)
@@ -74,13 +74,9 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
         final ImmutableSet.Builder<ReachabilityOutput> outputBuilder
                 = ImmutableSet.builder();
 
-        final Sector sector = location.getContainingSector();
-        outputBuilder.add(new ReachabilityOutput(
-                sector, currentTime, ModeInfo.NONE));
-
-        final Map<VisitableLocation, WalkingCosts> walkCosts
+        final Map<PointLocation, WalkingCosts> walkCosts
                 = getWalkCosts(location);
-        for (final Map.Entry<VisitableLocation, WalkingCosts> entry
+        for (final Map.Entry<PointLocation, WalkingCosts> entry
                      : walkCosts.entrySet()) {
             final WalkingCosts costs = entry.getValue();
             final Duration walkingDuration = costs.getDuration();
@@ -89,21 +85,20 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
                                       cutoffTime)) {
                 final LocalDateTime newTime = timeTracker.adjust(
                         currentTime, walkingDuration);
-                final VisitableLocation walkableLocation = entry.getKey();
-                
+                final PointLocation walkableLocation = entry.getKey();
 
                 outputBuilder.add(new ReachabilityOutput(
-                        walkableLocation, newTime, 
+                        walkableLocation, newTime,
                         new ModeInfo(ModeType.WALKING, null, costs)));
             }
         }
         output = outputBuilder.build();
     }
 
-    private Map<VisitableLocation, WalkingCosts> getWalkCosts(
+    private Map<PointLocation, WalkingCosts> getWalkCosts(
             final PointLocation location) throws InterruptedException {
         try {
-            final Map<VisitableLocation, WalkingCosts> walkCosts
+            final Map<PointLocation, WalkingCosts> walkCosts
                     = reachabilityClient.getWalkingDistances(
                             location, currentTime, cutoffTime);
             return walkCosts;

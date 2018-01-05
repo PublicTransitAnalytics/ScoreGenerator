@@ -16,7 +16,6 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  * String representation of a point.
@@ -31,10 +30,10 @@ public class Point {
         this(point.getLocation());
     }
 
-    public Point(final Geodetic2DPoint point) {
+    public Point(final com.publictransitanalytics.scoregenerator.GeoPoint point) {
         pointString = String.format(
-                "%f,%f", point.getLatitudeAsDegrees(),
-                point.getLongitudeAsDegrees());
+                "%f,%f", point.getLatitude().getDegrees(),
+                point.getLongitude().getDegrees());
     }
 
     @Override

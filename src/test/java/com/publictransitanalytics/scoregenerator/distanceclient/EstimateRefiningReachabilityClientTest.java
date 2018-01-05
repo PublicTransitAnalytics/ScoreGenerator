@@ -16,8 +16,7 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedDistanceEstimator;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedDistanceClient;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedTimeTracker;
@@ -25,6 +24,10 @@ import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -32,10 +35,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  *
@@ -43,24 +42,15 @@ import org.opensextant.geodesy.Longitude;
  */
 public class EstimateRefiningReachabilityClientTest {
 
-    private final static Sector SECTOR = new Sector(new Geodetic2DBounds(
-            new Geodetic2DPoint(
-                    new Longitude(-122.459696, Longitude.DEGREES),
-                    new Latitude(47.734145, Latitude.DEGREES)),
-            new Geodetic2DPoint(
-                    new Longitude(-122.224433, Longitude.DEGREES),
-                    new Latitude(47.48172, Latitude.DEGREES))));
+    private final static GeoPoint POINT = new GeoPoint(
+            new GeoLongitude("-122.32370", AngleUnit.DEGREES),
+            new GeoLatitude("47.654656", AngleUnit.DEGREES));
 
-    private final static Geodetic2DPoint POINT = new Geodetic2DPoint(
-            new Longitude(-122.3236954, Longitude.DEGREES),
-            new Latitude(47.6546556, Latitude.DEGREES));
+    private final Landmark LOCATION_1 = new Landmark(POINT);
 
-    private final Landmark LOCATION_1 = new Landmark(SECTOR, POINT);
-
-    private final Landmark HOME
-            = new Landmark(SECTOR, new Geodetic2DPoint(
-                           new Longitude(-122.3320205, Longitude.DEGREES),
-                           new Latitude(47.6178533, Latitude.DEGREES)));
+    private final Landmark HOME = new Landmark(new GeoPoint(
+            new GeoLongitude("-122.33202", AngleUnit.DEGREES),
+            new GeoLatitude("47.617853", AngleUnit.DEGREES)));
 
     @Test
     public void testNoEstimates() throws Exception {
@@ -68,8 +58,8 @@ public class EstimateRefiningReachabilityClientTest {
                 ImmutableSortedMap.of());
 
         final DistanceClient filter = new PreloadedDistanceClient(
-                ImmutableMap.<VisitableLocation, WalkingCosts>of(
-                        LOCATION_1,
+                ImmutableMap.<PointLocation, WalkingCosts>of(
+                        LOCATION_1, 
                         new WalkingCosts(Duration.ofMinutes(2), 0)));
 
         final TimeTracker tracker = new PreloadedTimeTracker(
@@ -79,9 +69,9 @@ public class EstimateRefiningReachabilityClientTest {
                 = new EstimateRefiningReachabilityClient(
                         filter, estimator, tracker, 1);
 
-        final Map<VisitableLocation, WalkingCosts> reachable
+        final Map<PointLocation, WalkingCosts> reachable
                 = reachabilityClient.getWalkingDistances(
-                        HOME,
+                        HOME, 
                         LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 45),
                         LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 47));
 
@@ -91,11 +81,11 @@ public class EstimateRefiningReachabilityClientTest {
     @Test
     public void testIgnoresUnreachable() throws Exception {
         final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
+                new TreeMap<>(ImmutableMap.<Double, PointLocation>of(
                         0.5, LOCATION_1)));
 
         final DistanceClient filter = new PreloadedDistanceClient(
-                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                ImmutableMap.<PointLocation, WalkingCosts>of(
                         LOCATION_1,
                         new WalkingCosts(Duration.ofMinutes(3), 0)));
 
@@ -106,7 +96,7 @@ public class EstimateRefiningReachabilityClientTest {
                 = new EstimateRefiningReachabilityClient(
                         filter, estimator, tracker, 1);
 
-        final Map<VisitableLocation, WalkingCosts> reachable
+        final Map<PointLocation, WalkingCosts> reachable
                 = reachabilityClient.getWalkingDistances(
                         HOME,
                         LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 45),
@@ -118,11 +108,11 @@ public class EstimateRefiningReachabilityClientTest {
     @Test
     public void testReturnsReachableEstimate() throws Exception {
         final DistanceEstimator estimator = new PreloadedDistanceEstimator(
-                new TreeMap<>(ImmutableMap.<Double, VisitableLocation>of(
+                new TreeMap<>(ImmutableMap.<Double, PointLocation>of(
                         0.5, LOCATION_1)));
 
         final DistanceClient filter = new PreloadedDistanceClient(
-                ImmutableMap.<VisitableLocation, WalkingCosts>of(
+                ImmutableMap.<PointLocation, WalkingCosts>of(
                         LOCATION_1,
                         new WalkingCosts(Duration.ofMinutes(1), 0)));
 
@@ -133,9 +123,9 @@ public class EstimateRefiningReachabilityClientTest {
                 = new EstimateRefiningReachabilityClient(
                         filter, estimator, tracker, 1);
 
-        final Map<VisitableLocation, WalkingCosts> reachable
+        final Map<PointLocation, WalkingCosts> reachable
                 = reachabilityClient.getWalkingDistances(
-                        HOME,
+                        HOME, 
                         LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 45),
                         LocalDateTime.of(2017, Month.FEBRUARY, 18, 16, 47));
 

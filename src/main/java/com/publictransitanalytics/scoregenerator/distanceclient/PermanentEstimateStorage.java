@@ -24,7 +24,7 @@ import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationDistanceKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Set;
 import java.util.SortedMap;
 
@@ -36,12 +36,12 @@ public class PermanentEstimateStorage implements EstimateStorage {
 
     private final RangedStore<LocationDistanceKey, String> candidateDistancesStore;
     private final Store<LocationKey, Double> maxCandidateDistanceStore;
-    private final BiMap<String, VisitableLocation> locationMap;
+    private final BiMap<String, PointLocation> locationMap;
 
     public PermanentEstimateStorage(
             final Store<LocationKey, Double> maxCandidateDistanceStore,
             final RangedStore<LocationDistanceKey, String> candidateDistancesStore,
-            final BiMap<String, VisitableLocation> locationMap) {
+            final BiMap<String, PointLocation> locationMap) {
 
         this.candidateDistancesStore = candidateDistancesStore;
         this.maxCandidateDistanceStore = maxCandidateDistanceStore;
@@ -50,7 +50,7 @@ public class PermanentEstimateStorage implements EstimateStorage {
 
     @Override
     public void put(final PointLocation origin, 
-                    final VisitableLocation destination,
+                    final PointLocation destination,
                     final double distanceMeters) throws InterruptedException {
         final LocationDistanceKey key = LocationDistanceKey
                 .getWriteKey(origin.getIdentifier(),
@@ -63,7 +63,7 @@ public class PermanentEstimateStorage implements EstimateStorage {
     }
 
     @Override
-    public Set<VisitableLocation> getReachable(final PointLocation origin,
+    public Set<PointLocation> getReachable(final PointLocation origin,
                                                final double distanceMeters)
             throws InterruptedException {
         final LocationDistanceKey key = LocationDistanceKey.getMaxKey(
@@ -71,11 +71,11 @@ public class PermanentEstimateStorage implements EstimateStorage {
         try {
             final SortedMap<LocationDistanceKey, String> reachableLocations
                     = candidateDistancesStore.getValuesBelow(key);
-            final ImmutableSet.Builder<VisitableLocation> builder
+            final ImmutableSet.Builder<PointLocation> builder
                     = ImmutableSet.builder();
             for (final String locationIdentifier
                          : reachableLocations.values()) {
-                final VisitableLocation location
+                final PointLocation location
                         = locationMap.get(locationIdentifier);
                 if (location != null) {
                     builder.add(location);

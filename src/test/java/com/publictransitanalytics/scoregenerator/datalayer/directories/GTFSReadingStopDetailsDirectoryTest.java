@@ -15,7 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
-import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingStopDetailsDirectory;
 import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Coordinate;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.StopDetails;
@@ -60,7 +59,7 @@ public class GTFSReadingStopDetailsDirectoryTest {
                 = new GTFSReadingStopDetailsDirectory(store, reader);
         Assert.assertEquals(new StopDetails(
                 "10000", "NE 55th St & 43rd Ave NE",
-                new Coordinate(47.6685753, -122.283653)),
+                new Coordinate("47.6685753", "-122.283653")),
                             store.getValues().iterator().next());
     }
 
@@ -89,7 +88,7 @@ public class GTFSReadingStopDetailsDirectoryTest {
                 = new GTFSReadingStopDetailsDirectory(store, reader);
         Assert.assertEquals(new StopDetails(
                 "10000", "NE 55th St & 43rd Ave NE",
-                new Coordinate(47.6685753, -122.283653)),
+                new Coordinate("47.6685753", "-122.283653")),
                             directory.getDetails("10000"));
     }
 
@@ -106,9 +105,9 @@ public class GTFSReadingStopDetailsDirectoryTest {
                 = new GTFSReadingStopDetailsDirectory(store, reader);
         Assert.assertEquals(ImmutableMultiset.of(
                 new StopDetails("10000", "NE 55th St & 43rd Ave NE",
-                                new Coordinate(47.6685753, -122.283653)),
+                                new Coordinate("47.6685753", "-122.283653")),
                 new StopDetails("10005", "40th Ave NE & NE 51st St",
-                                new Coordinate(47.6658859, -122.284897))),
+                                new Coordinate("47.6658859", "-122.284897"))),
                             directory.getAllStopDetails());
     }
 
@@ -118,7 +117,7 @@ public class GTFSReadingStopDetailsDirectoryTest {
                 = ImmutableMap.of(
                         new StopIdKey("10000").getKeyString(), new StopDetails(
                                 "10000", "NE 55th St & 43rd Ave NE",
-                                new Coordinate(47.6685753, -122.283653)));
+                                new Coordinate("47.6685753", "-122.283653")));
 
         final MapStore<StopIdKey, StopDetails> store
                 = new MapStore<>(immutableMap);

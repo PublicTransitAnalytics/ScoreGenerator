@@ -19,7 +19,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.visitors.FlatTransitRideVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.FlatWalkVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.ModeInfo;
@@ -47,14 +47,14 @@ public class DynamicProgrammingAlgorithm {
 
     public AlgorithmOutput getOutput(
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
-            final VisitableLocation startLocation,
+            final PointLocation startLocation,
             final TimeTracker timeTracker,
             final Duration duration, 
             final ReachabilityClient reachabilityClient,
             final RiderFactory riderFactory) throws InterruptedException {
 
-        final Map<VisitableLocation, DynamicProgrammingRecord> stateMap;
-        Set<VisitableLocation> updateSet;
+        final Map<PointLocation, DynamicProgrammingRecord> stateMap;
+        Set<PointLocation> updateSet;
 
         final DynamicProgrammingRecord initialRecord
                 = new DynamicProgrammingRecord(
@@ -67,11 +67,11 @@ public class DynamicProgrammingAlgorithm {
                                     cutoffTime, timeTracker, reachabilityClient,
                                     riderFactory);
 
-        final ImmutableMap.Builder<VisitableLocation, WalkingCosts> walkBuilder
+        final ImmutableMap.Builder<PointLocation, WalkingCosts> walkBuilder
                 = ImmutableMap.builder();
-        final ImmutableSet.Builder<VisitableLocation> implicitLocationBuilder
+        final ImmutableSet.Builder<PointLocation> implicitLocationBuilder
                 = ImmutableSet.builder();
-        for (final VisitableLocation location : updateSet) {
+        for (final PointLocation location : updateSet) {
             final ModeInfo mode = stateMap.get(location).getMode();
             final ModeType type = mode.getType();
             if (type.equals(ModeType.WALKING)) {
@@ -96,15 +96,15 @@ public class DynamicProgrammingAlgorithm {
                                    implicitLocationBuilder.build());
     }
 
-    private static Set<VisitableLocation> getRoundUpdates(
-            final Set<VisitableLocation> updateSet,
-            final Map<VisitableLocation, DynamicProgrammingRecord> stateMap,
+    private static Set<PointLocation> getRoundUpdates(
+            final Set<PointLocation> updateSet,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap,
             final LocalDateTime cutoffTime, final TimeTracker timeTracker,
             final ReachabilityClient reachabilityClient,
             final RiderFactory riderFactory) throws InterruptedException {
-        final ImmutableSet.Builder<VisitableLocation> updateSetBuilder
+        final ImmutableSet.Builder<PointLocation> updateSetBuilder
                 = ImmutableSet.builder();
-        for (final VisitableLocation priorLocation : updateSet) {
+        for (final PointLocation priorLocation : updateSet) {
 
             final DynamicProgrammingRecord priorRecord
                     = stateMap.get(priorLocation);
@@ -139,15 +139,15 @@ public class DynamicProgrammingAlgorithm {
         return updateSetBuilder.build();
     }
 
-    private static Set<VisitableLocation> updateRow(
+    private static Set<PointLocation> updateRow(
             final Set<ReachabilityOutput> reachabilities,
-            final Map<VisitableLocation, DynamicProgrammingRecord> stateMap,
-            final VisitableLocation priorLocation,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap,
+            final PointLocation priorLocation,
             final TimeTracker timeTracker) {
-        final ImmutableSet.Builder<VisitableLocation> builder
+        final ImmutableSet.Builder<PointLocation> builder
                 = ImmutableSet.builder();
         for (final ReachabilityOutput reachability : reachabilities) {
-            final VisitableLocation newLocation = reachability.getLocation();
+            final PointLocation newLocation = reachability.getLocation();
             final LocalDateTime newTime = reachability.getReachTime();
 
             final ModeInfo mode = reachability.getModeInfo();

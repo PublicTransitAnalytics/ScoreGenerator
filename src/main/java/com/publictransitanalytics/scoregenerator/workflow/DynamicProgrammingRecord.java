@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.visitors.ModeInfo;
 import java.time.LocalDateTime;
 import lombok.NonNull;
@@ -33,6 +33,6 @@ public class DynamicProgrammingRecord {
     private LocalDateTime reachTime;
     @NonNull
     private ModeInfo mode;
-    private VisitableLocation predecessor;
+    private PointLocation predecessor;
 
 }

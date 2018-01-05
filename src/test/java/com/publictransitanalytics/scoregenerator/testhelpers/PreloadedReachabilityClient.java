@@ -18,7 +18,7 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -31,10 +31,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PreloadedReachabilityClient implements ReachabilityClient {
 
-    final Map<VisitableLocation, WalkingCosts> costs;
+    final Map<PointLocation, WalkingCosts> costs;
 
     @Override
-    public Map<VisitableLocation, WalkingCosts> getWalkingDistances(
+    public Map<PointLocation, WalkingCosts> getWalkingDistances(
             final PointLocation location, final LocalDateTime currentTime,
             final LocalDateTime cutoffTime) throws DistanceClientException {
         return costs;

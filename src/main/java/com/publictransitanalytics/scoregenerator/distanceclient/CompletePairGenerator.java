@@ -16,10 +16,9 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,15 +31,15 @@ public class CompletePairGenerator implements PairGenerator {
 
     private final Set<TransitStop> stops;
     private final Set<PointLocation> centers;
-    private final Set<VisitableLocation> destinations;
+    private final Set<PointLocation> destinations;
 
-    public CompletePairGenerator(final Set<Sector> sectors,
+    public CompletePairGenerator(final Set<GridPoint> gridPoints,
                                  final Set<TransitStop> stops,
                                  final Set<PointLocation> centers) {
         this.stops = stops;
         this.centers = centers;
-        destinations = ImmutableSet.<VisitableLocation>builder()
-                .addAll(stops).addAll(sectors).build();
+        destinations = ImmutableSet.<PointLocation>builder()
+                .addAll(stops).addAll(gridPoints).build();
     }
 
     @Override
@@ -51,7 +50,7 @@ public class CompletePairGenerator implements PairGenerator {
 
         if (!estimateStorage.isInitialized()) {
             for (final TransitStop point : stops) {
-                for (final VisitableLocation destination : destinations) {
+                for (final PointLocation destination : destinations) {
                     if (!point.equals(destination)) {
                         estimator.generateEstimate(point, destination);
                     }
@@ -62,7 +61,7 @@ public class CompletePairGenerator implements PairGenerator {
         for (final PointLocation center : centers) {
             final double maxStored = estimateStorage.getMaxStored(center);
             if (maxStored < maxDistanceMeters) {
-                for (final VisitableLocation destination : destinations) {
+                for (final PointLocation destination : destinations) {
                     if (!center.equals(destination)) {
                         estimator.generateEstimate(center, destination);
                     }

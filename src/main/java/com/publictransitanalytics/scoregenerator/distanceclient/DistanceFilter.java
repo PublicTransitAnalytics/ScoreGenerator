@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -30,8 +30,8 @@ import java.util.Set;
  */
 public interface DistanceFilter {
 
-    Map<VisitableLocation, WalkingCosts> getFilteredDistances(
-        final PointLocation center, final Set<VisitableLocation> candidates,
+    Map<PointLocation, WalkingCosts> getFilteredDistances(
+        final PointLocation center, final Set<PointLocation> candidates,
         final LocalDateTime currentTime, final LocalDateTime cutoffTime)
         throws DistanceClientException, InterruptedException;
 

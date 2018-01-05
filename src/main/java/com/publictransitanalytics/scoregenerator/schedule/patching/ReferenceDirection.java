@@ -13,19 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.geography;
-
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 /**
- * A component for choosing the distance points to use for potentially non-point
- * locations.
- * 
+ *
  * @author Public Transit Analytics
  */
-public interface EndpointDeterminer {
-
-    Endpoints getEndpoints(final VisitableLocation firstLocation,
-                           final VisitableLocation secondLocation);
+public enum ReferenceDirection {
+    BEFORE_FIRST,
+    AFTER_LAST
     
 }

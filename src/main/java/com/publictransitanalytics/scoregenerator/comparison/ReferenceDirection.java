@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule.patching;
+package com.publictransitanalytics.scoregenerator.comparison;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public enum ExtensionType {
+public enum ReferenceDirection {
     BEFORE_FIRST,
     AFTER_LAST
     

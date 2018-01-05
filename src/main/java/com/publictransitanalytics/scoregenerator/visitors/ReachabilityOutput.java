@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.visitors;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.time.LocalDateTime;
 import lombok.Value;
 
@@ -26,7 +26,7 @@ import lombok.Value;
  */
 @Value
 public class ReachabilityOutput {
-    private final VisitableLocation location;
+    private final PointLocation location;
     private final LocalDateTime reachTime;
     private final ModeInfo modeInfo;
 }

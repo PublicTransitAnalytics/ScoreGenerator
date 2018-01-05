@@ -18,7 +18,7 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceFilter;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -35,16 +35,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PreloadedDistanceFilter implements DistanceFilter {
 
-    private final NavigableMap<Duration, VisitableLocation> map;
+    private final NavigableMap<Duration, PointLocation> map;
     private final Duration duration;
 
     @Override
-    public Map<VisitableLocation, WalkingCosts> getFilteredDistances(
-            final PointLocation center, final Set<VisitableLocation> candidates,
+    public Map<PointLocation, WalkingCosts> getFilteredDistances(
+            final PointLocation center, final Set<PointLocation> candidates,
             final LocalDateTime currentTime, final LocalDateTime cutoffTime)
             throws DistanceClientException {
 
-        final NavigableMap<Duration, VisitableLocation> headMap
+        final NavigableMap<Duration, PointLocation> headMap
                 = map.headMap(duration, true);
         return headMap.entrySet().stream().filter(
                 entry -> candidates.contains(entry.getValue()))

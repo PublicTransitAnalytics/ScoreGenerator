@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -44,7 +43,7 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
     private final double walkingMetersPerSecond;
 
     @Override
-    public Map<VisitableLocation, WalkingCosts> getWalkingDistances(
+    public Map<PointLocation, WalkingCosts> getWalkingDistances(
             final PointLocation location, final LocalDateTime currentTime,
             final LocalDateTime cutoffTime)
             throws DistanceClientException, InterruptedException {
@@ -54,7 +53,7 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
 
         final double maximumDistanceMeters = duration.getSeconds()
                                                      * walkingMetersPerSecond;
-        final Set<VisitableLocation> candidateLocations
+        final Set<PointLocation> candidateLocations
                 = distanceEstimator.getReachableLocations(
                         location, maximumDistanceMeters);
         if (candidateLocations == null) {
@@ -66,7 +65,7 @@ public class EstimateRefiningReachabilityClient implements ReachabilityClient {
         if (candidateLocations.isEmpty()) {
             return Collections.emptyMap();
         } else {
-            final Map<VisitableLocation, WalkingCosts> costs
+            final Map<PointLocation, WalkingCosts> costs
                     = distanceClient.getDistances(location, candidateLocations);
             
             return costs.entrySet().stream()

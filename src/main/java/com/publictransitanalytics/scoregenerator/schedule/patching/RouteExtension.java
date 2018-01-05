@@ -15,14 +15,10 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
-import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NavigableMap;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +33,8 @@ public class RouteExtension implements Patch {
 
     private final String routeNumber;
     private final TransitStop referenceStop;
-    private final ExtensionType type;
-    private final NavigableMap<Duration, TransitStop> extensionSequence;
+    private final ReferenceDirection type;
+    private final List<RouteSequenceItem> extensionSequence;
 
     @Override
     public Optional<Trip> patch(final Trip original) {
@@ -53,16 +49,18 @@ public class RouteExtension implements Patch {
             } else if (schedule.size() == 1) {
                 final TransitStop stop = schedule.get(0).getLocation();
                 if (referenceStop.equals(stop)) {
-                    if (type.equals(ExtensionType.AFTER_LAST)) {
+                    if (type.equals(ReferenceDirection.AFTER_LAST)) {
                         final List<ScheduledLocation> newSchedule
-                                = appendToSchedule(schedule, extensionSequence);
-                        newTrip = makeReplacementTrip(original, newSchedule);
-                    } else if (type.equals(
-                            ExtensionType.BEFORE_FIRST)) {
+                                = Appending.appendToSchedule(
+                                        schedule, extensionSequence);
+                        newTrip = Appending.makeReplacementTrip(original,
+                                                                newSchedule);
+                    } else if (type.equals(ReferenceDirection.BEFORE_FIRST)) {
                         final List<ScheduledLocation> newSchedule
-                                = prependToSchedule(schedule,
-                                                    extensionSequence);
-                        newTrip = makeReplacementTrip(original, newSchedule);
+                                = Appending.prependToSchedule(
+                                        schedule, extensionSequence);
+                        newTrip = Appending.makeReplacementTrip(original,
+                                                                newSchedule);
                     } else {
                         newTrip = original;
                     }
@@ -73,13 +71,15 @@ public class RouteExtension implements Patch {
                             stop.getIdentifier(), newTrip.getTripId());
                 }
             } else {
-                if (type.equals(ExtensionType.AFTER_LAST)) {
+                if (type.equals(ReferenceDirection.AFTER_LAST)) {
                     final TransitStop lastStop = schedule.get(
                             schedule.size() - 1).getLocation();
                     if (referenceStop.equals(lastStop)) {
                         final List<ScheduledLocation> newSchedule
-                                = appendToSchedule(schedule, extensionSequence);
-                        newTrip = makeReplacementTrip(original, newSchedule);
+                                = Appending.appendToSchedule(
+                                        schedule, extensionSequence);
+                        newTrip = Appending.makeReplacementTrip(original,
+                                                                newSchedule);
                     } else {
                         newTrip = original;
                         log.info(
@@ -87,19 +87,20 @@ public class RouteExtension implements Patch {
                                 referenceStop.getIdentifier(),
                                 newTrip.getTripId(), lastStop.getIdentifier());
                     }
-                } else if (type.equals(ExtensionType.BEFORE_FIRST)) {
+                } else if (type.equals(ReferenceDirection.BEFORE_FIRST)) {
                     final TransitStop firstStop
                             = schedule.get(0).getLocation();
                     if (referenceStop.equals(firstStop)) {
                         final List<ScheduledLocation> newSchedule
-                                = prependToSchedule(schedule,
-                                                    extensionSequence);
-                        newTrip = makeReplacementTrip(original, newSchedule);
+                                = Appending.prependToSchedule(
+                                        schedule, extensionSequence);
+                        newTrip = Appending.makeReplacementTrip(
+                                original, newSchedule);
                     } else {
                         newTrip = original;
                         log.info(
                                 "Reference stop {} not first in trip {} ({} was)",
-                                referenceStop.getIdentifier(), 
+                                referenceStop.getIdentifier(),
                                 newTrip.getTripId(), firstStop.getIdentifier());
                     }
                 } else {
@@ -111,41 +112,5 @@ public class RouteExtension implements Patch {
         }
 
         return Optional.of(newTrip);
-    }
-
-    private static Trip makeReplacementTrip(
-            final Trip originalTrip,
-            final List<ScheduledLocation> newStops) {
-        return new Trip(originalTrip.getTripId(), originalTrip.getRouteName(),
-                        originalTrip.getRouteNumber(), newStops);
-    }
-
-    private static List<ScheduledLocation> appendToSchedule(
-            final List<ScheduledLocation> schedule,
-            final NavigableMap<Duration, TransitStop> extension) {
-        final LocalDateTime baseTime
-                = schedule.get(schedule.size() - 1).getScheduledTime();
-        final ImmutableList.Builder<ScheduledLocation> builder
-                = ImmutableList.builder();
-        builder.addAll(schedule);
-        for (final Duration offset : extension.keySet()) {
-            builder.add(new ScheduledLocation(extension.get(offset),
-                                              baseTime.plus(offset)));
-        }
-        return builder.build();
-    }
-
-    private static List<ScheduledLocation> prependToSchedule(
-            final List<ScheduledLocation> schedule,
-            final NavigableMap<Duration, TransitStop> extension) {
-        final LocalDateTime baseTime = schedule.get(0).getScheduledTime();
-        final ImmutableList.Builder<ScheduledLocation> builder
-                = ImmutableList.builder();
-        for (final Duration offset : extension.descendingKeySet()) {
-            builder.add(new ScheduledLocation(extension.get(offset),
-                                              baseTime.minus(offset)));
-        }
-        builder.addAll(schedule);
-        return builder.build();
     }
 }

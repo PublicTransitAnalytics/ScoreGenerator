@@ -18,10 +18,10 @@ package com.publictransitanalytics.scoregenerator.geography;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.WaterStatus;
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.BoundsKey;
 import lombok.RequiredArgsConstructor;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  *
@@ -34,13 +34,13 @@ public class StoredWaterDetector implements WaterDetector {
     final Store<BoundsKey, WaterStatus> waterBoundsStore;
 
     @Override
-    public boolean isOnWater(final Geodetic2DPoint point) 
+    public boolean isOnWater(final GeoPoint point) 
             throws WaterDetectorException, InterruptedException {
         return waterDetector.isOnWater(point);
     }
 
     @Override
-    public boolean isEntirelyWater(final Geodetic2DBounds bounds)
+    public boolean isEntirelyWater(final GeoBounds bounds)
             throws WaterDetectorException, InterruptedException {
         try {
             final BoundsKey key = new BoundsKey(bounds);

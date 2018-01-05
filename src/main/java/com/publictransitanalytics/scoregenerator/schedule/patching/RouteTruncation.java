@@ -37,7 +37,7 @@ public class RouteTruncation implements Patch {
 
     private final String routeNumber;
     private final TransitStop referenceStop;
-    private final ExtensionType type;
+    private final ReferenceDirection type;
 
     @Override
     public Optional<Trip> patch(final Trip original) {
@@ -49,7 +49,7 @@ public class RouteTruncation implements Patch {
                 log.info("Trip {} was not truncated because it is too short.",
                          newTrip.getTripId());
             } else {
-                if (type.equals(ExtensionType.AFTER_LAST)) {
+                if (type.equals(ReferenceDirection.AFTER_LAST)) {
                     int index = -1;
                     for (int i = 0; i < schedule.size(); i++) {
                         if (schedule.get(i).getLocation()
@@ -61,7 +61,7 @@ public class RouteTruncation implements Patch {
                     newTrip = (index != -1) ? makeReplacementTrip(
                             original, schedule.subList(0, index + 1))
                             : original;
-                } else if (type.equals(ExtensionType.BEFORE_FIRST)) {
+                } else if (type.equals(ReferenceDirection.BEFORE_FIRST)) {
                     int index = -1;
                     for (int i = schedule.size() - 1; i >= 0; i--) {
                         if (schedule.get(i).getLocation()

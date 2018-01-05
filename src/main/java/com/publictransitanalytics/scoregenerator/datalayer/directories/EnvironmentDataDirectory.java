@@ -46,20 +46,21 @@ public class EnvironmentDataDirectory {
     private final GraphHopper hopper;
     @Getter
     private final WaterDetector waterDetector;
+    @Getter
+    private final Path osmPath;
 
     public EnvironmentDataDirectory(final Path root)
             throws IOException, WaterDetectorException {
-        final Path osmFile = root.resolve(SEATTLE_OSM_FILE);
+        osmPath = root.resolve(SEATTLE_OSM_FILE);
         final Path graphFolder = root.resolve(GRAPHHOPPER_DIRECTORY);
 
         hopper = new GraphHopperOSM().forServer();
-        hopper.setDataReaderFile(osmFile.toString());
+        hopper.setDataReaderFile(osmPath.toString());
         hopper.setGraphHopperLocation(graphFolder.toString());
         hopper.setEncodingManager(new EncodingManager("foot"));
         hopper.setElevation(true);
-
         hopper.importOrLoad();
-
+        
         final Store<BoundsKey, WaterStatus> waterStore = new LmdbStore<>(
                 root.resolve(WATER_STORE), WaterStatus.class);
 

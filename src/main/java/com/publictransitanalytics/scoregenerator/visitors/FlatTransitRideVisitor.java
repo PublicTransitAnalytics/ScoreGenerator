@@ -17,8 +17,8 @@ package com.publictransitanalytics.scoregenerator.visitors;
 
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.ModeType;
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.rider.Rider;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
@@ -33,7 +33,7 @@ import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 
 /**
  * Visitor for transit rides that does not recurse.
- * 
+ *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
@@ -53,18 +53,9 @@ public class FlatTransitRideVisitor
     }
 
     @Override
-    public void visit(final Sector sector) throws InterruptedException {
-        output = Collections.emptySet();
-    }
-
-    @Override
-    public void visit(TransitStop transitStop) throws InterruptedException {
+    public void visit(final TransitStop transitStop) throws InterruptedException {
         final ImmutableSet.Builder<ReachabilityOutput> outputBuilder
                 = ImmutableSet.builder();
-        
-        final Sector sector = transitStop.getContainingSector();
-        outputBuilder.add(new ReachabilityOutput(
-                sector, currentTime, ModeInfo.NONE));
 
         final ScheduleReader reader = riderFactory.getScheduleReader();
         final Set<EntryPoint> entryPoints = reader.getEntryPoints(
@@ -84,7 +75,7 @@ public class FlatTransitRideVisitor
                 final TransitStop newStop = status.getStop();
 
                 outputBuilder.add(new ReachabilityOutput(
-                        newStop, newTime, 
+                        newStop, newTime,
                         new ModeInfo(ModeType.TRANSIT, entryPoint, null)));
             }
         }
@@ -92,7 +83,12 @@ public class FlatTransitRideVisitor
     }
 
     @Override
-    public void visit(Landmark point) throws InterruptedException {
+    public void visit(final Landmark point) throws InterruptedException {
+        output = Collections.emptySet();
+    }
+
+    @Override
+    public void visit(final GridPoint point) {
         output = Collections.emptySet();
     }
 

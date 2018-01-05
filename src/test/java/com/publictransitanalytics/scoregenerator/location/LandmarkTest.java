@@ -15,15 +15,13 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.location.Landmark;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.testhelpers.CountingVisitor;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
 
 /**
  *
@@ -31,37 +29,28 @@ import org.opensextant.geodesy.Longitude;
  */
 public class LandmarkTest {
 
-    private static final Sector SECTOR = new Sector(new Geodetic2DBounds(
-            new Geodetic2DPoint(
-                    new Longitude(-122.459696, Longitude.DEGREES),
-                    new Latitude(47.734145, Latitude.DEGREES)),
-            new Geodetic2DPoint(
-                    new Longitude(-122.224433, Longitude.DEGREES),
-                    new Latitude(47.48172, Latitude.DEGREES))));
-    private static final Geodetic2DPoint POINT = new Geodetic2DPoint(
-            new Longitude(-122.3236954, Longitude.DEGREES),
-            new Latitude(47.6546556, Latitude.DEGREES));
+    private static final GeoPoint POINT = new GeoPoint(
+            new GeoLongitude("-122.32370", AngleUnit.DEGREES),
+            new GeoLatitude("47.654656", AngleUnit.DEGREES));
 
     @Test
     public void testVisit() throws Exception {
-        final Landmark landmark = new Landmark(SECTOR, POINT);
+        final Landmark landmark = new Landmark(POINT);
         final CountingVisitor visitor = new CountingVisitor();
         landmark.accept(visitor);
         Assert.assertEquals(1, visitor.getLandmarkCount());
     }
 
     @Test
-    public void testIdentifierIsLocation() {
-        final Landmark landmark = new Landmark(SECTOR, POINT);
-        Assert.assertEquals("(122° 19' 25\" W, 47° 39' 17\" N)", 
-                            landmark.getIdentifier());
+    public void testIdentifierIsRadianLocation() {
+        final Landmark landmark = new Landmark(POINT);
+        Assert.assertEquals("0.831731, -2.134951", landmark.getIdentifier());
     }
 
     @Test
-    public void testNameIsLocation() {
-        final Landmark landmark = new Landmark(SECTOR, POINT);
-        Assert.assertEquals("(122° 19' 25\" W, 47° 39' 17\" N)",
-                            landmark.getCommonName());
+    public void testNameIsDegreeLocation() {
+        final Landmark landmark = new Landmark(POINT);
+        Assert.assertEquals("47.654656, -122.323700", landmark.getCommonName());
     }
 
 }

@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
@@ -30,7 +30,7 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
  * Network Accessibility measurement.
- * 
+ *
  * @author Public Transit Analytics
  */
 public class NetworkAccessibility {
@@ -40,7 +40,7 @@ public class NetworkAccessibility {
     private final Direction direction;
 
     private final Bounds mapBounds;
-    
+
     private final Point boundsCenter;
 
     private final Map<Bounds, Integer> sectorCounts;
@@ -58,24 +58,23 @@ public class NetworkAccessibility {
     private final String tripDuration;
 
     private final int taskCount;
-    
+
     private final int totalSectors;
-    
+
     private final long inServiceSeconds;
-    
+
     public NetworkAccessibility(
             final int taskCount, final ScoreCard scoreCard,
-            final SectorTable sectorTable, 
-            final Set<PointLocation> centerPoints, 
+            final Grid grid, final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final Duration tripDuration, final Duration samplingInterval,
-            final boolean backward, final Duration inServiceTime) 
+            final boolean backward, final Duration inServiceTime)
             throws InterruptedException {
         type = AccessibilityType.NETWORK_ACCESSIBILITY;
 
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
-        mapBounds = new Bounds(sectorTable);
-        boundsCenter = new Point(sectorTable.getBounds().getCenter());
+        mapBounds = new Bounds(grid.getBounds());
+        boundsCenter = new Point(grid.getBounds().getCenter());
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.endTime = endTime.format(DateTimeFormatter.ofPattern(
@@ -87,11 +86,13 @@ public class NetworkAccessibility {
                 tripDuration.toMillis(), true, true);
 
         this.taskCount = taskCount;
-        totalSectors = sectorTable.getSectors().size();
+        
+        final Set<Sector> sectors = grid.getAllSectors();
+        totalSectors = sectors.size();
 
         final ImmutableMap.Builder<Bounds, Integer> countBuilder
                 = ImmutableMap.builder();
-        for (final Sector sector : sectorTable.getSectors()) {
+        for (final Sector sector : sectors) {
             if (scoreCard.hasPath(sector)) {
                 final Bounds bounds = new Bounds(sector);
                 countBuilder.put(bounds,
@@ -99,11 +100,11 @@ public class NetworkAccessibility {
             }
         }
         sectorCounts = countBuilder.build();
-        
+
         this.centerPoints = centerPoints.stream().map(
                 point -> new Point(point)).collect(Collectors.toSet());
         sampleCount = centerPoints.size();
-        
+
         inServiceSeconds = inServiceTime.getSeconds();
     }
 }

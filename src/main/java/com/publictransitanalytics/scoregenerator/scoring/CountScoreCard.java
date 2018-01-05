@@ -17,40 +17,55 @@ package com.publictransitanalytics.scoregenerator.scoring;
 
 import com.google.common.collect.ConcurrentHashMultiset;
 import com.google.common.collect.Multiset;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * ScoreCard that counts how many tasks reach a Sector.
- * 
+ *
  * @author Public Transit Analytics
  */
 public class CountScoreCard extends ScoreCard {
-    
-    final Multiset<VisitableLocation> locations;
-    
-     public CountScoreCard(final int taskCount) {
-         super(taskCount);
+
+    private final Multiset<Sector> locations;
+    private final SetMultimap<PointLocation, Sector> pointSectorMap;
+
+    public CountScoreCard(
+            final int taskCount,
+            final SetMultimap<PointLocation, Sector> pointSectorMap) {
+        super(taskCount);
         locations = ConcurrentHashMultiset.create();
+        this.pointSectorMap = pointSectorMap;
     }
 
-
     @Override
-    public int getReachedCount(final VisitableLocation location) {
+    public int getReachedCount(final Sector location) {
         return locations.count(location);
     }
 
     @Override
-    public boolean hasPath(final VisitableLocation location) {
+    public boolean hasPath(final Sector location) {
         return locations.contains(location);
     }
 
     @Override
-    public void putPath(final VisitableLocation location,
-                        final TaskIdentifier task,
-                        final MovementPath path) {
-        locations.add(location);
+    public void scoreTask(
+            final TaskIdentifier task,
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
+        final Set<PointLocation> reachedLocations = stateMap.keySet();
+
+        for (final PointLocation reachedLocation : reachedLocations) {
+            final Set<Sector> sectors = pointSectorMap.get(reachedLocation);
+            for (final Sector sector : sectors) {
+                locations.add(sector);
+            }
+        }
+
     }
-    
+
 }

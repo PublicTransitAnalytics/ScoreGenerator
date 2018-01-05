@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 
 /**
  *
@@ -23,7 +23,7 @@ import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
  */
 public interface PointOrderer {
     
-    public VisitableLocation getOrigin();
-    public VisitableLocation getDestination();
+    public PointLocation getOrigin();
+    public PointLocation getDestination();
     
 }

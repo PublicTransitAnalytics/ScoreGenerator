@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
@@ -45,33 +46,33 @@ public class ComparativeTimeQualifiedPointAccessibility {
     private final Map<Bounds, ComparativeFullSectorReachInformation> sectorPaths;
 
     private final String time;
-    
+
     private final String trialTime;
 
     private final String tripDuration;
 
     private final int totalSectors;
-    
+
     private final String name;
 
     private final String trialName;
-    
+
     private final long inServiceSeconds;
-    
+
     private final long trialInServiceSeconds;
 
     public ComparativeTimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
-            final SectorTable sectorTable, final PointLocation centerPoint,
-            final LocalDateTime time, LocalDateTime trialTime, 
-            final Duration tripDuration, final boolean backward, 
+            final Grid grid, final PointLocation centerPoint,
+            final LocalDateTime time, LocalDateTime trialTime,
+            final Duration tripDuration, final boolean backward,
             final String name, final String trialName,
             final Duration inServiceTime, final Duration trialInServiceTime)
             throws InterruptedException {
-        
+
         type = AccessibilityType.COMPARATIVE_TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
-        mapBounds = new Bounds(sectorTable);
+        mapBounds = new Bounds(grid.getBounds());
         center = new Point(centerPoint);
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
@@ -83,8 +84,10 @@ public class ComparativeTimeQualifiedPointAccessibility {
         final ImmutableMap.Builder<Bounds, ComparativeFullSectorReachInformation> builder
                 = ImmutableMap.builder();
 
+        final Set<Sector> sectors = grid.getAllSectors();
+
         final TaskIdentifier task = new TaskIdentifier(time, centerPoint);
-        for (final Sector sector : sectorTable.getSectors()) {
+        for (final Sector sector : sectors) {
             final MovementPath sectorPath
                     = scoreCard.getBestPath(sector, task);
             final MovementPath trialSectorPath
@@ -98,7 +101,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
             }
         }
         sectorPaths = builder.build();
-        totalSectors = sectorTable.getSectors().size();
+        totalSectors = sectors.size();
         this.name = name;
         this.trialName = trialName;
         inServiceSeconds = inServiceTime.getSeconds();

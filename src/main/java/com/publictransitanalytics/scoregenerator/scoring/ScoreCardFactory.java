@@ -15,12 +15,17 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
+import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
+
 /**
  *
  * @author Public Transit Analytics
  */
 public interface ScoreCardFactory<S extends ScoreCard> {
     
-    S makeScoreCard(final int taskCount);
+    S makeScoreCard(final int taskCount, 
+                    final SetMultimap<PointLocation, Sector> pointSectorMap);
     
 }

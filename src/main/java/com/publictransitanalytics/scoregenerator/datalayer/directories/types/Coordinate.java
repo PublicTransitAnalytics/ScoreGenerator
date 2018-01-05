@@ -26,23 +26,23 @@ import lombok.Value;
 @Value
 public class Coordinate {
 
-    double latitude;
-    double longitude;
+    String latitude;
+    String longitude;
 
-    public Coordinate(String coordinateString) {
+    public Coordinate(final String coordinateString) {
         String coordinateStrings[] = coordinateString.split(",");
-        latitude = Double.valueOf(coordinateStrings[0]);
-        longitude = Double.valueOf(coordinateStrings[1]);
+        latitude = coordinateStrings[0];
+        longitude = coordinateStrings[1];
     }
 
-    public Coordinate(double latitude, double longitude) {
+    public Coordinate(final String latitude, final String longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
     }
 
     @Override
     public String toString() {
-        return String.format("%f,%f", latitude, longitude);
+        return String.format("%s,%s", latitude, longitude);
     }
 
 }

@@ -29,5 +29,6 @@ public class ComparisonOperation {
     final Stop stop;
     final Extension extension;
     final Truncation truncation;
+    final Reroute reroute;
     
 }

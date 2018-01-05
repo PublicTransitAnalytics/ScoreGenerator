@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
@@ -31,10 +31,10 @@ public class CompositeDistanceEstimator implements DistanceEstimator {
     private final Set<DistanceEstimator> estimators;
     
     @Override
-    public Set<VisitableLocation> getReachableLocations(
+    public Set<PointLocation> getReachableLocations(
             final PointLocation origin, final double distanceMeters)
             throws InterruptedException {
-        final ImmutableSet.Builder<VisitableLocation> builder
+        final ImmutableSet.Builder<PointLocation> builder
                 = ImmutableSet.builder();
         for (final DistanceEstimator estimator : estimators) {
             builder.addAll(estimator.getReachableLocations(origin,

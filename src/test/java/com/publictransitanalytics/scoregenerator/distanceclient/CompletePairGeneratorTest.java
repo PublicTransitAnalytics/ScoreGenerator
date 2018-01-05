@@ -16,21 +16,20 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
+import com.publictransitanalytics.scoregenerator.environment.Segment;
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedEstimateStorage;
 import com.publictransitanalytics.scoregenerator.testhelpers.RecordingEstimator;
-import edu.emory.mathcs.backport.java.util.Collections;
+import java.util.Collections;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  *
@@ -38,98 +37,74 @@ import org.opensextant.geodesy.Longitude;
  */
 public class CompletePairGeneratorTest {
 
+    private static final GeoLatitude LATITUDE
+            = new GeoLatitude("47.66", AngleUnit.DEGREES);
+    private static final Segment SEGMENT = new Segment(
+            new GeoPoint(
+                    new GeoLongitude("-122.43361", AngleUnit.DEGREES),
+                    new GeoLatitude("47.661389", AngleUnit.DEGREES)),
+            new GeoPoint(
+                    new GeoLongitude("-122.43361", AngleUnit.DEGREES),
+                    new GeoLatitude("47.661389", AngleUnit.DEGREES)), 0, 0);
+
+    private static final GridPoint GRID_POINT = new GridPoint(
+            new GeoPoint(
+                    new GeoLongitude("-122.33618", AngleUnit.DEGREES),
+                    new GeoLatitude("47.63", AngleUnit.DEGREES)), SEGMENT,
+            LATITUDE);
+    private static final TransitStop STOP = new TransitStop(
+            "stop", "stop", new GeoPoint(
+                    new GeoLongitude("-122.33618", AngleUnit.DEGREES),
+                    new GeoLatitude("47.620691", AngleUnit.DEGREES)));
+    private static final PointLocation CENTER = new Landmark(
+            new GeoPoint(
+                    new GeoLongitude("-122.34", AngleUnit.DEGREES),
+                    new GeoLatitude("47.63", AngleUnit.DEGREES)));
+
     @Test
     public void testCenterAsOrigin() throws Exception {
-        final Sector sector = new Sector(
-                new Geodetic2DBounds(
-                        new Geodetic2DPoint(
-                                new Longitude(-122.459696, Longitude.DEGREES),
-                                new Latitude(47.734145, Latitude.DEGREES)),
-                        new Geodetic2DPoint(
-                                new Longitude(-122.224433, Longitude.DEGREES),
-                                new Latitude(47.48172, Latitude.DEGREES))));
-        final TransitStop stop = new TransitStop(
-                sector, "stop", "stop",
-                new Geodetic2DPoint(new Longitude(-122.3361768,
-                                                  Longitude.DEGREES),
-                                    new Latitude(47.6206914,
-                                                 Latitude.DEGREES)));
-        final PointLocation center = new Landmark(
-                sector, sector.getCanonicalPoint());
 
         final CompletePairGenerator generator = new CompletePairGenerator(
-                Collections.singleton(sector), Collections.singleton(stop),
-                Collections.singleton(center));
+                Collections.singleton(GRID_POINT), Collections.singleton(STOP),
+                Collections.singleton(CENTER));
 
         final RecordingEstimator estimator = new RecordingEstimator();
         final EstimateStorage storage = new PreloadedEstimateStorage(false, 0);
 
         generator.storeEstimates(estimator, storage, 1);
-        Assert.assertTrue(estimator.getRecord().containsKey(center));
-        Assert.assertEquals(ImmutableSet.of(stop, sector),
-                            estimator.getRecord().get(center));
+        Assert.assertTrue(estimator.getRecord().containsKey(CENTER));
+        Assert.assertEquals(ImmutableSet.of(STOP, GRID_POINT),
+                            estimator.getRecord().get(CENTER));
     }
 
     @Test
     public void testStopAsOrigin() throws Exception {
-        final Sector sector = new Sector(
-                new Geodetic2DBounds(
-                        new Geodetic2DPoint(
-                                new Longitude(-122.459696, Longitude.DEGREES),
-                                new Latitude(47.734145, Latitude.DEGREES)),
-                        new Geodetic2DPoint(
-                                new Longitude(-122.224433, Longitude.DEGREES),
-                                new Latitude(47.48172, Latitude.DEGREES))));
-        final TransitStop stop = new TransitStop(
-                sector, "stop", "stop",
-                new Geodetic2DPoint(new Longitude(-122.3361768,
-                                                  Longitude.DEGREES),
-                                    new Latitude(47.6206914,
-                                                 Latitude.DEGREES)));
-        final PointLocation center = new Landmark(
-                sector, sector.getCanonicalPoint());
 
         final CompletePairGenerator generator = new CompletePairGenerator(
-                Collections.singleton(sector), Collections.singleton(stop),
-                Collections.singleton(center));
+                Collections.singleton(GRID_POINT), Collections.singleton(STOP),
+                Collections.singleton(CENTER));
 
         final RecordingEstimator estimator = new RecordingEstimator();
         final EstimateStorage storage = new PreloadedEstimateStorage(false, 0);
 
         generator.storeEstimates(estimator, storage, 1);
-        Assert.assertTrue(estimator.getRecord().containsKey(stop));
-        Assert.assertEquals(Collections.singleton(sector),
-                            estimator.getRecord().get(stop));
+        Assert.assertTrue(estimator.getRecord().containsKey(STOP));
+        Assert.assertEquals(Collections.singleton(GRID_POINT),
+                            estimator.getRecord().get(STOP));
     }
 
     @Test
-    public void testSectorAsOrigin() throws Exception {
-        final Sector sector = new Sector(
-                new Geodetic2DBounds(
-                        new Geodetic2DPoint(
-                                new Longitude(-122.459696, Longitude.DEGREES),
-                                new Latitude(47.734145, Latitude.DEGREES)),
-                        new Geodetic2DPoint(
-                                new Longitude(-122.224433, Longitude.DEGREES),
-                                new Latitude(47.48172, Latitude.DEGREES))));
-        final TransitStop stop = new TransitStop(
-                sector, "stop", "stop",
-                new Geodetic2DPoint(new Longitude(-122.3361768,
-                                                  Longitude.DEGREES),
-                                    new Latitude(47.6206914,
-                                                 Latitude.DEGREES)));
-        final PointLocation center = new Landmark(
-                sector, sector.getCanonicalPoint());
+    public void testGridPointAsOrigin() throws Exception {
 
         final CompletePairGenerator generator = new CompletePairGenerator(
-                Collections.singleton(sector), Collections.singleton(stop),
-                Collections.singleton(center));
+                Collections.singleton(GRID_POINT), Collections.singleton(STOP),
+                Collections.singleton(CENTER));
 
         final RecordingEstimator estimator = new RecordingEstimator();
         final EstimateStorage storage = new PreloadedEstimateStorage(false, 0);
 
         generator.storeEstimates(estimator, storage, 1);
-        Assert.assertFalse(estimator.getRecord().containsKey(sector));
+        Assert.assertFalse(estimator.getRecord().containsKey(GRID_POINT));
     }
 
 }

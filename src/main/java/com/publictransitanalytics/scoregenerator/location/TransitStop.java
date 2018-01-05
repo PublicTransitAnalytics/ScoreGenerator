@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
 import lombok.Getter;
-import org.opensextant.geodesy.Geodetic2DPoint;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
@@ -31,9 +31,9 @@ public class TransitStop extends PointLocation {
     @Getter
     private final String stopName;
 
-    public TransitStop(final Sector sector, final String stopId,
-                       final String stopName, final Geodetic2DPoint location) {
-        super(sector, location);
+    public TransitStop(final String stopId, final String stopName,
+                       final GeoPoint location) {
+        super(location);
         this.stopId = stopId;
         this.stopName = stopName;
     }
@@ -52,7 +52,7 @@ public class TransitStop extends PointLocation {
     public String getCommonName() {
         return stopName;
     }
-    
+
     @Override
     public String toString() {
         return stopName;

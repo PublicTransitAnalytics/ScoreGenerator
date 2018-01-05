@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Set;
 
 /**
@@ -26,10 +26,10 @@ import java.util.Set;
 public interface EstimateStorage {
 
     public void put(final PointLocation origin,
-                    final VisitableLocation destination,
+                    final PointLocation destination,
                     final double distanceMeters) throws InterruptedException;
 
-    public Set<VisitableLocation> getReachable(final PointLocation origin,
+    public Set<PointLocation> getReachable(final PointLocation origin,
                                                final double distanceMeters)
             throws InterruptedException;
 

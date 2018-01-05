@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
@@ -65,24 +65,24 @@ public class ComparativePointAccessibility {
     private final int totalSectors;
 
     private final String trialName;
-    
+
     private final long inServiceSeconds;
-    
+
     private final long trialInServiceSeconds;
 
     public ComparativePointAccessibility(
             final int taskCount, final int trialTaskCount,
             final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
-            final SectorTable sectorTable, final PointLocation centerPoint,
+            final Grid grid, final PointLocation centerPoint,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final LocalDateTime trialStartTime,
-            final LocalDateTime trialEndTime, final Duration samplingInterval, 
-            final Duration tripDuration, final boolean backward, 
+            final LocalDateTime trialEndTime, final Duration samplingInterval,
+            final Duration tripDuration, final boolean backward,
             final String trialName, final Duration inServiceTime,
             final Duration trialInServiceTime) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
-        mapBounds = new Bounds(sectorTable);
+        mapBounds = new Bounds(grid.getBounds());
         center = new Point(centerPoint);
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
@@ -100,12 +100,14 @@ public class ComparativePointAccessibility {
 
         this.taskCount = taskCount;
         this.trialTaskCount = trialTaskCount;
-        totalSectors = sectorTable.getSectors().size();
+
+        final Set<Sector> sectors = grid.getAllSectors();
+        totalSectors = sectors.size();
 
         final ImmutableMap.Builder<Bounds, ComparativeSectorReachInformation> informationBuilder
                 = ImmutableMap.builder();
 
-        for (final Sector sector : sectorTable.getSectors()) {
+        for (final Sector sector : sectors) {
             final Map<TaskIdentifier, MovementPath> bestPaths
                     = scoreCard.getBestPaths(sector);
             final Map<TaskIdentifier, MovementPath> trialBestPaths
@@ -132,7 +134,7 @@ public class ComparativePointAccessibility {
         }
         sectorPaths = informationBuilder.build();
         this.trialName = trialName;
-        
+
         inServiceSeconds = inServiceTime.getSeconds();
         trialInServiceSeconds = trialInServiceTime.getSeconds();
     }

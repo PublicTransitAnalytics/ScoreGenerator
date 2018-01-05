@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import lombok.Getter;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
@@ -28,17 +28,11 @@ import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 public class CountingVisitor implements Visitor {
 
     @Getter
-    private int sectorCount;
-    @Getter
     private int transitStopCount;
     @Getter
     private int landmarkCount;
-
-    
-    @Override
-    public void visit(Sector sector) {
-        sectorCount++;
-    }
+    @Getter
+    private int gridPointCount;
 
     @Override
     public void visit(TransitStop transitStop) {
@@ -47,6 +41,11 @@ public class CountingVisitor implements Visitor {
 
     @Override
     public void visit(Landmark point) {
+        landmarkCount++;
+    }
+
+    @Override
+    public void visit(GridPoint point) {
         landmarkCount++;
     }
 

@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.util.Map;
 
@@ -27,8 +27,8 @@ public class NullMovementAssembler implements MovementAssembler {
 
     @Override
     public MovementPath assemble(
-            final VisitableLocation terminal,
-            final Map<VisitableLocation, DynamicProgrammingRecord> lastRow) {
+            final PointLocation terminal,
+            final Map<PointLocation, DynamicProgrammingRecord> lastRow) {
         return null;
     }
 

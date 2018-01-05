@@ -16,7 +16,6 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 
 /**
  *
@@ -25,7 +24,7 @@ import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 public interface CalculatingDistanceEstimator extends DistanceEstimator {
 
     public void generateEstimate(PointLocation origin,
-                                 VisitableLocation destination) 
+                                 PointLocation destination) 
             throws InterruptedException;
 
 }

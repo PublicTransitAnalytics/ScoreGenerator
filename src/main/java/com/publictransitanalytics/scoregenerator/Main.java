@@ -15,13 +15,16 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
+import com.publictransitanalytics.scoregenerator.console.NetworkConsoleFactory;
+import com.publictransitanalytics.scoregenerator.console.DummyNetworkConsole;
+import com.publictransitanalytics.scoregenerator.console.InteractiveNetworkConsole;
+import com.publictransitanalytics.scoregenerator.console.NetworkConsole;
 import com.publictransitanalytics.scoregenerator.comparison.OperationDescription;
 import com.publictransitanalytics.scoregenerator.workflow.Environment;
 import com.publictransitanalytics.scoregenerator.workflow.Calculation;
 import com.google.common.collect.BiMap;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
@@ -43,13 +46,11 @@ import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.EnvironmentDataDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceDataDirectory;
-import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
-import com.publictransitanalytics.scoregenerator.geography.NearestPointEndpointDeterminer;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
+import com.publictransitanalytics.scoregenerator.environment.Segment;
+import com.publictransitanalytics.scoregenerator.environment.SegmentFinder;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import com.publictransitanalytics.scoregenerator.output.ComparativeNetworkAccessibility;
@@ -60,12 +61,10 @@ import com.publictransitanalytics.scoregenerator.output.NetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.PointAccessibility;
 import com.publictransitanalytics.scoregenerator.output.TimeQualifiedPointAccessibility;
 import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
-import org.opensextant.geodesy.Geodetic2DBounds;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.workflow.ProgressiveRangeExecutor;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.stream.Collectors;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 import com.publictransitanalytics.scoregenerator.workflow.Workflow;
@@ -81,6 +80,7 @@ import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.NullMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RetrospectiveMovementAssembler;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -94,14 +94,11 @@ import java.util.HashMap;
  */
 public class Main {
 
-    private static final Geodetic2DBounds SEATTLE_BOUNDS
-            = new Geodetic2DBounds(
-                    new Geodetic2DPoint(
-                            new Longitude(-122.459696, Longitude.DEGREES),
-                            new Latitude(47.734145, Latitude.DEGREES)),
-                    new Geodetic2DPoint(
-                            new Longitude(-122.224433, Longitude.DEGREES),
-                            new Latitude(47.48172, Latitude.DEGREES)));
+    private static final GeoBounds SEATTLE_BOUNDS = new GeoBounds(
+            new GeoLongitude("-122.45970", AngleUnit.DEGREES),           
+            new GeoLatitude("47.48172", AngleUnit.DEGREES),
+            new GeoLongitude("-122.22443", AngleUnit.DEGREES),
+            new GeoLatitude("47.734145", AngleUnit.DEGREES));
 
     private static final int NUM_LATITUDE_SECTORS = 100;
     private static final int NUM_LONGITUDE_SECTORS = 100;
@@ -226,31 +223,34 @@ public class Main {
             }
         }
 
-        final NearestPointEndpointDeterminer endpointDeterminer
-                = new NearestPointEndpointDeterminer();
+        final File osmFile = environmentDirectory.getOsmPath().toFile();
+        final SegmentFinder segmentFinder = new SegmentFinder(
+                osmFile, SEATTLE_BOUNDS);
 
-        final SectorTable sectorTable = generateSectors(
-                environmentDirectory.getWaterDetector());
+        final WaterDetector waterDetector
+                = environmentDirectory.getWaterDetector();
+        final Set<Segment> segments = segmentFinder.getSegments();
+        final Grid grid = new Grid(segments, SEATTLE_BOUNDS, 100, 100,
+                                   waterDetector);
 
         final MapGenerator mapGenerator = new MapGenerator();
 
         if ("generatePointAccessibility".equals(command)) {
-            final PathScoreCardFactory scoreCardFactory
-                    = new PathScoreCardFactory();
+
             generatePointAccessibility(
-                    namespace, baseDescription, scoreCardFactory, sectorTable,
+                    namespace, baseDescription, grid,
                     backward, samplingInterval, span, durations,
                     environmentDirectory, serviceDirectoriesMap,
-                    endpointDeterminer, comparisonDescription, publisher,
+                    comparisonDescription, publisher,
                     serializer, mapGenerator, outputName, consoleFactory);
         } else if ("generateNetworkAccessibility".equals(command)) {
             final ScoreCardFactory scoreCardFactory
                     = new CountScoreCardFactory();
 
             generateNetworkAccessibility(
-                    baseDescription, scoreCardFactory, sectorTable, backward,
+                    baseDescription, scoreCardFactory, grid, backward,
                     samplingInterval, span, durations, environmentDirectory,
-                    serviceDirectoriesMap, endpointDeterminer,
+                    serviceDirectoriesMap,
                     comparisonDescription, publisher, serializer, mapGenerator,
                     outputName, consoleFactory);
         } else if ("generateSampledNetworkAccessibility".equals(command)) {
@@ -258,10 +258,10 @@ public class Main {
                     = new CountScoreCardFactory();
 
             generateSampledNetworkAccessibility(
-                    namespace, baseDescription, scoreCardFactory, sectorTable,
+                    namespace, baseDescription, scoreCardFactory, grid,
                     backward, samplingInterval, span, durations,
                     environmentDirectory, serviceDirectoriesMap,
-                    endpointDeterminer, comparisonDescription, publisher,
+                    comparisonDescription, publisher,
                     serializer, mapGenerator, outputName, consoleFactory);
         }
 
@@ -270,31 +270,26 @@ public class Main {
     private static void generateNetworkAccessibility(
             final OperationDescription base,
             final ScoreCardFactory scoreCardFactory,
-            final SectorTable sectorTable, final boolean backward,
+            final Grid grid, final boolean backward,
             final Duration samplingInterval, final Duration span,
             final NavigableSet<Duration> durations,
             final EnvironmentDataDirectory environmentDirectory,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
-            final NearestPointEndpointDeterminer endpointDeterminer,
             final OperationDescription comparison,
             final LocalFilePublisher publisher, final Gson serializer,
             final MapGenerator mapGenerator, final String outputName,
             final NetworkConsoleFactory consoleFactory)
             throws IOException, InterruptedException, ExecutionException {
 
-        final Set<Sector> measuredSectors = sectorTable.getSectors();
-        final Set<PointLocation> centerPoints = measuredSectors.stream()
-                .map(sector -> new Landmark(
-                sector, sector.getCanonicalPoint()))
-                .collect(Collectors.toSet());
+        final Set<PointLocation> centerPoints = grid.getCenters();
         final MovementAssembler assembler = new NullMovementAssembler();
         final BiMap<OperationDescription, Calculation<CountScoreCard>> result
-                = calculate(base, scoreCardFactory, assembler, sectorTable,
+                = calculate(base, scoreCardFactory, assembler, grid,
                             centerPoints, samplingInterval, span, backward,
-                            endpointDeterminer, environmentDirectory,
+                            environmentDirectory,
                             serviceDirectoriesMap, durations.last(),
                             comparison, consoleFactory);
-        publishNetworkAccessibility(base, comparison, result, sectorTable,
+        publishNetworkAccessibility(base, comparison, result, grid,
                                     centerPoints, false, durations, span,
                                     samplingInterval, backward, publisher,
                                     serializer, mapGenerator, outputName);
@@ -303,10 +298,9 @@ public class Main {
     private static <S extends ScoreCard> BiMap<OperationDescription, Calculation<S>> calculate(
             final OperationDescription baseDescription,
             final ScoreCardFactory<S> scoreCardFactory,
-            final MovementAssembler assembler, final SectorTable sectorTable,
+            final MovementAssembler assembler, final Grid grid,
             final Set<PointLocation> centers, final Duration samplingInterval,
             final Duration span, final boolean backward,
-            final EndpointDeterminer endpointDeterminer,
             final EnvironmentDataDirectory environmentDirectory,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
             final Duration longestDuration,
@@ -317,10 +311,10 @@ public class Main {
         final ImmutableBiMap.Builder<OperationDescription, Calculation<S>> resultBuilder
                 = ImmutableBiMap.builder();
         final Calculation<S> calculation = new Calculation(
-                sectorTable, centers, longestDuration, backward, span,
+                grid, centers, longestDuration, backward, span,
                 samplingInterval, ESTIMATE_WALK_METERS_PER_SECOND,
-                endpointDeterminer, environmentDirectory, serviceDirectoriesMap,
-                scoreCardFactory, assembler, baseDescription);
+                environmentDirectory, serviceDirectoriesMap,
+                scoreCardFactory, baseDescription);
         final NetworkConsole console = consoleFactory.getConsole(
                 calculation.getTransitNetwork(),
                 calculation.getStopIdMap());
@@ -328,17 +322,15 @@ public class Main {
 
         resultBuilder.put(baseDescription, calculation);
 
-        final Environment environment = new Environment(
-                sectorTable, longestDuration);
+        final Environment environment = new Environment(grid, longestDuration);
 
         if (comparisonDescription != null) {
 
             final Calculation trialCalculation = new Calculation(
-                    sectorTable, centers, longestDuration, backward, span,
+                    grid, centers, longestDuration, backward, span,
                     samplingInterval, ESTIMATE_WALK_METERS_PER_SECOND,
-                    endpointDeterminer, environmentDirectory,
-                    serviceDirectoriesMap, scoreCardFactory, assembler,
-                    comparisonDescription);
+                    environmentDirectory, serviceDirectoriesMap,
+                    scoreCardFactory, comparisonDescription);
             final NetworkConsole trialConsole = consoleFactory.getConsole(
                     trialCalculation.getTransitNetwork(),
                     trialCalculation.getStopIdMap());
@@ -367,12 +359,11 @@ public class Main {
             final Namespace namespace,
             final OperationDescription baseDescription,
             final ScoreCardFactory scoreCardFactory,
-            final SectorTable sectorTable, final boolean backward,
+            final Grid grid, final boolean backward,
             final Duration samplingInterval, final Duration span,
             final NavigableSet<Duration> durations,
             final EnvironmentDataDirectory environmentDirectory,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
-            final EndpointDeterminer endpointDeterminer,
             final OperationDescription comparison,
             final LocalFilePublisher publisher, final Gson serializer,
             final MapGenerator mapGenerator, final String outputName,
@@ -381,26 +372,21 @@ public class Main {
 
         final int samples = Integer.valueOf(namespace.get("samples"));
 
-        final List<Sector> sectorList
-                = new ArrayList(sectorTable.getSectors());
-        Collections.shuffle(sectorList);
-        final ImmutableSet<Sector> measuredSectors
-                = ImmutableSet.copyOf(sectorList.subList(0, samples));
-        final Set<PointLocation> centerPoints = measuredSectors.stream()
-                .map(sector -> new Landmark(
-                sector, sector.getCanonicalPoint()))
-                .collect(Collectors.toSet());
+        final List<PointLocation> centerList = new ArrayList(grid.getCenters());
+        Collections.shuffle(centerList);
+        final ImmutableSet<PointLocation> centerPoints
+                = ImmutableSet.copyOf(centerList.subList(0, samples));
 
         final MovementAssembler assembler = new NullMovementAssembler();
 
         final BiMap<OperationDescription, Calculation<CountScoreCard>> result
                 = calculate(baseDescription, scoreCardFactory, assembler,
-                            sectorTable, centerPoints, samplingInterval, span,
-                            backward, endpointDeterminer, environmentDirectory,
+                            grid, centerPoints, samplingInterval, span,
+                            backward, environmentDirectory,
                             serviceDirectoriesMap, durations.last(),
                             comparison, consoleFactory);
         publishNetworkAccessibility(baseDescription, comparison, result,
-                                    sectorTable, centerPoints, true, durations,
+                                    grid, centerPoints, true, durations,
                                     span, samplingInterval, backward, publisher,
                                     serializer, mapGenerator, outputName);
     }
@@ -409,10 +395,8 @@ public class Main {
             final OperationDescription base,
             final OperationDescription comparison,
             final BiMap<OperationDescription, Calculation<CountScoreCard>> calculations,
-            final SectorTable sectorTable,
-            final Set<PointLocation> centerPoints,
-            final boolean markCenters,
-            final NavigableSet<Duration> durations,
+            final Grid grid, final Set<PointLocation> centerPoints,
+            final boolean markCenters, final NavigableSet<Duration> durations,
             final Duration span, final Duration samplingInterval,
             final boolean backward, final LocalFilePublisher publisher,
             final Gson serializer, final MapGenerator mapGenerator,
@@ -430,12 +414,12 @@ public class Main {
                 ? centerPoints : Collections.emptySet();
         if (comparison == null) {
             final NetworkAccessibility map = new NetworkAccessibility(
-                    taskCount, scoreCard, sectorTable, centerPoints,
+                    taskCount, scoreCard, grid, centerPoints,
                     startTime, endTime, durations.last(), samplingInterval,
                     backward, inServiceTime);
             publisher.publish(outputName, serializer.toJson(map));
 
-            mapGenerator.makeRangeMap(sectorTable, scoreCard, markedPoints,
+            mapGenerator.makeRangeMap(grid, scoreCard, markedPoints,
                                       0, 0.2, outputName);
         } else {
             for (final OperationDescription trialComparison
@@ -456,16 +440,15 @@ public class Main {
                 final ComparativeNetworkAccessibility map
                         = new ComparativeNetworkAccessibility(
                                 taskCount, trialTaskCount, scoreCard,
-                                trialScoreCard, sectorTable,
-                                centerPoints, startTime, endTime,
-                                trialStartTime, trialEndTime,
+                                trialScoreCard, grid, centerPoints, startTime,
+                                endTime, trialStartTime, trialEndTime,
                                 durations.last(), samplingInterval,
                                 backward, name, inServiceTime,
                                 trialInServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeComparativeMap(
-                        outputName, sectorTable, scoreCard, trialScoreCard,
-                        markedPoints, 0.2, outputName);
+                        grid, scoreCard, trialScoreCard, markedPoints, 0.2,
+                        outputName);
 
             }
         }
@@ -474,13 +457,11 @@ public class Main {
     private static void generatePointAccessibility(
             final Namespace namespace,
             final OperationDescription baseDescription,
-            final PathScoreCardFactory scoreCardFactory,
-            final SectorTable sectorTable, final boolean backward,
+            final Grid grid, final boolean backward,
             final Duration samplingInterval, final Duration span,
             final NavigableSet<Duration> durations,
             final EnvironmentDataDirectory environmentDirectory,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
-            final NearestPointEndpointDeterminer endpointDeterminer,
             final OperationDescription comparison,
             final LocalFilePublisher publisher, final Gson serializer,
             final MapGenerator mapGenerator, final String outputName,
@@ -488,10 +469,9 @@ public class Main {
             throws IOException, InterruptedException, ExecutionException {
 
         final String coordinateString = namespace.get("coordinate");
-        final Geodetic2DPoint centerCoordinate = (coordinateString == null)
-                ? null : new Geodetic2DPoint(coordinateString);
-        final Landmark centerPoint = buildCenterPoint(
-                sectorTable, centerCoordinate);
+        final GeoPoint centerCoordinate = (coordinateString == null)
+                ? null : GeoPoint.parseDegreeString(coordinateString);
+        final Landmark centerPoint = buildCenterPoint(grid, centerCoordinate);
 
         final MovementAssembler assembler;
         if (!backward) {
@@ -501,13 +481,15 @@ public class Main {
             assembler = new RetrospectiveMovementAssembler();
         }
 
+        final PathScoreCardFactory scoreCardFactory
+                = new PathScoreCardFactory(assembler);
+
         final Map<OperationDescription, Calculation<PathScoreCard>> calculations
                 = calculate(baseDescription, scoreCardFactory, assembler,
-                            sectorTable, Collections.singleton(centerPoint),
+                            grid, Collections.singleton(centerPoint),
                             samplingInterval, span, backward,
-                            endpointDeterminer, environmentDirectory,
-                            serviceDirectoriesMap, durations.last(),
-                            comparison, consoleFactory);
+                            environmentDirectory, serviceDirectoriesMap,
+                            durations.last(), comparison, consoleFactory);
         final Calculation<PathScoreCard> baseCalculation
                 = calculations.get(baseDescription);
         final PathScoreCard scoreCard = baseCalculation.getScoreCard();
@@ -523,21 +505,21 @@ public class Main {
             if (span != null) {
                 final LocalDateTime endTime = startTime.plus(span);
                 final PointAccessibility map = new PointAccessibility(
-                        taskCount, scoreCard, sectorTable, centerPoint,
+                        taskCount, scoreCard, grid, centerPoint,
                         startTime, endTime, samplingInterval, durations.last(),
                         backward, inServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
-                mapGenerator.makeRangeMap(sectorTable, scoreCard,
+                mapGenerator.makeRangeMap(grid, scoreCard,
                                           Collections.singleton(centerPoint), 0,
                                           1, outputName);
             } else {
                 final TimeQualifiedPointAccessibility map
                         = new TimeQualifiedPointAccessibility(
-                                scoreCard, sectorTable, centerPoint,
+                                scoreCard, grid, centerPoint,
                                 startTime, durations.last(), backward,
                                 inServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
-                mapGenerator.makeRangeMap(sectorTable, scoreCard,
+                mapGenerator.makeRangeMap(grid, scoreCard,
                                           Collections.singleton(centerPoint), 0,
                                           1, outputName);
             }
@@ -553,17 +535,17 @@ public class Main {
                 final int trialTaskCount = trialCalculation.getTaskCount();
                 final LocalDateTime trialStartTime = LocalDateTime.parse(
                         comparison.getStartTime());
-                final LocalDateTime trialEndTime
-                        = trialStartTime.plus(span);
                 final Duration trialInServiceTime = trialCalculation
                         .getTransitNetwork().getInServiceTime();
 
                 if (span != null) {
                     final LocalDateTime endTime = startTime.plus(span);
+                    final LocalDateTime trialEndTime
+                            = trialStartTime.plus(span);
                     final ComparativePointAccessibility map
                             = new ComparativePointAccessibility(
                                     taskCount, trialTaskCount, scoreCard,
-                                    trialScoreCard, sectorTable,
+                                    trialScoreCard, grid,
                                     centerPoint, startTime, endTime,
                                     trialStartTime, trialEndTime,
                                     samplingInterval, durations.last(),
@@ -573,7 +555,7 @@ public class Main {
                 } else {
                     final ComparativeTimeQualifiedPointAccessibility map
                             = new ComparativeTimeQualifiedPointAccessibility(
-                                    scoreCard, trialScoreCard, sectorTable,
+                                    scoreCard, trialScoreCard, grid,
                                     centerPoint, startTime, trialStartTime,
                                     durations.last(), backward, name,
                                     trialName, inServiceTime,
@@ -581,33 +563,21 @@ public class Main {
                     publisher.publish(outputName, serializer.toJson(map));
                 }
                 mapGenerator.makeComparativeMap(
-                        outputName, sectorTable, scoreCard, trialScoreCard,
+                        grid, scoreCard, trialScoreCard,
                         Collections.singleton(centerPoint), 0.2, outputName);
             }
         }
     }
 
-    private static SectorTable generateSectors(
-            final WaterDetector waterDetector) throws InterruptedException {
-        final SectorTable sectorTable = new SectorTable(
-                SEATTLE_BOUNDS, NUM_LATITUDE_SECTORS, NUM_LONGITUDE_SECTORS,
-                waterDetector);
-        return sectorTable;
-    }
-
     private static Landmark buildCenterPoint(
-            final SectorTable sectorTable,
-            final Geodetic2DPoint centerCoordinate) {
-        final Sector containingSector = sectorTable.findSector(
-                centerCoordinate);
+            final Grid grid, final GeoPoint centerCoordinate) {
 
-        if (containingSector == null) {
+        if (!grid.coversPoint(centerCoordinate)) {
             throw new ScoreGeneratorFatalException(String.format(
                     "Starting location %s was not in the SectorTable",
                     centerCoordinate));
         }
-        final Landmark centerPoint = new Landmark(containingSector,
-                                                  centerCoordinate);
+        final Landmark centerPoint = new Landmark(centerCoordinate);
         return centerPoint;
     }
 

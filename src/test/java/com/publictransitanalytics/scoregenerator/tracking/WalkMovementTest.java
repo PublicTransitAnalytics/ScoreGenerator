@@ -15,14 +15,15 @@
  */
 package com.publictransitanalytics.scoregenerator.tracking;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import java.time.LocalDateTime;
 import java.time.Month;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  *
@@ -31,9 +32,11 @@ import org.opensextant.geodesy.Longitude;
 public class WalkMovementTest {
 
     private static final Landmark POINT = new Landmark(
-            null, new Geodetic2DPoint(
-                    new Longitude(-122.319523, Longitude.DEGREES),
-                    new Latitude(47.5459458, Latitude.DEGREES)));
+            new GeoPoint(
+                    new GeoLongitude("-122.31952",
+                                            AngleUnit.DEGREES),
+                    new GeoLatitude("47.545946",
+                                           AngleUnit.DEGREES)));
 
     @Test
     public void testShortName() throws Exception {

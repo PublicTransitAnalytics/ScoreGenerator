@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.comparison;
 
-import java.util.Map;
+import java.util.List;
 import lombok.Value;
 
 /**
@@ -26,7 +26,7 @@ import lombok.Value;
 public class Extension {
     
     private final String referenceStopId;
-    private final OperationDirection type;
-    private final Map<Integer, String> sequence;
+    private final ReferenceDirection direction;
+    private final List<SequenceItem> sequence;
     
 }

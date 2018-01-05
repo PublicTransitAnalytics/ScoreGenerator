@@ -15,16 +15,15 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.AngleUnit;
+import com.publictransitanalytics.scoregenerator.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
-import edu.emory.mathcs.backport.java.util.Collections;
+import java.util.Collections;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
-import org.opensextant.geodesy.Latitude;
-import org.opensextant.geodesy.Longitude;
 
 /**
  *
@@ -32,21 +31,18 @@ import org.opensextant.geodesy.Longitude;
  */
 public class SingletonEphemeralEstimateStorageTest {
 
-    private static final Sector SECTOR = new Sector(new Geodetic2DBounds(
-            new Geodetic2DPoint(
-                    new Longitude(-122.459696, Longitude.DEGREES),
-                    new Latitude(47.734145, Latitude.DEGREES)),
-            new Geodetic2DPoint(
-                    new Longitude(-122.224433, Longitude.DEGREES),
-                    new Latitude(47.48172, Latitude.DEGREES))));
     private static final PointLocation ORIGIN = new Landmark(
-            SECTOR, new Geodetic2DPoint(
-                    new Longitude(-122.325386, Longitude.DEGREES),
-                    new Latitude(47.63411, Latitude.DEGREES)));
+            new GeoPoint(
+                    new GeoLongitude("-122.32539",
+                                            AngleUnit.DEGREES),
+                    new GeoLatitude("47.63411",
+                                           AngleUnit.DEGREES)));
     private static final PointLocation DESTINATION = new Landmark(
-            SECTOR, new Geodetic2DPoint(
-                    new Longitude(-122.3198155, Longitude.DEGREES),
-                    new Latitude(47.6673156, Latitude.DEGREES)));
+            new GeoPoint(
+                    new GeoLongitude("-122.31982",
+                                            AngleUnit.DEGREES),
+                    new GeoLatitude("47.667316",
+                                           AngleUnit.DEGREES)));
 
     @Test
     public void testGetsInRangeOfOrigin() throws Exception {
@@ -76,7 +72,7 @@ public class SingletonEphemeralEstimateStorageTest {
 
     @Test
     public void testDoesNotGetOutOfRangeOfDestianion() throws Exception {
- final SingletonEphemeralEstimateStorage storage
+        final SingletonEphemeralEstimateStorage storage
                 = new SingletonEphemeralEstimateStorage(ORIGIN);
         storage.put(DESTINATION, ORIGIN, 10);
         Assert.assertTrue(storage.getReachable(DESTINATION, 9).isEmpty());

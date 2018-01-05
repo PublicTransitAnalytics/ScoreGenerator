@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys;
 
 import com.bitvantage.bitvantagecaching.Key;
-import org.opensextant.geodesy.Geodetic2DBounds;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 
 /**
  *
@@ -26,7 +26,7 @@ public class BoundsKey implements Key {
     
     final String boundsString;
     
-    public BoundsKey(final Geodetic2DBounds bounds) {
+    public BoundsKey(final GeoBounds bounds) {
         boundsString = bounds.toString();
     }
 

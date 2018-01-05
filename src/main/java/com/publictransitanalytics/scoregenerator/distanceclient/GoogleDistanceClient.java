@@ -16,10 +16,8 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.ImmutableMap;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Table;
 import com.google.maps.DistanceMatrixApi;
 import com.google.maps.DistanceMatrixApiRequest;
 import com.google.maps.GeoApiContext;
@@ -30,8 +28,7 @@ import com.google.maps.model.DistanceMatrixRow;
 import com.google.maps.model.LatLng;
 import com.google.maps.model.TravelMode;
 import com.google.maps.model.Unit;
-import com.publictransitanalytics.scoregenerator.geography.EndpointDeterminer;
-import com.publictransitanalytics.scoregenerator.geography.Endpoints;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import java.time.Duration;
@@ -39,7 +36,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  * A DistanceClient that uses the GoogleDistanceMatrix API to get the distances
@@ -52,58 +48,50 @@ public class GoogleDistanceClient implements DistanceClient {
 
     private final GeoApiContext context;
     private final WaterDetector waterDetector;
-    private final EndpointDeterminer endpointDeterminer;
     private final PointOrdererFactory ordererFactory;
 
     public GoogleDistanceClient(final String key,
                                 final WaterDetector waterDetector,
-                                final EndpointDeterminer endpointDeterminer,
                                 final PointOrdererFactory ordererFactory) {
         context = new GeoApiContext().setApiKey(key).setRetryTimeout(
                 0, TimeUnit.SECONDS);
         this.waterDetector = waterDetector;
-        this.endpointDeterminer = endpointDeterminer;
         this.ordererFactory = ordererFactory;
     }
 
     @Override
-    public Map<VisitableLocation, WalkingCosts> getDistances(
-            final VisitableLocation point,
-            final Set<VisitableLocation> consideredPoints)
+    public Map<PointLocation, WalkingCosts> getDistances(
+            final PointLocation point,
+            final Set<PointLocation> consideredPoints)
             throws DistanceClientException, InterruptedException {
 
         try {
-            final ImmutableMap.Builder<VisitableLocation, WalkingCosts> resultBuilder
+            final ImmutableMap.Builder<PointLocation, WalkingCosts> resultBuilder
                     = ImmutableMap.builder();
 
-            for (final VisitableLocation consideredPoint
+            for (final PointLocation consideredPoint
                          : consideredPoints) {
                 final PointOrderer orderer = ordererFactory.getOrderer(
                         point, consideredPoint);
-                final VisitableLocation origin = orderer.getOrigin();
-                final VisitableLocation destination = orderer.getDestination();
-
-                final Endpoints endpoints
-                        = endpointDeterminer.getEndpoints(origin, destination);
-                final Geodetic2DPoint originPoint
-                        = endpoints.getFirstEndpoint();
-                final Geodetic2DPoint destinationPoint
-                        = endpoints.getSecondEndpoint();
+                final PointLocation origin = orderer.getOrigin();
+                final PointLocation destination = orderer.getDestination();
+                final GeoPoint originPoint = origin.getLocation();
+                final GeoPoint destinationPoint
+                        = destination.getLocation();
 
                 if (!waterDetector.isOnWater(originPoint)
                             && !waterDetector.isOnWater(destinationPoint)) {
 
                     final LatLng originLatLng = new LatLng(
-                            originPoint.getLatitudeAsDegrees(),
-                            originPoint.getLongitudeAsDegrees());
+                            originPoint.getLatitude().getDegrees(),
+                            originPoint.getLongitude().getDegrees());
 
                     final LatLng destinationLatLng = new LatLng(
-                            destinationPoint.getLatitudeAsDegrees(),
-                            destinationPoint.getLongitudeAsDegrees());
+                            destinationPoint.getLatitude().getDegrees(),
+                            destinationPoint.getLongitude().getDegrees());
 
                     final DistanceMatrixApiRequest request
-                            = DistanceMatrixApi
-                                    .newRequest(context);
+                            = DistanceMatrixApi.newRequest(context);
 
                     request.origins(originLatLng);
                     request.destinations(destinationLatLng);

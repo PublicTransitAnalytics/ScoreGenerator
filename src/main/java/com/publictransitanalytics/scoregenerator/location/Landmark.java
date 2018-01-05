@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import org.opensextant.geodesy.Geodetic2DPoint;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
@@ -26,11 +26,12 @@ import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 public class Landmark extends PointLocation {
 
     private final String name;
+    private final String id;
 
-    public Landmark(final Sector containingSector,
-                    final Geodetic2DPoint location) {
-        super(containingSector, location);
-        name = location.toString();
+    public Landmark(final GeoPoint location) {
+        super(location);
+        name = location.toDegreeString();
+        id = location.toString();
     }
 
     @Override
@@ -40,7 +41,7 @@ public class Landmark extends PointLocation {
 
     @Override
     public String getIdentifier() {
-        return name;
+        return id;
     }
 
     @Override
@@ -50,7 +51,7 @@ public class Landmark extends PointLocation {
 
     @Override
     public String toString() {
-        return name;
+        return id;
     }
 
 }

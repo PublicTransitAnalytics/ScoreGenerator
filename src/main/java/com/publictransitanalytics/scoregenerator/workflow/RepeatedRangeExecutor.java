@@ -17,17 +17,14 @@ package com.publictransitanalytics.scoregenerator.workflow;
 
 import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -64,7 +61,7 @@ public class RepeatedRangeExecutor implements RangeExecutor {
             final LocalDateTime startTime = timeIterator.next();
             final LocalDateTime cutoffTime = timeTracker.adjust(
                     startTime, duration);
-            Map<VisitableLocation, DynamicProgrammingRecord> map
+            Map<PointLocation, DynamicProgrammingRecord> map
                     = algorithm.getOutput(
                             startTime, cutoffTime, startLocation, timeTracker,
                             duration, reachabilityClient, riderFactory)
@@ -73,30 +70,13 @@ public class RepeatedRangeExecutor implements RangeExecutor {
             final TaskIdentifier latestFullTask = new TaskIdentifier(
                     startTime, startLocation);
 
-            final MovementAssembler assembler = calculation
-                    .getMovementAssembler();
-
-            updateScoreCard(map, latestFullTask, scoreCard, assembler);
+            scoreCard.scoreTask(latestFullTask, map);
         }
         final Instant profileEndTime = Instant.now();
 
         log.info("Finished {} at {} (wallclock {}).", taskGroup,
                  profileEndTime.toString(),
                  Duration.between(profileStartTime, profileEndTime));
-    }
-
-    private void updateScoreCard(
-            final Map<VisitableLocation, DynamicProgrammingRecord> map,
-            final TaskIdentifier task, final ScoreCard scoreCard,
-            final MovementAssembler assembler)
-            throws InterruptedException {
-
-        final Set<VisitableLocation> reachedLocations = map.keySet();
-
-        for (final VisitableLocation reachedLocation : reachedLocations) {
-            final MovementPath path = assembler.assemble(reachedLocation, map);
-            scoreCard.putPath(reachedLocation, task, path);
-        }
     }
 
 }

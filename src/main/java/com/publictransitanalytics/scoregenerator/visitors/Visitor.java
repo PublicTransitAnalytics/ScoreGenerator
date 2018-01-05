@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.visitors;
 
+import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 
 /**
@@ -26,10 +26,10 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
  */
 public interface Visitor {
 
-    void visit(Sector sector) throws InterruptedException;
-
     void visit(TransitStop transitStop) throws InterruptedException;
 
     void visit(Landmark point) throws InterruptedException;
+
+    void visit(GridPoint point);
 
 }

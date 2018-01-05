@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator;
+package com.publictransitanalytics.scoregenerator.schedule.patching;
+
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import java.time.Duration;
+import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface NetworkConsole {
-
-    void enterConsole();
-    
+@Value
+public class RouteSequenceItem {
+    private final Duration delta;
+    private final TransitStop stop;
 }

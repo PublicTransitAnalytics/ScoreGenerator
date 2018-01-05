@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
@@ -54,23 +54,23 @@ public class PointAccessibility {
     private final String samplingInterval;
 
     private final String tripDuration;
-    
+
     private final int taskCount;
-    
+
     private final int totalSectors;
-    
+
     private final long inServiceSeconds;
 
     public PointAccessibility(
             final int taskCount, final PathScoreCard scoreCard,
-            final SectorTable sectorTable, final PointLocation centerPoint, 
-            final LocalDateTime startTime, final LocalDateTime lastTime, 
+            final Grid grid, final PointLocation centerPoint,
+            final LocalDateTime startTime, final LocalDateTime lastTime,
             final Duration samplingInterval, final Duration tripDuration,
             final boolean backward, final Duration inServiceTime)
             throws InterruptedException {
         type = AccessibilityType.POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
-        mapBounds = new Bounds(sectorTable);
+        mapBounds = new Bounds(grid.getBounds());
         center = new Point(centerPoint);
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
@@ -83,12 +83,14 @@ public class PointAccessibility {
                 tripDuration.toMillis(), true, true);
 
         this.taskCount = taskCount;
-        totalSectors = sectorTable.getSectors().size();
+
+        final Set<Sector> sectors = grid.getAllSectors();
+        totalSectors = sectors.size();
 
         final ImmutableMap.Builder<Bounds, SectorReachInformation> informationBuilder
                 = ImmutableMap.builder();
 
-        for (final Sector sector : sectorTable.getSectors()) {
+        for (final Sector sector : sectors) {
             final Map<TaskIdentifier, MovementPath> sectorPaths
                     = scoreCard.getBestPaths(sector);
             if (!sectorPaths.isEmpty()) {
@@ -111,7 +113,7 @@ public class PointAccessibility {
             }
         }
         sectorPaths = informationBuilder.build();
-        
+
         inServiceSeconds = inServiceTime.getSeconds();
     }
 }

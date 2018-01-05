@@ -19,7 +19,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.publictransitanalytics.scoregenerator.distanceclient.CalculatingDistanceEstimator;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Set;
 import lombok.Getter;
 
@@ -30,14 +30,14 @@ import lombok.Getter;
 public class RecordingEstimator implements CalculatingDistanceEstimator {
 
     @Getter
-    final SetMultimap<PointLocation, VisitableLocation> record;
+    final SetMultimap<PointLocation, PointLocation> record;
 
     public RecordingEstimator() {
         record = HashMultimap.create();
     }
     
     @Override
-    public Set<VisitableLocation> getReachableLocations(PointLocation origin,
+    public Set<PointLocation> getReachableLocations(PointLocation origin,
                                                         double distanceMeters)
             throws InterruptedException {
         return null;
@@ -49,7 +49,7 @@ public class RecordingEstimator implements CalculatingDistanceEstimator {
 
     @Override
     public void generateEstimate(final PointLocation origin,
-                                 final VisitableLocation destination) {
+                                 final PointLocation destination) {
         record.put(origin, destination);
     }
     

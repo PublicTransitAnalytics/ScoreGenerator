@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.util.Map;
 import java.util.Set;
@@ -30,12 +30,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PreloadedDistanceClient implements DistanceClient {
 
-    private final Map<VisitableLocation, WalkingCosts> map;
+    private final Map<PointLocation, WalkingCosts> map;
 
     @Override
-    public Map<VisitableLocation, WalkingCosts>
-            getDistances(final VisitableLocation origins,
-                         final Set<VisitableLocation> destinations)
+    public Map<PointLocation, WalkingCosts>
+            getDistances(final PointLocation origins,
+                         final Set<PointLocation> destinations)
             throws DistanceClientException {
         return map;
     }

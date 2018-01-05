@@ -24,6 +24,8 @@ import com.esri.core.geometry.OperatorImportFromGeoJson;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.SpatialReference;
 import com.google.common.collect.ImmutableSet;
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -32,8 +34,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.stream.Stream;
 import org.json.JSONException;
-import org.opensextant.geodesy.Geodetic2DBounds;
-import org.opensextant.geodesy.Geodetic2DPoint;
 
 /**
  * Uses a GeoJson file of water polygons to detect water. Naively does a linear
@@ -75,9 +75,9 @@ public class GeoJsonWaterDetector implements WaterDetector {
     }
 
     @Override
-    public boolean isOnWater(final Geodetic2DPoint point) {
-        final Point internalPoint = new Point(point.getLatitudeAsDegrees(),
-                                              point.getLongitudeAsDegrees());
+    public boolean isOnWater(final GeoPoint point) {
+        final Point internalPoint = new Point(point.getLatitude().getDegrees(),
+                                              point.getLatitude().getDegrees());
 
         for (final Geometry featureGeometry : waterGeometry) {
             if (GeometryEngine.contains(featureGeometry, internalPoint,
@@ -89,12 +89,12 @@ public class GeoJsonWaterDetector implements WaterDetector {
     }
 
     @Override
-    public boolean isEntirelyWater(Geodetic2DBounds bounds) {
+    public boolean isEntirelyWater(final GeoBounds bounds) {
         final Envelope envelope = new Envelope(
-                bounds.getSouthLat().inDegrees(),
-                bounds.getEastLon().inDegrees(),
-                bounds.getNorthLat().inDegrees(),
-                bounds.getWestLon().inDegrees());
+                bounds.getSouthLat().getDegrees(),
+                bounds.getEastLon().getDegrees(),
+                bounds.getNorthLat().getDegrees(),
+                bounds.getWestLon().getDegrees());
 
         for (final Geometry featureGeometry : waterGeometry) {
             if (GeometryEngine.contains(featureGeometry, envelope,

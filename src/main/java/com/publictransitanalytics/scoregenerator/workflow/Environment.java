@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import java.time.Duration;
 import lombok.Value;
 
@@ -25,6 +25,6 @@ import lombok.Value;
  */
 @Value
 public class Environment {
-    final SectorTable sectorTable;
+    final Grid grid;
     final Duration longestDuration;
 }

@@ -18,7 +18,7 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.NavigableMap;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -30,10 +30,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PreloadedDistanceEstimator implements DistanceEstimator {
 
-    private final NavigableMap<Double, VisitableLocation> estimates;
+    private final NavigableMap<Double, PointLocation> estimates;
 
     @Override
-    public Set<VisitableLocation> getReachableLocations(
+    public Set<PointLocation> getReachableLocations(
             final PointLocation originStop, final double distanceMeters) {
         return ImmutableSet.copyOf(
                 estimates.headMap(distanceMeters, true).values());

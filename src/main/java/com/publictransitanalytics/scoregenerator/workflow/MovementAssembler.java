@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.util.Map;
 
@@ -26,7 +26,7 @@ import java.util.Map;
 public interface MovementAssembler {
     
     public MovementPath assemble(
-            final VisitableLocation terminal,
-            final Map<VisitableLocation, DynamicProgrammingRecord> lastRow);
+            final PointLocation terminal,
+            final Map<PointLocation, DynamicProgrammingRecord> lastRow);
     
 }

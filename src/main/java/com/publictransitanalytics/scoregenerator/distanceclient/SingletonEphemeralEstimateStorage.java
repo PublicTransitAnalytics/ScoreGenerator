@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.google.common.collect.TreeMultimap;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,8 +32,8 @@ import java.util.stream.Collectors;
 public class SingletonEphemeralEstimateStorage implements EstimateStorage {
 
     private final PointLocation singleOrigin;
-    private final TreeMultimap<Double, VisitableLocation> distances;
-    private final Map<VisitableLocation, Double> reverseMap;
+    private final TreeMultimap<Double, PointLocation> distances;
+    private final Map<PointLocation, Double> reverseMap;
 
     public SingletonEphemeralEstimateStorage(final PointLocation origin) {
         singleOrigin = origin;
@@ -45,7 +45,7 @@ public class SingletonEphemeralEstimateStorage implements EstimateStorage {
 
     @Override
     public void put(final PointLocation origin,
-                    final VisitableLocation destination,
+                    final PointLocation destination,
                     final double distanceMeters) throws InterruptedException {
         if (origin.equals(singleOrigin)) {
             distances.put(distanceMeters, destination);
@@ -55,7 +55,7 @@ public class SingletonEphemeralEstimateStorage implements EstimateStorage {
     }
 
     @Override
-    public Set<VisitableLocation> getReachable(final PointLocation origin,
+    public Set<PointLocation> getReachable(final PointLocation origin,
                                                final double distanceMeters)
             throws InterruptedException {
         if (origin.equals(singleOrigin)) {

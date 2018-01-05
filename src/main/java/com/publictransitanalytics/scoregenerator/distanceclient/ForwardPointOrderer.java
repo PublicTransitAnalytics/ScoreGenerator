@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
-import com.publictransitanalytics.scoregenerator.location.VisitableLocation;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -25,16 +25,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ForwardPointOrderer implements PointOrderer {
 
-    final VisitableLocation point;
-    final VisitableLocation consideredPoint;
+    final PointLocation point;
+    final PointLocation consideredPoint;
     
     @Override
-    public VisitableLocation getOrigin() {
+    public PointLocation getOrigin() {
         return point;
     }
 
     @Override
-    public VisitableLocation getDestination() {
+    public PointLocation getDestination() {
         return consideredPoint;
     }
     

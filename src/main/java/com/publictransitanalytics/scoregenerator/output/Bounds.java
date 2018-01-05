@@ -15,9 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
 import com.publictransitanalytics.scoregenerator.location.Sector;
-import org.opensextant.geodesy.Geodetic2DBounds;
 
 /**
  * A description of bounds that produces a comma-separated list of bounds.
@@ -32,16 +31,12 @@ public class Bounds {
         this(sector.getBounds());
     }
 
-    public Bounds(final SectorTable sectorTable) {
-        this(sectorTable.getBounds());
-    }
-
-    public Bounds(final Geodetic2DBounds bounds) {
+    public Bounds(final GeoBounds bounds) {
         boundsString = String.format(
-                "%f,%f,%f,%f", bounds.getNorthLat().inDegrees(),
-                bounds.getSouthLat().inDegrees(),
-                bounds.getEastLon().inDegrees(),
-                bounds.getWestLon().inDegrees());
+                "%f,%f,%f,%f", bounds.getNorthLat().getDegrees(),
+                bounds.getSouthLat().getDegrees(),
+                bounds.getEastLon().getDegrees(),
+                bounds.getWestLon().getDegrees());
     }
 
     @Override

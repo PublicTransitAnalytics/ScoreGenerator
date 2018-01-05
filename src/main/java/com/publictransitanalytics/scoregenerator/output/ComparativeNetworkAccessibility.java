@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
-import com.publictransitanalytics.scoregenerator.SectorTable;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
@@ -67,27 +67,26 @@ public class ComparativeNetworkAccessibility {
     private final int totalSectors;
 
     private final String trialName;
-    
+
     private final long inServiceSeconds;
-    
+
     private final long trialInServiceSeconds;
 
     public ComparativeNetworkAccessibility(
             final int taskCount, final int trialTaskCount,
             final ScoreCard scoreCard, final ScoreCard trialScoreCard,
-            final SectorTable sectorTable,
-            final Set<PointLocation> centerPoints,
+            final Grid grid, final Set<PointLocation> centerPoints,
             final LocalDateTime startTime, final LocalDateTime endTime,
-            final LocalDateTime trialStartTime, 
-            final LocalDateTime trialEndTime, final Duration tripDuration, 
-            final Duration samplingInterval, final boolean backward, 
+            final LocalDateTime trialStartTime,
+            final LocalDateTime trialEndTime, final Duration tripDuration,
+            final Duration samplingInterval, final boolean backward,
             final String trialName, final Duration inServiceTime,
             final Duration trialInServiceTime) throws InterruptedException {
         type = AccessibilityType.COMPARATIVE_NETWORK_ACCESSIBILITY;
 
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
-        mapBounds = new Bounds(sectorTable);
-        boundsCenter = new Point(sectorTable.getBounds().getCenter());
+        mapBounds = new Bounds(grid.getBounds());
+        boundsCenter = new Point(grid.getBounds().getCenter());
         this.startTime = startTime.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.endTime = endTime.format(DateTimeFormatter.ofPattern(
@@ -104,15 +103,18 @@ public class ComparativeNetworkAccessibility {
 
         this.taskCount = taskCount;
         this.trialTaskCount = trialTaskCount;
-        totalSectors = sectorTable.getSectors().size();
+        
+        final Set<Sector> sectors = grid.getAllSectors();
+        totalSectors = sectors.size();
 
         final ImmutableMap.Builder<Bounds, CountComparison> countBuilder
                 = ImmutableMap.builder();
-        for (final Sector sector : sectorTable.getSectors()) {
+        for (final Sector sector : sectors) {
             final int count = scoreCard.hasPath(sector)
                     ? scoreCard.getReachedCount(sector) : 0;
             final int trialCount = trialScoreCard.hasPath(sector)
                     ? trialScoreCard.getReachedCount(sector) : 0;
+
             if (count != 0 && trialCount != 0) {
                 final Bounds bounds = new Bounds(sector);
                 final CountComparison comparison
@@ -128,7 +130,7 @@ public class ComparativeNetworkAccessibility {
         sampleCount = centerPoints.size();
 
         this.trialName = trialName;
-        
+
         inServiceSeconds = inServiceTime.getSeconds();
         trialInServiceSeconds = trialInServiceTime.getSeconds();
     }

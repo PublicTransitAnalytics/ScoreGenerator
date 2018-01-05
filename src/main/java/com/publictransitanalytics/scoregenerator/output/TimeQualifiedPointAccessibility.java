@@ -15,10 +15,10 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
-import com.publictransitanalytics.scoregenerator.SectorTable;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableMap;
+import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
@@ -50,18 +51,18 @@ public class TimeQualifiedPointAccessibility {
     private final String tripDuration;
 
     private final int totalSectors;
-    
+
     private final long inServiceSeconds;
 
     public TimeQualifiedPointAccessibility(
-            final PathScoreCard scoreCard, final SectorTable sectorTable,
-            final PointLocation centerPoint, final LocalDateTime time, 
+            final PathScoreCard scoreCard, final Grid grid,
+            final PointLocation centerPoint, final LocalDateTime time,
             final Duration tripDuration, final boolean backward,
-            final Duration inServiceTime) 
+            final Duration inServiceTime)
             throws InterruptedException {
         type = AccessibilityType.TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
-        mapBounds = new Bounds(sectorTable);
+        mapBounds = new Bounds(grid.getBounds());
         center = new Point(centerPoint);
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
@@ -72,7 +73,9 @@ public class TimeQualifiedPointAccessibility {
                 = ImmutableMap.builder();
 
         final TaskIdentifier task = new TaskIdentifier(time, centerPoint);
-        for (final Sector sector : sectorTable.getSectors()) {
+
+        final Set<Sector> sectors = grid.getAllSectors();
+        for (final Sector sector : sectors) {
             final MovementPath sectorPath
                     = scoreCard.getBestPath(sector, task);
             if (sectorPath != null) {
@@ -83,7 +86,7 @@ public class TimeQualifiedPointAccessibility {
             }
         }
         sectorPaths = builder.build();
-        totalSectors = sectorTable.getSectors().size();
+        totalSectors = sectors.size();
         inServiceSeconds = inServiceTime.getSeconds();
     }
 
