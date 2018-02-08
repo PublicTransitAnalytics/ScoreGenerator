@@ -54,15 +54,15 @@ public class WalkMovement implements Movement {
     public String getMediumString() {
         return "Walk";
     }
-    
-     @Override
+
+    @Override
     public String getLongForm()
             throws InterruptedException {
-       
+
         return String.format(
                 "Walk from %s at %s arriving at %s at %s",
-                startLocation.toString(), startTime, endLocation.toString(),
-                endTime);
+                startLocation.getCommonName(), startTime,
+                endLocation.getCommonName(), endTime);
     }
 
 }

@@ -34,7 +34,7 @@ public class GridPoint extends PointLocation {
     public GridPoint(final GeoPoint location, final Segment segment,
                      final GeoAngle angle) {
         super(location);
-        name = location.toString();
+        name = location.toDegreeString();
         identifier = String.format("gridpoint:%sx%s", segment.toString(),
                                    angle.toString());
     }

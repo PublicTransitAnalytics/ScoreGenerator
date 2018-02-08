@@ -21,10 +21,12 @@ import com.google.common.collect.Table;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
+import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,15 +41,17 @@ public class PathScoreCard extends ScoreCard {
     private final Table<Sector, TaskIdentifier, MovementPath> bestPaths;
     private final SetMultimap<PointLocation, Sector> pointSectorMap;
     private final MovementAssembler assembler;
+    private final TimeTracker timeTracker;
 
     public PathScoreCard(
             final int taskCount,
             final SetMultimap<PointLocation, Sector> pointSectorMap,
-            final MovementAssembler assembler) {
+            final MovementAssembler assembler, final TimeTracker timeTracker) {
         super(taskCount);
         bestPaths = HashBasedTable.create();
         this.pointSectorMap = pointSectorMap;
         this.assembler = assembler;
+        this.timeTracker = timeTracker;
     }
 
     public synchronized boolean hasNoBetterPath(
@@ -65,10 +69,25 @@ public class PathScoreCard extends ScoreCard {
     public synchronized void scoreTask(
             final TaskIdentifier task,
             final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
-        for (final PointLocation location : stateMap.keySet()) {
-            for (final Sector sector : pointSectorMap.get(location)) {
-                bestPaths.put(sector, task,
-                              assembler.assemble(location, stateMap));
+        final Map<Sector, LocalDateTime> arrivalTimes = new HashMap<>();
+        for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
+                     : stateMap.entrySet()) {
+            final PointLocation location = entry.getKey();
+            final Set<Sector> sectors = pointSectorMap.get(location);
+            final MovementPath path = assembler.assemble(location, stateMap);
+            final LocalDateTime time = entry.getValue().getReachTime();
+            for (final Sector sector : sectors) {
+                if (arrivalTimes.containsKey(sector)) {
+                    if (timeTracker.shouldReplace(
+                            arrivalTimes.get(sector), time)) {
+                        arrivalTimes.put(sector, time);
+                        bestPaths.put(sector, task, path);
+                    }
+
+                } else {
+                    arrivalTimes.put(sector, time);
+                    bestPaths.put(sector, task, path);
+                }
             }
         }
     }

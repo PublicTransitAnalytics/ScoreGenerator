@@ -118,7 +118,7 @@ public class SegmentExporter implements Sink {
     }
 
     @Override
-    public void close() {
+    public void release() {
     }
 
     public Set<Segment> getSegments() {

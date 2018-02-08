@@ -74,6 +74,9 @@ import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
+import com.publictransitanalytics.scoregenerator.walking.BackwardTimeTracker;
+import com.publictransitanalytics.scoregenerator.walking.ForwardTimeTracker;
+import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingAlgorithm;
 import com.publictransitanalytics.scoregenerator.workflow.ForwardMovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
@@ -95,7 +98,7 @@ import java.util.HashMap;
 public class Main {
 
     private static final GeoBounds SEATTLE_BOUNDS = new GeoBounds(
-            new GeoLongitude("-122.45970", AngleUnit.DEGREES),           
+            new GeoLongitude("-122.45970", AngleUnit.DEGREES),
             new GeoLatitude("47.48172", AngleUnit.DEGREES),
             new GeoLongitude("-122.22443", AngleUnit.DEGREES),
             new GeoLatitude("47.734145", AngleUnit.DEGREES));
@@ -282,13 +285,17 @@ public class Main {
             throws IOException, InterruptedException, ExecutionException {
 
         final Set<PointLocation> centerPoints = grid.getCenters();
-        final MovementAssembler assembler = new NullMovementAssembler();
+        final TimeTracker timeTracker;
+        if (!backward) {
+            timeTracker = new ForwardTimeTracker();
+        } else {
+            timeTracker = new BackwardTimeTracker();
+        }
         final BiMap<OperationDescription, Calculation<CountScoreCard>> result
-                = calculate(base, scoreCardFactory, assembler, grid,
-                            centerPoints, samplingInterval, span, backward,
-                            environmentDirectory,
-                            serviceDirectoriesMap, durations.last(),
-                            comparison, consoleFactory);
+                = calculate(base, scoreCardFactory, grid, centerPoints,
+                            samplingInterval, span, backward, timeTracker,
+                            environmentDirectory, serviceDirectoriesMap,
+                            durations.last(), comparison, consoleFactory);
         publishNetworkAccessibility(base, comparison, result, grid,
                                     centerPoints, false, durations, span,
                                     samplingInterval, backward, publisher,
@@ -297,10 +304,10 @@ public class Main {
 
     private static <S extends ScoreCard> BiMap<OperationDescription, Calculation<S>> calculate(
             final OperationDescription baseDescription,
-            final ScoreCardFactory<S> scoreCardFactory,
-            final MovementAssembler assembler, final Grid grid,
+            final ScoreCardFactory<S> scoreCardFactory, final Grid grid,
             final Set<PointLocation> centers, final Duration samplingInterval,
             final Duration span, final boolean backward,
+            final TimeTracker timeTracker,
             final EnvironmentDataDirectory environmentDirectory,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
             final Duration longestDuration,
@@ -313,7 +320,7 @@ public class Main {
         final Calculation<S> calculation = new Calculation(
                 grid, centers, longestDuration, backward, span,
                 samplingInterval, ESTIMATE_WALK_METERS_PER_SECOND,
-                environmentDirectory, serviceDirectoriesMap,
+                timeTracker, environmentDirectory, serviceDirectoriesMap,
                 scoreCardFactory, baseDescription);
         final NetworkConsole console = consoleFactory.getConsole(
                 calculation.getTransitNetwork(),
@@ -329,7 +336,7 @@ public class Main {
             final Calculation trialCalculation = new Calculation(
                     grid, centers, longestDuration, backward, span,
                     samplingInterval, ESTIMATE_WALK_METERS_PER_SECOND,
-                    environmentDirectory, serviceDirectoriesMap,
+                    timeTracker, environmentDirectory, serviceDirectoriesMap,
                     scoreCardFactory, comparisonDescription);
             final NetworkConsole trialConsole = consoleFactory.getConsole(
                     trialCalculation.getTransitNetwork(),
@@ -376,13 +383,17 @@ public class Main {
         Collections.shuffle(centerList);
         final ImmutableSet<PointLocation> centerPoints
                 = ImmutableSet.copyOf(centerList.subList(0, samples));
-
-        final MovementAssembler assembler = new NullMovementAssembler();
+        final TimeTracker timeTracker;
+        if (!backward) {
+            timeTracker = new ForwardTimeTracker();
+        } else {
+            timeTracker = new BackwardTimeTracker();
+        }
 
         final BiMap<OperationDescription, Calculation<CountScoreCard>> result
-                = calculate(baseDescription, scoreCardFactory, assembler,
-                            grid, centerPoints, samplingInterval, span,
-                            backward, environmentDirectory,
+                = calculate(baseDescription, scoreCardFactory, grid,
+                            centerPoints, samplingInterval, span, backward,
+                            timeTracker, environmentDirectory,
                             serviceDirectoriesMap, durations.last(),
                             comparison, consoleFactory);
         publishNetworkAccessibility(baseDescription, comparison, result,
@@ -474,22 +485,25 @@ public class Main {
         final Landmark centerPoint = buildCenterPoint(grid, centerCoordinate);
 
         final MovementAssembler assembler;
+        final TimeTracker timeTracker;
         if (!backward) {
             assembler = new ForwardMovementAssembler();
-
+            timeTracker = new ForwardTimeTracker();
         } else {
             assembler = new RetrospectiveMovementAssembler();
+            timeTracker = new BackwardTimeTracker();
         }
 
         final PathScoreCardFactory scoreCardFactory
-                = new PathScoreCardFactory(assembler);
+                = new PathScoreCardFactory(assembler, timeTracker);
 
         final Map<OperationDescription, Calculation<PathScoreCard>> calculations
-                = calculate(baseDescription, scoreCardFactory, assembler,
-                            grid, Collections.singleton(centerPoint),
+                = calculate(baseDescription, scoreCardFactory, grid,
+                            Collections.singleton(centerPoint),
                             samplingInterval, span, backward,
-                            environmentDirectory, serviceDirectoriesMap,
-                            durations.last(), comparison, consoleFactory);
+                            timeTracker, environmentDirectory,
+                            serviceDirectoriesMap, durations.last(),
+                            comparison, consoleFactory);
         final Calculation<PathScoreCard> baseCalculation
                 = calculations.get(baseDescription);
         final PathScoreCard scoreCard = baseCalculation.getScoreCard();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,15 @@
 package com.publictransitanalytics.scoregenerator.distanceclient;
 
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import java.util.List;
+import java.util.Set;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface PointOrderer {
-    
-    PointLocation getOrigin();
-    PointLocation getDestination();
-    
+public interface PointSequencer {
+    List<PointLocation> getSequence();
+    Set<Integer> getOrigins();
+    Set<Integer> getDestinations();
 }

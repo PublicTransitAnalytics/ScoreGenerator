@@ -22,8 +22,10 @@ import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ScoreCard that counts how many tasks reach a Sector.
@@ -58,14 +60,10 @@ public class CountScoreCard extends ScoreCard {
             final TaskIdentifier task,
             final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
         final Set<PointLocation> reachedLocations = stateMap.keySet();
-
-        for (final PointLocation reachedLocation : reachedLocations) {
-            final Set<Sector> sectors = pointSectorMap.get(reachedLocation);
-            for (final Sector sector : sectors) {
-                locations.add(sector);
-            }
-        }
-
+        final Set<Sector> reachedSectors = reachedLocations.stream().map(
+                location -> pointSectorMap.get(location))
+                .flatMap(Collection::stream).collect(Collectors.toSet());
+        locations.addAll(reachedSectors);
     }
 
 }

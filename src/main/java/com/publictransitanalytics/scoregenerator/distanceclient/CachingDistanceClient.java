@@ -76,26 +76,31 @@ public class CachingDistanceClient implements DistanceClient {
             }
         }
 
-        final Map<PointLocation, WalkingCosts> uncachedCosts
-                = client.getDistances(point, uncachedPointsBuilder.build());
-        resultBuilder.putAll(uncachedCosts);
-        for (final Map.Entry<PointLocation, WalkingCosts> entry
-                     : uncachedCosts.entrySet()) {
-            final PointOrderer orderer = ordererFactory.getOrderer(
-                    point, entry.getKey());
+        final ImmutableSet<PointLocation> uncachedPoints
+                = uncachedPointsBuilder.build();
 
-            final DistanceCacheKey cacheKey = new DistanceCacheKey(
-                    orderer.getOrigin().getIdentifier(),
-                    orderer.getDestination().getIdentifier());
-            final WalkingCosts costs = entry.getValue();
+        if (!uncachedPoints.isEmpty()) {
+            final Map<PointLocation, WalkingCosts> uncachedCosts
+                    = client.getDistances(point, uncachedPoints);
+            resultBuilder.putAll(uncachedCosts);
+            for (final Map.Entry<PointLocation, WalkingCosts> entry
+                         : uncachedCosts.entrySet()) {
+                final PointOrderer orderer = ordererFactory.getOrderer(
+                        point, entry.getKey());
 
-            final WalkingDistanceMeasurement measurement
-                    = new WalkingDistanceMeasurement(
-                            costs.getDuration(), costs.getDistanceMeters());
-            try {
-                cache.put(cacheKey, measurement);
-            } catch (final BitvantageStoreException e) {
-                throw new DistanceClientException(e);
+                final DistanceCacheKey cacheKey = new DistanceCacheKey(
+                        orderer.getOrigin().getIdentifier(),
+                        orderer.getDestination().getIdentifier());
+                final WalkingCosts costs = entry.getValue();
+
+                final WalkingDistanceMeasurement measurement
+                        = new WalkingDistanceMeasurement(
+                                costs.getDuration(), costs.getDistanceMeters());
+                try {
+                    cache.put(cacheKey, measurement);
+                } catch (final BitvantageStoreException e) {
+                    throw new DistanceClientException(e);
+                }
             }
         }
 

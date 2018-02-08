@@ -21,7 +21,6 @@ import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.PathWrapper;
 import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
@@ -42,7 +41,6 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
 
     private final PointOrdererFactory ordererFactory;
     private final GraphHopper hopper;
-    private final WaterDetector waterDetector;
 
     @Override
     public Map<PointLocation, WalkingCosts> getDistances(
@@ -80,6 +78,7 @@ public class GraphhopperLocalDistanceClient implements DistanceClient {
             }
 
             final PathWrapper path = rsp.getBest();
+            
 
             double distance = path.getDistance();
             long timeInMs = path.getTime();

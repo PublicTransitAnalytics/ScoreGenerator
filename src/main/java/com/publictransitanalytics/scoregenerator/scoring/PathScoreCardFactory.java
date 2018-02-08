@@ -18,6 +18,7 @@ package com.publictransitanalytics.scoregenerator.scoring;
 import com.google.common.collect.SetMultimap;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import lombok.RequiredArgsConstructor;
 
@@ -27,14 +28,16 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 public class PathScoreCardFactory implements ScoreCardFactory<PathScoreCard> {
-    
+
     private final MovementAssembler assembler;
+    private final TimeTracker timeTracker;
 
     @Override
     public PathScoreCard makeScoreCard(
             final int taskCount,
             final SetMultimap<PointLocation, Sector> pointSectorMap) {
-        return new PathScoreCard(taskCount, pointSectorMap, assembler);
+        return new PathScoreCard(taskCount, pointSectorMap, assembler,
+                                 timeTracker);
     }
-    
+
 }
