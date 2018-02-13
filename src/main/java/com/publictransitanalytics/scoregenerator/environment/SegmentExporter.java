@@ -39,7 +39,7 @@ import org.openstreetmap.osmosis.core.task.v0_6.Sink;
 @Slf4j
 public class SegmentExporter implements Sink {
 
-    private final ImmutableSet.Builder builder;
+    private final ImmutableSet.Builder<Segment> builder;
     private final Map<Long, Node> nodes;
 
     public SegmentExporter(final Map<Long, Node> nodes) {

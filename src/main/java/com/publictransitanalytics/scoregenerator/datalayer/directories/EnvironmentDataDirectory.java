@@ -36,7 +36,7 @@ import lombok.Getter;
  */
 public class EnvironmentDataDirectory {
 
-    private static final String SEATTLE_OSM_FILE = "king_county.osm.pbf";
+    private static final String OSM_FILE = "environment.osm.pbf";
     private static final String GRAPHHOPPER_DIRECTORY = "graphhopper_files";
 
     private static final String WATER_STORE = "water_store";
@@ -51,7 +51,7 @@ public class EnvironmentDataDirectory {
 
     public EnvironmentDataDirectory(final Path root)
             throws IOException, WaterDetectorException {
-        osmPath = root.resolve(SEATTLE_OSM_FILE);
+        osmPath = root.resolve(OSM_FILE);
         final Path graphFolder = root.resolve(GRAPHHOPPER_DIRECTORY);
 
         hopper = new GraphHopperOSM().forServer();
