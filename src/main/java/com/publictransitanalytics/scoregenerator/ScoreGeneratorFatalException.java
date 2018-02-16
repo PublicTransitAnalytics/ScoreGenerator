@@ -22,7 +22,7 @@ package com.publictransitanalytics.scoregenerator;
  */
 public class ScoreGeneratorFatalException extends RuntimeException {
 
-    public ScoreGeneratorFatalException(Exception e) {
+    public ScoreGeneratorFatalException(Throwable e) {
         super(e);
     }
 

@@ -34,7 +34,6 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
 
     public ParallelTaskExecutor(
             final RangeExecutor timeRangeExecutor) {
-
         this.timeRangeExecutor = timeRangeExecutor;
         pool = Executors.newWorkStealingPool();
     }
@@ -44,7 +43,7 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
             throws InterruptedException {
         for (final Calculation<S> rangeCalculation : rangeCalculations) {
 
-            final Set<TaskGroupIdentifier> tasks 
+            final Set<TaskGroupIdentifier> tasks
                     = rangeCalculation.getTaskGroups();
             for (final TaskGroupIdentifier task : tasks) {
                 pool.execute(new Runnable() {
@@ -53,8 +52,14 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
                         try {
                             timeRangeExecutor.executeRange(
                                     rangeCalculation, task);
-                        } catch (InterruptedException e) {
+                        } catch (final InterruptedException e) {
                             Thread.currentThread().interrupt();
+                        } catch (final Exception e) {
+                            log.error("Caught exception in task {}.", task,
+                                      e);
+                            pool.shutdownNow();
+                            log.info("Executor shut down.");
+                            throw e;
                         }
                     }
                 });
