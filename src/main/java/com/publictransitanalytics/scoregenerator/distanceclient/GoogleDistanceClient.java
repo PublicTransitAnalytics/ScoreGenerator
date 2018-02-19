@@ -29,13 +29,12 @@ import com.google.maps.model.LatLng;
 import com.google.maps.model.TravelMode;
 import com.google.maps.model.Unit;
 import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector;
 
 /**
  * A DistanceClient that uses the GoogleDistanceMatrix API to get the distances
@@ -47,15 +46,13 @@ import lombok.extern.slf4j.Slf4j;
 public class GoogleDistanceClient implements DistanceClient {
 
     private final GeoApiContext context;
-    private final WaterDetector waterDetector;
     private final PointOrdererFactory ordererFactory;
 
     public GoogleDistanceClient(final String key,
-                                final WaterDetector waterDetector,
+                                final InEnvironmentDetector waterDetector,
                                 final PointOrdererFactory ordererFactory) {
         context = new GeoApiContext().setApiKey(key).setRetryTimeout(
                 0, TimeUnit.SECONDS);
-        this.waterDetector = waterDetector;
         this.ordererFactory = ordererFactory;
     }
 
@@ -65,62 +62,54 @@ public class GoogleDistanceClient implements DistanceClient {
             final Set<PointLocation> consideredPoints)
             throws DistanceClientException, InterruptedException {
 
-        try {
-            final ImmutableMap.Builder<PointLocation, WalkingCosts> resultBuilder
-                    = ImmutableMap.builder();
+        final ImmutableMap.Builder<PointLocation, WalkingCosts> resultBuilder
+                = ImmutableMap.builder();
 
-            for (final PointLocation consideredPoint
-                         : consideredPoints) {
-                final PointOrderer orderer = ordererFactory.getOrderer(
-                        point, consideredPoint);
-                final PointLocation origin = orderer.getOrigin();
-                final PointLocation destination = orderer.getDestination();
-                final GeoPoint originPoint = origin.getLocation();
-                final GeoPoint destinationPoint
-                        = destination.getLocation();
+        for (final PointLocation consideredPoint
+                     : consideredPoints) {
+            final PointOrderer orderer = ordererFactory.getOrderer(
+                    point, consideredPoint);
+            final PointLocation origin = orderer.getOrigin();
+            final PointLocation destination = orderer.getDestination();
+            final GeoPoint originPoint = origin.getLocation();
+            final GeoPoint destinationPoint
+                    = destination.getLocation();
 
-                if (!waterDetector.isOnWater(originPoint)
-                            && !waterDetector.isOnWater(destinationPoint)) {
+            final LatLng originLatLng = new LatLng(
+                    originPoint.getLatitude().getDegrees(),
+                    originPoint.getLongitude().getDegrees());
 
-                    final LatLng originLatLng = new LatLng(
-                            originPoint.getLatitude().getDegrees(),
-                            originPoint.getLongitude().getDegrees());
+            final LatLng destinationLatLng = new LatLng(
+                    destinationPoint.getLatitude().getDegrees(),
+                    destinationPoint.getLongitude().getDegrees());
 
-                    final LatLng destinationLatLng = new LatLng(
-                            destinationPoint.getLatitude().getDegrees(),
-                            destinationPoint.getLongitude().getDegrees());
+            final DistanceMatrixApiRequest request
+                    = DistanceMatrixApi.newRequest(context);
 
-                    final DistanceMatrixApiRequest request
-                            = DistanceMatrixApi.newRequest(context);
+            request.origins(originLatLng);
+            request.destinations(destinationLatLng);
+            request.mode(TravelMode.WALKING);
+            request.units(Unit.METRIC);
+            try {
+                final DistanceMatrix response = request.await();
+                final DistanceMatrixRow row = response.rows[0];
+                final DistanceMatrixElement element
+                        = row.elements[0];
 
-                    request.origins(originLatLng);
-                    request.destinations(destinationLatLng);
-                    request.mode(TravelMode.WALKING);
-                    request.units(Unit.METRIC);
-                    try {
-                        final DistanceMatrix response = request.await();
-                        final DistanceMatrixRow row = response.rows[0];
-                        final DistanceMatrixElement element
-                                = row.elements[0];
-
-                        if (element.status
-                                .equals(DistanceMatrixElementStatus.OK)) {
-                            WalkingCosts measurement = new WalkingCosts(
-                                    Duration.ofSeconds(
-                                            element.duration.inSeconds),
-                                    element.distance.inMeters);
-                            resultBuilder.put(consideredPoint, measurement);
-                        }
-                    } catch (Exception e) {
-                        throw new DistanceClientException(e);
-                    }
+                if (element.status.equals(DistanceMatrixElementStatus.OK)) {
+                    WalkingCosts measurement = new WalkingCosts(
+                            Duration.ofSeconds(element.duration.inSeconds),
+                            element.distance.inMeters);
+                    resultBuilder.put(consideredPoint, measurement);
                 }
+            } catch (Exception e) {
+                throw new DistanceClientException(e);
             }
 
-            return resultBuilder.build();
-        } catch (final WaterDetectorException e) {
-            throw new DistanceClientException(e);
         }
+
+        return resultBuilder.build();
+
     }
 
     @Override

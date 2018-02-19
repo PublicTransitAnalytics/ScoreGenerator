@@ -22,15 +22,15 @@ import com.publictransitanalytics.scoregenerator.GeoBounds;
  *
  * @author Public Transit Analytics
  */
-public class AllLandWaterDetector implements WaterDetector {
+public class AllInEnvironmentDetector implements InEnvironmentDetector {
 
     @Override
-    public boolean isOnWater(final GeoPoint point) {
+    public boolean isOutOfBounds(final GeoPoint point) {
         return false;
     }
 
     @Override
-    public boolean isEntirelyWater(final GeoBounds bounds) {
+    public boolean isOutOfBounds(final GeoBounds bounds) {
         return false;
     }
     

@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.datalayer.directories.types;
+package com.publictransitanalytics.scoregenerator.geography;
 
 /**
- *
+ * Exception indicating a problem with a WaterDetector.
+ * 
  * @author Public Transit Analytics
  */
-public enum WaterStatus {
-    
-    ALL_WATER,
-    SOME_LAND
+public class InEnvironmentDetectorException extends Exception {
+
+    public InEnvironmentDetectorException(final Exception e) {
+        super(e);
+    }
     
 }

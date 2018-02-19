@@ -25,8 +25,7 @@ import com.publictransitanalytics.scoregenerator.GeoBounds;
 import com.publictransitanalytics.scoregenerator.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetectorException;
 import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
@@ -44,6 +43,7 @@ import java.util.SortedMap;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector;
 
 /**
  *
@@ -62,7 +62,7 @@ public class Grid {
 
     public Grid(final Set<Segment> segments, final GeoBounds bounds,
                 final int numLatitudeGridlines, final int numLongitudeGridlines,
-                final WaterDetector waterDetector) throws InterruptedException {
+                final InEnvironmentDetector waterDetector) throws InterruptedException {
 
         final NavigableSet<GeoLatitude> latitudeGridlines
                 = bounds.getLatitudeGridlines(numLongitudeGridlines);
@@ -113,7 +113,7 @@ public class Grid {
     private static TreeBasedTable<GeoLatitude, GeoLongitude, Sector>
             getSectorTable(final NavigableSet<GeoLatitude> latitudeGridlines,
                            final NavigableSet<GeoLongitude> longitudeGridlines,
-                           final WaterDetector waterDetector)
+                           final InEnvironmentDetector waterDetector)
             throws InterruptedException {
         final TreeBasedTable<GeoLatitude, GeoLongitude, Sector> table
                 = TreeBasedTable.create();
@@ -132,7 +132,7 @@ public class Grid {
                     final GeoLongitude nextLongitude = longitudeIterator.next();
                     final GeoBounds bounds = new GeoBounds(
                             longitude, latitude, nextLongitude, nextLatitude);
-                    if (!waterDetector.isEntirelyWater(bounds)) {
+                    if (!waterDetector.isOutOfBounds(bounds)) {
                         final Sector sector = new Sector(bounds);
                         table.put(latitude, longitude, sector);
                     }
@@ -141,7 +141,7 @@ public class Grid {
                 latitude = nextLatitude;
             }
             return table;
-        } catch (final WaterDetectorException e) {
+        } catch (final InEnvironmentDetectorException e) {
             throw new ScoreGeneratorFatalException(e);
         }
     }

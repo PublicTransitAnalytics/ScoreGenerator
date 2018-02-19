@@ -26,13 +26,12 @@ import com.esri.core.geometry.SpatialReference;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.GeoPoint;
 import com.publictransitanalytics.scoregenerator.GeoBounds;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.stream.Stream;
 import org.json.JSONException;
 
 /**
@@ -41,67 +40,83 @@ import org.json.JSONException;
  *
  * @author Public Transit Analytics
  */
-public class GeoJsonWaterDetector implements WaterDetector {
+public class GeoJsonInEnvironmentDetector implements InEnvironmentDetector {
 
-    private static final SpatialReference MERCATOR_PROJECTION
+    private static final SpatialReference WSG84_PROJECTION
             = SpatialReference.create(4326);
     private final Collection<Geometry> waterGeometry;
+    private final Geometry borderGeometry;
 
-    public GeoJsonWaterDetector(final Path geoJsonFile) throws IOException,
-            WaterDetectorException {
+    public GeoJsonInEnvironmentDetector(final Path geoJsonBorderFile,
+                                        final Path geoJsonWaterFile)
+            throws IOException, InEnvironmentDetectorException {
 
+        final ImmutableSet.Builder<Geometry> builder = ImmutableSet
+                .builder();
+        Files.lines(geoJsonWaterFile, StandardCharsets.UTF_8)
+                .map(line -> convertToGeometry(line))
+                .forEach(builder::add);
+        waterGeometry = builder.build();
+
+        final String borderJson = new String(
+                Files.readAllBytes(geoJsonBorderFile),
+                StandardCharsets.UTF_8);
+
+        borderGeometry = convertToGeometry(borderJson);
+    }
+
+    private static Geometry convertToGeometry(final String line) {
+        final OperatorImportFromGeoJson operation
+                = OperatorImportFromGeoJson.local();
         try {
-            final Stream<String> stream = Files.lines(geoJsonFile,
-                                                      StandardCharsets.UTF_8);
-            final OperatorImportFromGeoJson operation
-                    = OperatorImportFromGeoJson.local();
-            final Iterator<String> iterator = stream.iterator();
-            final ImmutableSet.Builder<Geometry> builder = ImmutableSet
-                    .builder();
-
-            while (iterator.hasNext()) {
-                final String json = iterator.next();
-                final MapOGCStructure featureMap = operation.executeOGC(
-                        GeoJsonImportFlags.geoJsonImportDefaults, json, null);
-
-                builder.add(featureMap.m_ogcStructure.m_structures
-                        .get(0).m_geometry);
-            }
-            waterGeometry = builder.build();
-        } catch (JSONException e) {
-            throw new WaterDetectorException(e);
+            final MapOGCStructure featureMap = operation.executeOGC(
+                    GeoJsonImportFlags.geoJsonImportDefaults, line, null);
+            return featureMap.m_ogcStructure.m_structures
+                    .get(0).m_geometry;
+        } catch (final JSONException e) {
+            throw new ScoreGeneratorFatalException(e);
         }
-
     }
 
     @Override
-    public boolean isOnWater(final GeoPoint point) {
+    public boolean isOutOfBounds(final GeoPoint point) {
         final Point internalPoint = new Point(point.getLatitude().getDegrees(),
                                               point.getLatitude().getDegrees());
 
+        boolean onWater = false;
         for (final Geometry featureGeometry : waterGeometry) {
             if (GeometryEngine.contains(featureGeometry, internalPoint,
-                                        MERCATOR_PROJECTION)) {
-                return true;
+                                        WSG84_PROJECTION)) {
+                onWater = true;
+                break;
             }
         }
-        return false;
+        final boolean inBorder = GeometryEngine.contains(
+                borderGeometry, internalPoint, WSG84_PROJECTION);
+        return onWater || !inBorder;
     }
 
     @Override
-    public boolean isEntirelyWater(final GeoBounds bounds) {
+    public boolean isOutOfBounds(final GeoBounds bounds) {
         final Envelope envelope = new Envelope(
                 bounds.getSouthLat().getDegrees(),
                 bounds.getEastLon().getDegrees(),
                 bounds.getNorthLat().getDegrees(),
                 bounds.getWestLon().getDegrees());
 
+        boolean onWater = false;
         for (final Geometry featureGeometry : waterGeometry) {
             if (GeometryEngine.contains(featureGeometry, envelope,
-                                        MERCATOR_PROJECTION)) {
-                return true;
+                                        WSG84_PROJECTION)) {
+                onWater = true;
+                break;
             }
         }
-        return false;
+        final boolean inBorder
+                = GeometryEngine.overlaps(
+                        borderGeometry, envelope, WSG84_PROJECTION) ||
+                  GeometryEngine.contains(
+                          borderGeometry, envelope, WSG84_PROJECTION);
+        return onWater || !inBorder;
     }
 }

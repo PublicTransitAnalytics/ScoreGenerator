@@ -21,7 +21,7 @@ import com.publictransitanalytics.scoregenerator.AngleUnit;
 import com.publictransitanalytics.scoregenerator.GeoBounds;
 import com.publictransitanalytics.scoregenerator.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.GeoLongitude;
-import com.publictransitanalytics.scoregenerator.geography.AllLandWaterDetector;
+import com.publictransitanalytics.scoregenerator.geography.AllInEnvironmentDetector;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.output.MapGenerator;
@@ -51,7 +51,7 @@ public class GridTest {
     @Test
     public void testMakesAllSectors() throws Exception {
         final Grid grid = new Grid(Collections.emptySet(), SEATTLE_BOUNDS,
-                                   3, 3, new AllLandWaterDetector());
+                                   3, 3, new AllInEnvironmentDetector());
 
         final Set<Sector> sectors = grid.getAllSectors();
         Assert.assertEquals(4, sectors.size());
@@ -60,7 +60,7 @@ public class GridTest {
     @Test
     public void testMakesAllCenters() throws Exception {
         final Grid grid = new Grid(Collections.emptySet(), SEATTLE_BOUNDS,
-                                   3, 3, new AllLandWaterDetector());
+                                   3, 3, new AllInEnvironmentDetector());
 
         final Set<PointLocation> sectors = grid.getCenters();
         Assert.assertEquals(4, sectors.size());
@@ -78,7 +78,7 @@ public class GridTest {
 
         final Grid grid = new Grid(Collections.singleton(oneCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         Assert.assertEquals(1, grid.getGridPoints().size());
     }
 
@@ -94,7 +94,7 @@ public class GridTest {
 
         final Grid grid = new Grid(Collections.singleton(oneCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         final PointLocation gridPoint = grid.getGridPoints().iterator().next();
         final Set<Sector> relevantSectors = grid.getSectors(gridPoint);
         Assert.assertEquals(2, relevantSectors.size());
@@ -112,7 +112,7 @@ public class GridTest {
 
         final Grid grid = new Grid(Collections.singleton(oneCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         Assert.assertEquals(1, grid.getGridPoints().size());
     }
 
@@ -128,7 +128,7 @@ public class GridTest {
 
         final Grid grid = new Grid(Collections.singleton(oneCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         final PointLocation gridPoint = grid.getGridPoints().iterator().next();
         final Set<Sector> relevantSectors = grid.getSectors(gridPoint);
         Assert.assertEquals(2, relevantSectors.size());
@@ -146,7 +146,7 @@ public class GridTest {
 
         final Grid grid = new Grid(Collections.singleton(twoCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         Assert.assertEquals(2, grid.getGridPoints().size());
     }
 
@@ -162,7 +162,7 @@ public class GridTest {
 
         final Grid grid = new Grid(Collections.singleton(twoCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         final Set<Sector> relevantSectors = grid.getGridPoints().stream().map(
                 point -> grid.getSectors(point)).flatMap(Set::stream).collect(
                 Collectors.toSet());
@@ -189,7 +189,7 @@ public class GridTest {
         final Grid grid = new Grid(ImmutableSet.of(oneCrossingSegment,
                                                    twoCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
         MapGenerator generator = new MapGenerator();
         generator.makeEmptyMap(grid, grid.getGridPoints(), ImmutableSet.of(oneCrossingSegment, twoCrossingSegment), "blorfy");
         
@@ -216,7 +216,7 @@ public class GridTest {
         final Grid grid = new Grid(ImmutableSet.of(oneCrossingSegment,
                                                    twoCrossingSegment),
                                    SEATTLE_BOUNDS, 3, 3,
-                                   new AllLandWaterDetector());
+                                   new AllInEnvironmentDetector());
 
         final Set<Sector> relevantSectors = grid.getGridPoints().stream().map(
                 point -> grid.getSectors(point)).flatMap(Set::stream).collect(

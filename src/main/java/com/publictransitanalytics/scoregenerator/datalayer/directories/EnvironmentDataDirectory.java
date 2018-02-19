@@ -20,15 +20,15 @@ import com.bitvantage.bitvantagecaching.Store;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.routing.util.EncodingManager;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.WaterStatus;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.BoundsStatus;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.BoundsKey;
-import com.publictransitanalytics.scoregenerator.geography.GeoJsonWaterDetector;
-import com.publictransitanalytics.scoregenerator.geography.StoredWaterDetector;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
+import com.publictransitanalytics.scoregenerator.geography.GeoJsonInEnvironmentDetector;
+import com.publictransitanalytics.scoregenerator.geography.StoredInEnvironmentDetector;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetectorException;
 import java.io.IOException;
 import java.nio.file.Path;
 import lombok.Getter;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector;
 
 /**
  *
@@ -39,18 +39,19 @@ public class EnvironmentDataDirectory {
     private static final String OSM_FILE = "environment.osm.pbf";
     private static final String GRAPHHOPPER_DIRECTORY = "graphhopper_files";
 
-    private static final String WATER_STORE = "water_store";
+    private static final String ENVIRONMENT_BOUNDS_STORE = "bounds_store";
     private static final String WATER_BODIES_FILE = "water.json";
+    private static final String BORDER_FILE = "border.json";
 
     @Getter
     private final GraphHopper hopper;
     @Getter
-    private final WaterDetector waterDetector;
+    private final InEnvironmentDetector detector;
     @Getter
     private final Path osmPath;
 
     public EnvironmentDataDirectory(final Path root)
-            throws IOException, WaterDetectorException {
+            throws IOException, InEnvironmentDetectorException {
         osmPath = root.resolve(OSM_FILE);
         final Path graphFolder = root.resolve(GRAPHHOPPER_DIRECTORY);
 
@@ -60,13 +61,16 @@ public class EnvironmentDataDirectory {
         hopper.setEncodingManager(new EncodingManager("foot"));
         hopper.setElevation(true);
         hopper.importOrLoad();
-        
-        final Store<BoundsKey, WaterStatus> waterStore = new LmdbStore<>(
-                root.resolve(WATER_STORE), WaterStatus.class);
 
+        final Store<BoundsKey, BoundsStatus> waterStore = new LmdbStore<>(
+                root.resolve(ENVIRONMENT_BOUNDS_STORE), BoundsStatus.class);
+
+        final Path borderFilePath = root.resolve(BORDER_FILE);
         final Path waterFilePath = root.resolve(WATER_BODIES_FILE);
-        waterDetector = new StoredWaterDetector(
-                new GeoJsonWaterDetector(waterFilePath), waterStore);
+
+        detector = new StoredInEnvironmentDetector(
+                new GeoJsonInEnvironmentDetector(borderFilePath, waterFilePath),
+                waterStore);
     }
 
 }

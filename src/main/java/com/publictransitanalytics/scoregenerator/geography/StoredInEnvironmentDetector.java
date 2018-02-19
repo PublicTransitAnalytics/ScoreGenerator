@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.WaterStatus;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.BoundsStatus;
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.GeoPoint;
@@ -28,33 +28,34 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class StoredWaterDetector implements WaterDetector {
+public class StoredInEnvironmentDetector implements InEnvironmentDetector {
 
-    final WaterDetector waterDetector;
-    final Store<BoundsKey, WaterStatus> waterBoundsStore;
+    final InEnvironmentDetector waterDetector;
+    final Store<BoundsKey, BoundsStatus> waterBoundsStore;
 
     @Override
-    public boolean isOnWater(final GeoPoint point) 
-            throws WaterDetectorException, InterruptedException {
-        return waterDetector.isOnWater(point);
+    public boolean isOutOfBounds(final GeoPoint point)
+            throws InEnvironmentDetectorException, InterruptedException {
+        return waterDetector.isOutOfBounds(point);
     }
 
     @Override
-    public boolean isEntirelyWater(final GeoBounds bounds)
-            throws WaterDetectorException, InterruptedException {
+    public boolean isOutOfBounds(final GeoBounds bounds)
+            throws InEnvironmentDetectorException, InterruptedException {
         try {
             final BoundsKey key = new BoundsKey(bounds);
-            final WaterStatus status = waterBoundsStore.get(key);
-            
+            final BoundsStatus status = waterBoundsStore.get(key);
+
             if (status == null) {
-                final boolean allWater = waterDetector.isEntirelyWater(bounds);
-                waterBoundsStore.put(key, allWater ? WaterStatus.ALL_WATER
-                        : WaterStatus.SOME_LAND);
-                return allWater;
+                final boolean outOfBounds = waterDetector.isOutOfBounds(bounds);
+                waterBoundsStore.put(key, outOfBounds
+                                     ? BoundsStatus.OUT_OF_BOUNDS
+                                     : BoundsStatus.SOME_IN_BOUNDS);
+                return outOfBounds;
             }
-            return status.equals(WaterStatus.ALL_WATER);
+            return status.equals(BoundsStatus.OUT_OF_BOUNDS);
         } catch (BitvantageStoreException e) {
-            throw new WaterDetectorException(e);
+            throw new InEnvironmentDetectorException(e);
         }
     }
 

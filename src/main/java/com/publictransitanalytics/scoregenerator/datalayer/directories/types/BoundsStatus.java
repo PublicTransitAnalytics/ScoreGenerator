@@ -13,22 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.geography;
-
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.GeoBounds;
+package com.publictransitanalytics.scoregenerator.datalayer.directories.types;
 
 /**
- * Detects whether points or regions are on water.
- * 
+ *
  * @author Public Transit Analytics
  */
-public interface WaterDetector {
-
-    boolean isOnWater(final GeoPoint point) 
-            throws WaterDetectorException, InterruptedException;
-
-    boolean isEntirelyWater(final GeoBounds bounds) 
-            throws WaterDetectorException, InterruptedException;
-
+public enum BoundsStatus {
+    
+    OUT_OF_BOUNDS,
+    SOME_IN_BOUNDS
+    
 }

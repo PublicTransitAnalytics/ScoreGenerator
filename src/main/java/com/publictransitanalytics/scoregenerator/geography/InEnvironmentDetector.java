@@ -15,15 +15,20 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
+import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.GeoBounds;
+
 /**
- * Exception indicating a problem with a WaterDetector.
+ * Detects whether points or regions are on water.
  * 
  * @author Public Transit Analytics
  */
-public class WaterDetectorException extends Exception {
+public interface InEnvironmentDetector {
 
-    public WaterDetectorException(final Exception e) {
-        super(e);
-    }
-    
+    boolean isOutOfBounds(final GeoPoint point) 
+            throws InEnvironmentDetectorException, InterruptedException;
+
+    boolean isOutOfBounds(final GeoBounds bounds) 
+            throws InEnvironmentDetectorException, InterruptedException;
+
 }

@@ -51,8 +51,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceDa
 import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.environment.Segment;
 import com.publictransitanalytics.scoregenerator.environment.SegmentFinder;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetector;
-import com.publictransitanalytics.scoregenerator.geography.WaterDetectorException;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetectorException;
 import com.publictransitanalytics.scoregenerator.output.ComparativeNetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.ComparativePointAccessibility;
 import com.publictransitanalytics.scoregenerator.output.ComparativeTimeQualifiedPointAccessibility;
@@ -86,6 +85,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector;
 
 @Slf4j
 /**
@@ -109,7 +109,7 @@ public class Main {
 
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
-            ExecutionException, WaterDetectorException {
+            ExecutionException, InEnvironmentDetectorException {
         final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
 
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
@@ -229,8 +229,8 @@ public class Main {
         final SegmentFinder segmentFinder = new SegmentFinder(
                 osmFile, SEATTLE_BOUNDS);
 
-        final WaterDetector waterDetector
-                = environmentDirectory.getWaterDetector();
+        final InEnvironmentDetector waterDetector
+                = environmentDirectory.getDetector();
         final Set<Segment> segments = segmentFinder.getSegments();
         final Grid grid = new Grid(segments, SEATTLE_BOUNDS, 100, 100,
                                    waterDetector);
