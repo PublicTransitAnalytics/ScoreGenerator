@@ -96,15 +96,6 @@ import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector
  */
 public class Main {
 
-    private static final GeoBounds SEATTLE_BOUNDS = new GeoBounds(
-            new GeoLongitude("-122.45970", AngleUnit.DEGREES),
-            new GeoLatitude("47.48172", AngleUnit.DEGREES),
-            new GeoLongitude("-122.22443", AngleUnit.DEGREES),
-            new GeoLatitude("47.734145", AngleUnit.DEGREES));
-
-    private static final int NUM_LATITUDE_SECTORS = 100;
-    private static final int NUM_LONGITUDE_SECTORS = 100;
-
     private static final double ESTIMATE_WALK_METERS_PER_SECOND = 2.0;
 
     public static void main(String[] args) throws FileNotFoundException,
@@ -124,6 +115,7 @@ public class Main {
         parser.addArgument("-n", "--inMemCache").action(Arguments.storeTrue());
         parser.addArgument("-t", "--interactive").action(Arguments.storeTrue());
         parser.addArgument("-b", "--baseFile");
+        parser.addArgument("-u", "--bounds");
         parser.addArgument("-c", "--comparisonFile");
         parser.addArgument("-o", "--outputName");
 
@@ -225,15 +217,16 @@ public class Main {
             }
         }
 
+        final String boundsString = namespace.get("bounds");
+        final GeoBounds bounds = parseBounds(boundsString);
+
         final File osmFile = environmentDirectory.getOsmPath().toFile();
-        final SegmentFinder segmentFinder = new SegmentFinder(
-                osmFile, SEATTLE_BOUNDS);
+        final SegmentFinder segmentFinder = new SegmentFinder(osmFile, bounds);
 
         final InEnvironmentDetector waterDetector
                 = environmentDirectory.getDetector();
         final Set<Segment> segments = segmentFinder.getSegments();
-        final Grid grid = new Grid(segments, SEATTLE_BOUNDS, 100, 100,
-                                   waterDetector);
+        final Grid grid = new Grid(segments, bounds, 100, 100, waterDetector);
 
         final MapGenerator mapGenerator = new MapGenerator();
 
@@ -592,6 +585,16 @@ public class Main {
         }
         final Landmark centerPoint = new Landmark(centerCoordinate);
         return centerPoint;
+    }
+
+    private static GeoBounds parseBounds(final String boundsString) {
+        final String boundsStrings[] = boundsString.split(",");
+        final GeoBounds bounds = new GeoBounds(
+                new GeoLongitude(boundsStrings[0], AngleUnit.DEGREES),
+                new GeoLatitude(boundsStrings[1], AngleUnit.DEGREES),
+                new GeoLongitude(boundsStrings[2], AngleUnit.DEGREES),
+                new GeoLatitude(boundsStrings[3], AngleUnit.DEGREES));
+        return bounds;
     }
 
 }
