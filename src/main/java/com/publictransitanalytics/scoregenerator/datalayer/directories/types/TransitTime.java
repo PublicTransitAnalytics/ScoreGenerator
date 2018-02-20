@@ -35,7 +35,7 @@ public class TransitTime implements Comparable<TransitTime> {
      * Regular expression for transit dates as specified by the GTFS format.
      */
     private static final Pattern PATTERN = Pattern.compile(
-            "(\\d\\d):(\\d\\d):(\\d\\d)");
+            "(\\d{1,2}):(\\d{2}):(\\d{2})");
 
     public static final TransitTime MIN_TRANSIT_TIME
             = new TransitTime(0, 0, 0);
