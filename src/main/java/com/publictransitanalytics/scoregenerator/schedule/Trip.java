@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedMap;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
@@ -43,8 +43,8 @@ public class Trip {
     @Getter
     private final String routeNumber;
 
-    private final NavigableMap<Integer, TransitStop> tripSequence;
-    private final BiMap<LocalDateTime, Integer> timeSequence;
+    private final NavigableMap<Integer, ScheduledLocation> sequence;
+    private final Map<ScheduledLocation, Integer> index;
 
     public Trip(final TripId tripId, final String routeName,
                 final String routeNumber, final Set<ScheduleEntry> stops) {
@@ -52,28 +52,31 @@ public class Trip {
         this.routeName = routeName;
         this.routeNumber = routeNumber;
 
-        final ImmutableSortedMap.Builder<Integer, TransitStop> tripSequenceBuilder
+        final ImmutableSortedMap.Builder<Integer, ScheduledLocation> sequenceBuilder
                 = ImmutableSortedMap.naturalOrder();
+        final ImmutableMap.Builder<ScheduledLocation, Integer> indexBuilder
+                = ImmutableMap.builder();
 
-        ImmutableBiMap.Builder<LocalDateTime, Integer> timeSequenceBuilder
-                = ImmutableBiMap.builder();
         for (final ScheduleEntry stop : stops) {
-            tripSequenceBuilder.put(stop.getSequence(), stop.getStop());
-            timeSequenceBuilder.put(stop.getTime(), stop.getSequence());
+            final ScheduledLocation scheduledLocation = new ScheduledLocation(
+                    stop.getStop(), stop.getTime());
+            final int sequence = stop.getSequence();
+            sequenceBuilder.put(sequence, scheduledLocation);
+            indexBuilder.put(scheduledLocation, sequence);
         }
-        tripSequence = tripSequenceBuilder.build();
-        timeSequence = timeSequenceBuilder.build();
+        sequence = sequenceBuilder.build();
+        index = indexBuilder.build();
     }
 
     public Trip(final TripId tripId, final String routeName,
-                final String routeNumber, 
+                final String routeNumber,
                 final List<ScheduledLocation> orderedStops) {
         this(tripId, routeName, routeNumber, makeEntries(orderedStops));
     }
-    
+
     private static Set<ScheduleEntry> makeEntries(
             final List<ScheduledLocation> orderedStops) {
-        final ImmutableSet.Builder<ScheduleEntry> builder 
+        final ImmutableSet.Builder<ScheduleEntry> builder
                 = ImmutableSet.builder();
         for (int i = 0; i < orderedStops.size(); i++) {
             final ScheduledLocation stop = orderedStops.get(i);
@@ -86,50 +89,37 @@ public class Trip {
 
     public ScheduledLocation getNextScheduledLocation(
             final TransitStop stop, final LocalDateTime time) {
-
-        final int sequence = timeSequence.get(time);
-        final Map.Entry<Integer, TransitStop> higherEntry
-                = tripSequence.higherEntry(sequence);
-
-        if (higherEntry == null) {
-            return null;
-        }
-        final TransitStop nextStop = higherEntry.getValue();
-        final LocalDateTime nextTime
-                = timeSequence.inverse().get(higherEntry.getKey());
-
-        return new ScheduledLocation(nextStop, nextTime);
+        
+        final ScheduledLocation scheduledLocation 
+                = new ScheduledLocation(stop, time);
+        final int sequenceNumber = index.get(scheduledLocation);
+        final Map.Entry<Integer, ScheduledLocation> nextEntry
+                = sequence.higherEntry(sequenceNumber);
+        
+        return (nextEntry == null) ? null : nextEntry.getValue();
     }
 
     public ScheduledLocation getPreviousScheduledLocation(
             final TransitStop stop, final LocalDateTime time) {
 
-        final int sequence = timeSequence.get(time);
-        final Map.Entry<Integer, TransitStop> lowerEntry
-                = tripSequence.lowerEntry(sequence);
-
-        if (lowerEntry == null) {
-            return null;
-        }
-        final TransitStop nextStop = lowerEntry.getValue();
-        final LocalDateTime nextTime
-                = timeSequence.inverse().get(lowerEntry.getKey());
-
-        return new ScheduledLocation(nextStop, nextTime);
+         final ScheduledLocation scheduledLocation 
+                = new ScheduledLocation(stop, time);
+        final int sequenceNumber = index.get(scheduledLocation);
+        final Map.Entry<Integer, ScheduledLocation> previousEntry
+                = sequence.lowerEntry(sequenceNumber);
+        
+        return (previousEntry == null) ? null : previousEntry.getValue();
     }
 
     public List<ScheduledLocation> getSchedule() {
-        return tripSequence.keySet().stream().map(
-                k -> new ScheduledLocation(tripSequence.get(k),
-                                           timeSequence.inverse().get(k)))
-                .collect(Collectors.toList());
+        return ImmutableList.copyOf(sequence.values());
     }
 
     public Duration getInServiceTime() {
-        final LocalDateTime startTime = timeSequence.inverse().get(
-                tripSequence.firstKey());
-        final LocalDateTime endTime = timeSequence.inverse().get(
-                tripSequence.lastKey());
+        final LocalDateTime startTime 
+                = sequence.firstEntry().getValue().getScheduledTime();
+        final LocalDateTime endTime
+                = sequence.lastEntry().getValue().getScheduledTime();
         return Duration.between(startTime, endTime);
     }
 
