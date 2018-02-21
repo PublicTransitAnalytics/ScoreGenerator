@@ -545,8 +545,8 @@ public class Calculation<S extends ScoreCard> {
         for (final TransitStop stop : stops) {
             if (grid.coversPoint(stop.getLocation())) {
                 final Set<Sector> sectors = grid.getSectors(stop);
-                if (sectors == null) {
-                    log.warn("{} ({}) is not on a land Sector.",
+                if (sectors.isEmpty()) {
+                    log.warn("{} ({}) is not within the bounds.",
                              stop.getCommonName(), stop.getLocation());
                 } else {
                     builder.putAll(stop, sectors);

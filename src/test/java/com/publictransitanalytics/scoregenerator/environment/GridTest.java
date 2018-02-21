@@ -21,10 +21,12 @@ import com.publictransitanalytics.scoregenerator.AngleUnit;
 import com.publictransitanalytics.scoregenerator.GeoBounds;
 import com.publictransitanalytics.scoregenerator.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.GeoLongitude;
-import com.publictransitanalytics.scoregenerator.geography.AllInEnvironmentDetector;
+import com.publictransitanalytics.scoregenerator.testhelpers.AllInEnvironmentDetector;
+import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.output.MapGenerator;
+import com.publictransitanalytics.scoregenerator.testhelpers.KnockoutEnvironmentDetector;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,6 +49,135 @@ public class GridTest {
                             "-122.22443", AngleUnit.DEGREES),
                     new GeoLatitude(
                             "47.734145", AngleUnit.DEGREES));
+
+    private static final GeoBounds SYNTHETIC_BOUNDS
+            = new GeoBounds(
+                    new GeoLongitude(
+                            "-130", AngleUnit.DEGREES),
+                    new GeoLatitude(
+                            "40", AngleUnit.DEGREES),
+                    new GeoLongitude(
+                            "-100", AngleUnit.DEGREES),
+                    new GeoLatitude(
+                            "60", AngleUnit.DEGREES));
+
+    private static Grid makeSyntheticGrid() throws InterruptedException {
+        final Grid grid = new Grid(Collections.emptySet(), SYNTHETIC_BOUNDS,
+                                   3, 4, new AllInEnvironmentDetector());
+        return grid;
+    }
+
+    @Test
+    public void testReturnsCornerSector() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-100, AngleUnit.DEGREES),
+                        new GeoLatitude(40, AngleUnit.DEGREES))));
+
+        Assert.assertEquals(1, sectors.size());
+        Assert.assertEquals(new GeoBounds(
+                new GeoLongitude(-110, AngleUnit.DEGREES),
+                new GeoLatitude(50, AngleUnit.DEGREES),
+                new GeoLongitude(-100, AngleUnit.DEGREES),
+                new GeoLatitude(40, AngleUnit.DEGREES)),
+                            sectors.iterator().next().getBounds());
+    }
+
+    @Test
+    public void testReturnsInteriorSector() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-111, AngleUnit.DEGREES),
+                        new GeoLatitude(41, AngleUnit.DEGREES))));
+
+        Assert.assertEquals(new GeoBounds(
+                new GeoLongitude(-120, AngleUnit.DEGREES),
+                new GeoLatitude(50, AngleUnit.DEGREES),
+                new GeoLongitude(-110, AngleUnit.DEGREES),
+                new GeoLatitude(40, AngleUnit.DEGREES)),
+                            sectors.iterator().next().getBounds());
+    }
+
+    @Test
+    public void testReturnsGreatestSector() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-129.95, AngleUnit.DEGREES),
+                        new GeoLatitude(59, AngleUnit.DEGREES))));
+
+        Assert.assertEquals(new GeoBounds(
+                new GeoLongitude(-130, AngleUnit.DEGREES),
+                new GeoLatitude(60, AngleUnit.DEGREES),
+                new GeoLongitude(-120, AngleUnit.DEGREES),
+                new GeoLatitude(50, AngleUnit.DEGREES)),
+                            sectors.iterator().next().getBounds());
+    }
+
+    @Test
+    public void testNullOnLowerLatitude() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-111, AngleUnit.DEGREES),
+                        new GeoLatitude(35, AngleUnit.DEGREES))));
+
+        Assert.assertTrue(sectors.isEmpty());
+    }
+
+    @Test
+    public void testNullOnHigherLatitude() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-111, AngleUnit.DEGREES),
+                        new GeoLatitude(65, AngleUnit.DEGREES))));
+
+        Assert.assertTrue(sectors.isEmpty());
+    }
+
+    @Test
+    public void testNullOnLowerLongitude() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-95, AngleUnit.DEGREES),
+                        new GeoLatitude(45, AngleUnit.DEGREES))));
+
+        Assert.assertTrue(sectors.isEmpty());
+    }
+
+    @Test
+    public void testNullOnHigherLongitude() throws Exception {
+
+        final Set<Sector> sectors = makeSyntheticGrid().getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-135, AngleUnit.DEGREES),
+                        new GeoLatitude(45, AngleUnit.DEGREES))));
+
+        Assert.assertTrue(sectors.isEmpty());
+    }
+
+    @Test
+    public void testNullOnOutOfBounds() throws Exception {
+        final GeoBounds outOfBounds = new GeoBounds(
+                new GeoLongitude("-120", AngleUnit.DEGREES),
+                new GeoLatitude("50", AngleUnit.DEGREES),
+                new GeoLongitude("-110", AngleUnit.DEGREES),
+                new GeoLatitude("60", AngleUnit.DEGREES));
+        final Grid grid = new Grid(Collections.emptySet(), SYNTHETIC_BOUNDS,
+                                   3, 4, new KnockoutEnvironmentDetector(
+                                           Collections.singleton(outOfBounds)));
+        
+        final Set<Sector> sectors = grid.getSectors(
+                new Landmark(new GeoPoint(
+                        new GeoLongitude(-115, AngleUnit.DEGREES),
+                        new GeoLatitude(55, AngleUnit.DEGREES))));
+
+        Assert.assertTrue(sectors.isEmpty());
+    }
 
     @Test
     public void testMakesAllSectors() throws Exception {
@@ -191,8 +322,9 @@ public class GridTest {
                                    SEATTLE_BOUNDS, 3, 3,
                                    new AllInEnvironmentDetector());
         MapGenerator generator = new MapGenerator();
-        generator.makeEmptyMap(grid, grid.getGridPoints(), ImmutableSet.of(oneCrossingSegment, twoCrossingSegment), "blorfy");
-        
+        generator.makeEmptyMap(grid, grid.getGridPoints(), ImmutableSet.of(
+                               oneCrossingSegment, twoCrossingSegment), "blorfy");
+
         Assert.assertEquals(3, grid.getGridPoints().size());
     }
 

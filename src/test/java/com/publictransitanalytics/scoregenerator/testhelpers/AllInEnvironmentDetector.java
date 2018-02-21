@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.geography;
+package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.GeoPoint;
 import com.publictransitanalytics.scoregenerator.GeoBounds;
+import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector;
 
 /**
  *

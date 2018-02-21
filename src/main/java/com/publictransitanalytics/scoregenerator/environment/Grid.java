@@ -62,10 +62,11 @@ public class Grid {
 
     public Grid(final Set<Segment> segments, final GeoBounds bounds,
                 final int numLatitudeGridlines, final int numLongitudeGridlines,
-                final InEnvironmentDetector waterDetector) throws InterruptedException {
+                final InEnvironmentDetector waterDetector)
+            throws InterruptedException {
 
         final NavigableSet<GeoLatitude> latitudeGridlines
-                = bounds.getLatitudeGridlines(numLongitudeGridlines);
+                = bounds.getLatitudeGridlines(numLatitudeGridlines);
         final NavigableSet<GeoLongitude> longitudeGridlines
                 = bounds.getLongitudeGridlines(numLongitudeGridlines);
 
@@ -103,7 +104,8 @@ public class Grid {
             return pointSectorMap.get(point);
         }
         final Sector sector = findSector(point.getLocation());
-        return (sector == null) ? null : Collections.singleton(sector);
+        return (sector == null) ? Collections.emptySet()
+                : Collections.singleton(sector);
     }
 
     public boolean coversPoint(final GeoPoint location) {
@@ -181,24 +183,26 @@ public class Grid {
                 = sectorTable.rowMap();
 
         final GeoLatitude maxLatitude = bounds.getNorthLat();
-        /* Include the equality test to ensure that floating point rounding
-         * is not making point appear unequal. */
-        if (!location.getLatitude().equals(maxLatitude) &&
-            location.getLatitude().compareTo(maxLatitude) > 0) {
-            return null;
-        }
 
         final GeoLatitude floorLatitudeKey;
-        if (latitudeMap.containsKey(location.getLatitude())) {
-            floorLatitudeKey = location.getLatitude();
+        /* Include the equality test to ensure that floating point rounding
+         * is not making point appear unequal. */
+        if (location.getLatitude().equals(maxLatitude)) {
+            floorLatitudeKey = latitudeMap.lastKey();
+        } else if (location.getLatitude().compareTo(maxLatitude) > 0) {
+            return null;
         } else {
-            final SortedMap<GeoLatitude, Map<GeoLongitude, Sector>> headMap
-                    = latitudeMap.headMap(location.getLatitude());
-            if (headMap.isEmpty()) {
-                return null;
-            }
+            if (latitudeMap.containsKey(location.getLatitude())) {
+                floorLatitudeKey = location.getLatitude();
+            } else {
+                final SortedMap<GeoLatitude, Map<GeoLongitude, Sector>> headMap
+                        = latitudeMap.headMap(location.getLatitude());
+                if (headMap.isEmpty()) {
+                    return null;
+                }
 
-            floorLatitudeKey = headMap.lastKey();
+                floorLatitudeKey = headMap.lastKey();
+            }
         }
 
         final SortedMap<GeoLongitude, Sector> longitudeMap
@@ -207,22 +211,28 @@ public class Grid {
         /* Include the equality test to ensure that floating point rounding
          * is not making point appear unequal. */
         final GeoLongitude maxLongitude = bounds.getEastLon();
-        if (!location.getLongitude().equals(maxLongitude) && location
-            .getLongitude().compareTo(maxLongitude) > 0) {
-            return null;
-        }
         final Sector floorLongitudeValue;
 
-        if (longitudeMap.containsKey(location.getLongitude())) {
-            floorLongitudeValue = longitudeMap.get(location.getLongitude());
+        if (location.getLongitude().equals(maxLongitude)) {
+            floorLongitudeValue = longitudeMap.get(longitudeMap.lastKey());
+        } else if (location.getLongitude().compareTo(maxLongitude) > 0) {
+            return null;
         } else {
-            final SortedMap<GeoLongitude, Sector> headMap
-                    = longitudeMap.headMap(location.getLongitude());
-            if (headMap.isEmpty()) {
-                return null;
+
+            if (longitudeMap.containsKey(location.getLongitude())) {
+                floorLongitudeValue = longitudeMap.get(location.getLongitude());
+            } else {
+                final SortedMap<GeoLongitude, Sector> headMap
+                        = longitudeMap.headMap(location.getLongitude());
+                if (headMap.isEmpty()) {
+                    return null;
+                }
+                final GeoLongitude lastKey = headMap.lastKey();
+                floorLongitudeValue = headMap.get(lastKey);
+                if (!floorLongitudeValue.contains(location)) {
+                    return null;
+                }
             }
-            final GeoLongitude lastKey = headMap.lastKey();
-            floorLongitudeValue = headMap.get(lastKey);
         }
 
         return floorLongitudeValue;
@@ -366,7 +376,7 @@ public class Grid {
                         pointSectorMapBuilder.put(point, sector);
                     }
 
-                } 
+                }
 
                 latitude = nextLatitude;
                 longitudeSortedPoints = nextLongitudeSortedPoints;
