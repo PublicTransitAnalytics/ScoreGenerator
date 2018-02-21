@@ -57,7 +57,7 @@ public class SegmentFinder {
                 bounds.getSouthLat().getDegrees(), true, true, false, false);
         final TagFilter wayFilter = new TagFilter(
                 WAY_FILTER_MODE,
-                ImmutableSet.of("footway", "highway", "access"),
+                ImmutableSet.of("footway", "highway"),
                 ImmutableMap.of("man_made", Collections.singleton("pier")));
         final TagFilter noWalkFilter = new TagFilter(
                 HIGHWAY_FILTER_MODE, Collections.emptySet(),
