@@ -70,19 +70,20 @@ public class GTFSReadingRouteDetailsDirectory implements RouteDetailsDirectory {
         for (final CSVRecord record : routeRecords) {
             String routeId = record.get("route_id");
             String routeShortName = record.get("route_short_name");
-            String routeDescription = record.get("route_desc");
-            populateRouteDetail(routeId, routeShortName, routeDescription,
+            String routeLongName = record.get("route_long_name");
+            populateRouteDetail(routeId, routeShortName, routeLongName,
                                 store);
         }
     }
 
     private static void populateRouteDetail(
             final String routeId, final String routeShortName,
-            final String routeDescription,
+            final String routeLongName, 
             final Store<RouteIdKey, RouteDetails> store)
             throws InterruptedException {
-        final RouteDetails details = new RouteDetails(routeShortName,
-                                                      routeDescription);
+        final RouteDetails details = new RouteDetails(
+                "".equals(routeShortName) ? routeLongName : routeShortName, 
+                "".equals(routeLongName) ? routeShortName : routeLongName);
         try {
             store.put(new RouteIdKey(routeId), details);
         } catch (final BitvantageStoreException e) {

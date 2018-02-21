@@ -15,8 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
-import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingRouteDetailsDirectory;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.RouteDetailsDirectory;
 import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RouteDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.RouteIdKey;
@@ -56,7 +54,7 @@ public class GTFSReadingRouteDetailsDirectoryTest {
                 + "100001,KCM,\"1\",\"\",\"Kinnear - Downtown Seattle\",3,http://metro.kingcounty.gov/schedules/001/n0.html,,\n");
         final RouteDetailsDirectory directory
                 = new GTFSReadingRouteDetailsDirectory(store, reader);
-        Assert.assertEquals(new RouteDetails("1", "Kinnear - Downtown Seattle"),
+        Assert.assertEquals(new RouteDetails("1", "1"),
                             store.getValues().iterator().next());
     }
 
@@ -81,7 +79,7 @@ public class GTFSReadingRouteDetailsDirectoryTest {
                 + "100001,KCM,\"1\",\"\",\"Kinnear - Downtown Seattle\",3,http://metro.kingcounty.gov/schedules/001/n0.html,,\n");
         final RouteDetailsDirectory directory
                 = new GTFSReadingRouteDetailsDirectory(store, reader);
-        Assert.assertEquals(new RouteDetails("1", "Kinnear - Downtown Seattle"),
+        Assert.assertEquals(new RouteDetails("1", "1"),
                             directory.getRouteDetails("100001"));
     }
 
