@@ -15,8 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.rider;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import java.time.LocalDateTime;
 
 /**
@@ -28,7 +27,6 @@ public interface RiderFactory {
 
     public ScheduleReader getScheduleReader();
 
-    public Rider getNewRider(TransitStop stop, LocalDateTime initialTime,
-                             LocalDateTime cutoffTime, Trip trip);
+    public Rider getNewRider(EntryPoint entryPoint, LocalDateTime cutoffTime);
 
 }

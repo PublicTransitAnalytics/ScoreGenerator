@@ -20,12 +20,13 @@ import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.UnmodifiableIterator;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
@@ -96,9 +97,10 @@ public class InteractiveNetworkConsole implements NetworkConsole {
                 TransitStop stop = beginningStop;
                 LocalDateTime time = beginningTime;
 
+                final Iterator<VehicleEvent> iterator = trip.getForwardIterator(
+                        entryPoint.getSequence());
                 while (!stop.equals(endingStop)) {
-                    final ScheduledLocation nextScheduledLocation
-                            = trip.getNextScheduledLocation(stop, time);
+                    final VehicleEvent nextScheduledLocation = iterator.next();
                     final LocalDateTime nextTime
                             = nextScheduledLocation.getScheduledTime();
                     final TransitStop nextStop

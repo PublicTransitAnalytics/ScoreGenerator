@@ -17,6 +17,7 @@ package com.publictransitanalytics.scoregenerator.schedule;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import lombok.Value;
 
 /**
@@ -26,6 +27,6 @@ import lombok.Value;
 @Value
 public class ScheduleEntry {
     private final int sequence;
-    private final LocalDateTime time;
+    private final Optional<LocalDateTime> time;
     private final TransitStop stop;
 }

@@ -16,17 +16,15 @@
 package com.publictransitanalytics.scoregenerator.schedule;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedMap;
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.Getter;
 
 /**
@@ -43,83 +41,78 @@ public class Trip {
     @Getter
     private final String routeNumber;
 
-    private final NavigableMap<Integer, ScheduledLocation> sequence;
-    private final Map<ScheduledLocation, Integer> index;
+    private final ImmutableList<VehicleEvent> sequence;
 
     public Trip(final TripId tripId, final String routeName,
-                final String routeNumber, final Set<ScheduleEntry> stops) {
-        this.tripId = tripId;
-        this.routeName = routeName;
-        this.routeNumber = routeNumber;
+                final String routeNumber, final Set<ScheduleEntry> stops,
+                final ScheduleInterpolator interpolator) {
+        this(tripId, routeName, routeNumber, getSequence(stops, interpolator));
+    }
 
-        final ImmutableSortedMap.Builder<Integer, ScheduledLocation> sequenceBuilder
+    private static List<VehicleEvent> getSequence(
+            final Set<ScheduleEntry> stops, 
+            final ScheduleInterpolator interpolator) {
+        final ImmutableSortedMap.Builder<Integer, VehicleEvent> sequenceBuilder
                 = ImmutableSortedMap.naturalOrder();
-        final ImmutableMap.Builder<ScheduledLocation, Integer> indexBuilder
-                = ImmutableMap.builder();
 
-        for (final ScheduleEntry stop : stops) {
-            final ScheduledLocation scheduledLocation = new ScheduledLocation(
-                    stop.getStop(), stop.getTime());
-            final int sequence = stop.getSequence();
-            sequenceBuilder.put(sequence, scheduledLocation);
-            indexBuilder.put(scheduledLocation, sequence);
+        for (final ScheduleEntry entry : stops) {
+            final Optional<LocalDateTime> optionalTime = entry.getTime();
+            final LocalDateTime time;
+            if (optionalTime.isPresent()) {
+                time = optionalTime.get();
+                interpolator.setBaseTime(time);
+            } else {
+                time = interpolator.getInterpolatedTime(entry.getStop());
+            }
+
+            final VehicleEvent scheduledLocation = new VehicleEvent(
+                    entry.getStop(), time);
+            final int sequenceNumber = entry.getSequence();
+            sequenceBuilder.put(sequenceNumber, scheduledLocation);
         }
-        sequence = sequenceBuilder.build();
-        index = indexBuilder.build();
+        final List<VehicleEvent> sequence
+                = ImmutableList.copyOf(sequenceBuilder.build().values());
+        return sequence;
+    }
+    
+    public List<VehicleEvent> getSchedule() {
+        return sequence;
     }
 
     public Trip(final TripId tripId, final String routeName,
                 final String routeNumber,
-                final List<ScheduledLocation> orderedStops) {
-        this(tripId, routeName, routeNumber, makeEntries(orderedStops));
+                final List<VehicleEvent> sequence) {
+        this.tripId = tripId;
+        this.routeName = routeName;
+        this.routeNumber = routeNumber;
+        this.sequence = ImmutableList.copyOf(sequence);
     }
 
-    private static Set<ScheduleEntry> makeEntries(
-            final List<ScheduledLocation> orderedStops) {
-        final ImmutableSet.Builder<ScheduleEntry> builder
-                = ImmutableSet.builder();
-        for (int i = 0; i < orderedStops.size(); i++) {
-            final ScheduledLocation stop = orderedStops.get(i);
-            final ScheduleEntry entry = new ScheduleEntry(
-                    i, stop.getScheduledTime(), stop.getLocation());
-            builder.add(entry);
+    public PeekingIterator<VehicleEvent> getForwardIterator(
+            final int currentSequence) {
+        if (currentSequence >= sequence.size() - 1) {
+            return Iterators.peekingIterator(Collections.emptyIterator());
         }
-        return builder.build();
+
+        return Iterators.peekingIterator(sequence.subList(
+                currentSequence + 1, sequence.size()).iterator());
     }
 
-    public ScheduledLocation getNextScheduledLocation(
-            final TransitStop stop, final LocalDateTime time) {
-        
-        final ScheduledLocation scheduledLocation 
-                = new ScheduledLocation(stop, time);
-        final int sequenceNumber = index.get(scheduledLocation);
-        final Map.Entry<Integer, ScheduledLocation> nextEntry
-                = sequence.higherEntry(sequenceNumber);
-        
-        return (nextEntry == null) ? null : nextEntry.getValue();
-    }
+    public PeekingIterator<VehicleEvent> getBackwardIterator(
+            final int currentSequence) {
 
-    public ScheduledLocation getPreviousScheduledLocation(
-            final TransitStop stop, final LocalDateTime time) {
+        if (currentSequence == 0) {
+            return Iterators.peekingIterator(Collections.emptyIterator());
+        }
 
-         final ScheduledLocation scheduledLocation 
-                = new ScheduledLocation(stop, time);
-        final int sequenceNumber = index.get(scheduledLocation);
-        final Map.Entry<Integer, ScheduledLocation> previousEntry
-                = sequence.lowerEntry(sequenceNumber);
-        
-        return (previousEntry == null) ? null : previousEntry.getValue();
-    }
-
-    public List<ScheduledLocation> getSchedule() {
-        return ImmutableList.copyOf(sequence.values());
+        return Iterators.peekingIterator(sequence.subList(
+                0, currentSequence).reverse().iterator());
     }
 
     public Duration getInServiceTime() {
-        final LocalDateTime startTime 
-                = sequence.firstEntry().getValue().getScheduledTime();
+        final LocalDateTime startTime = sequence.get(0).getScheduledTime();
         final LocalDateTime endTime
-                = sequence.lastEntry().getValue().getScheduledTime();
+                = sequence.get(sequence.size() - 1).getScheduledTime();
         return Duration.between(startTime, endTime);
     }
 

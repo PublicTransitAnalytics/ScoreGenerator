@@ -36,6 +36,7 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Tri
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStop;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedServiceTypeCalendar;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -76,6 +77,9 @@ public class DirectoryReadingTripCreatorTest {
     private final LocalDate PRIOR_SERVICE_DATE
             = LocalDate.of(2017, Month.APRIL, 3);
     private final LocalDate SERVICE_DATE = LocalDate.of(2017, Month.APRIL, 4);
+    
+    private static final ScheduleInterpolatorFactory INTERPOLATOR_FACTORY 
+            = (value) -> new PreloadedScheduleInterpolator(value);
 
     @Test
     public void testFindsTrip() throws Exception {
@@ -106,7 +110,7 @@ public class DirectoryReadingTripCreatorTest {
         final DirectoryReadingTripCreator tripCreator
                 = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
+                        calendar, stopIdMap, INTERPOLATOR_FACTORY);
 
         Assert.assertEquals(1, tripCreator.createTrips().size());
 
@@ -141,7 +145,7 @@ public class DirectoryReadingTripCreatorTest {
         final DirectoryReadingTripCreator tripCreator
                 = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
+                        calendar, stopIdMap, INTERPOLATOR_FACTORY);
 
         Assert.assertEquals(1, tripCreator.createTrips().size());
 
@@ -181,7 +185,7 @@ public class DirectoryReadingTripCreatorTest {
         final DirectoryReadingTripCreator tripCreator
                 = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
+                        calendar, stopIdMap, INTERPOLATOR_FACTORY);
 
         Assert.assertEquals(2, tripCreator.createTrips().size());
     }
@@ -220,7 +224,7 @@ public class DirectoryReadingTripCreatorTest {
         final DirectoryReadingTripCreator tripCreator
                 = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
+                        calendar, stopIdMap, INTERPOLATOR_FACTORY);
 
         Assert.assertTrue(tripCreator.createTrips().isEmpty());
     }
@@ -252,7 +256,7 @@ public class DirectoryReadingTripCreatorTest {
         final DirectoryReadingTripCreator tripCreator
                 = new DirectoryReadingTripCreator(
                         EARLIEST_TIME, LATEST_TIME, stops, routes, trips,
-                        calendar, stopIdMap);
+                        calendar, stopIdMap, INTERPOLATOR_FACTORY);
 
         Assert.assertTrue(tripCreator.createTrips().isEmpty());
     }

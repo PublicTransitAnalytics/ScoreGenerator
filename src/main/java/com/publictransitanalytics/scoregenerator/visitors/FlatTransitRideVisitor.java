@@ -24,7 +24,6 @@ import com.publictransitanalytics.scoregenerator.rider.Rider;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
 import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Set;
@@ -62,11 +61,8 @@ public class FlatTransitRideVisitor
                 transitStop, currentTime, waitCutoffTime);
 
         for (final EntryPoint entryPoint : entryPoints) {
-
-            final Trip trip = entryPoint.getTrip();
-            final LocalDateTime entryTime = entryPoint.getTime();
-            final Rider rider = riderFactory.getNewRider(
-                    transitStop, entryTime, cutoffTime, trip);
+            final Rider rider = riderFactory.getNewRider(entryPoint,
+                                                         cutoffTime);
             while (rider.canContinueTrip()) {
 
                 final RiderStatus status = rider.continueTrip();

@@ -17,7 +17,7 @@ package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -42,7 +42,7 @@ public class RouteTruncation implements Patch {
     @Override
     public Optional<Trip> patch(final Trip original) {
         final Trip newTrip;
-        final List<ScheduledLocation> schedule = original.getSchedule();
+        final List<VehicleEvent> schedule = original.getSchedule();
         if (routeNumber.equals(original.getRouteNumber())) {
             if (schedule.isEmpty() || schedule.size() == 1) {
                 newTrip = original;
@@ -86,7 +86,7 @@ public class RouteTruncation implements Patch {
 
     private static Trip makeReplacementTrip(
             final Trip originalTrip,
-            final List<ScheduledLocation> newStops) {
+            final List<VehicleEvent> newStops) {
         return new Trip(originalTrip.getTripId(), originalTrip.getRouteName(),
                         originalTrip.getRouteNumber(), newStops);
     }

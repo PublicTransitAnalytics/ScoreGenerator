@@ -15,8 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.rider;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
@@ -39,9 +38,8 @@ public class RetrospectiveRiderFactory implements RiderFactory {
 
     @Override
     public Rider getNewRider(
-            final TransitStop stop, final LocalDateTime initialTime,
-            final LocalDateTime cutoffTime, final Trip trip) {
-        return new RetrospectiveRider(stop, initialTime, cutoffTime, trip);
+            final EntryPoint entryPoint, final LocalDateTime cutoffTime) {
+        return new RetrospectiveRider(entryPoint, cutoffTime);
     }
 
 }

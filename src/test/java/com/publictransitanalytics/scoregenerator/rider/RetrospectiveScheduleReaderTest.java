@@ -19,7 +19,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRider;
 import com.publictransitanalytics.scoregenerator.rider.RiderStatus;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import java.time.LocalDateTime;

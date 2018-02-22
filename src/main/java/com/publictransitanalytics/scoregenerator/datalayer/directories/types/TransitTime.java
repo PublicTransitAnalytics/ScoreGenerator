@@ -112,7 +112,8 @@ public class TransitTime implements Comparable<TransitTime> {
                                    Integer.valueOf(matcher.group(2)),
                                    Integer.valueOf(matcher.group(3)));
         }
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException(String.format(
+                "%s cannot be converted to a TransitTime.", stringRep));
     }
 
     /**

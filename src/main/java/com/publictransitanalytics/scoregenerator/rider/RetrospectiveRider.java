@@ -15,8 +15,10 @@
  */
 package com.publictransitanalytics.scoregenerator.rider;
 
+import com.google.common.collect.PeekingIterator;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 
@@ -33,39 +35,35 @@ public class RetrospectiveRider implements Rider {
     private final Trip trip;
     private final LocalDateTime cutoffTime;
 
-    private TransitStop position;
-    private LocalDateTime time;
+    private final PeekingIterator<VehicleEvent> iterator;
 
-    public RetrospectiveRider(final TransitStop initialPosition,
-                              final LocalDateTime initialTime,
-                              final LocalDateTime cutoffTime,
-                              final Trip trip) {
-        this.initialPosition = initialPosition;
-        this.initialTime = initialTime;
-        position = initialPosition;
-        time = initialTime;
+    public RetrospectiveRider(final EntryPoint entryPoint,
+                              final LocalDateTime cutoffTime) {
+        this.trip = entryPoint.getTrip();
+        iterator = trip.getBackwardIterator(entryPoint.getSequence());
+        final VehicleEvent event = trip.getSchedule().get(
+                entryPoint.getSequence());
+
+        this.initialPosition = event.getLocation();
+        this.initialTime = event.getScheduledTime();
         this.cutoffTime = cutoffTime;
-        this.trip = trip;
     }
 
     @Override
     public boolean canContinueTrip() {
-        final ScheduledLocation continued
-                = trip.getPreviousScheduledLocation(position, time);
-        if (continued == null) {
+        if (!iterator.hasNext()) {
             return false;
         }
+
+        final VehicleEvent continued = iterator.peek();
         return !continued.getScheduledTime().isBefore(cutoffTime);
     }
 
     @Override
     public RiderStatus continueTrip() {
-        final ScheduledLocation location
-                = trip.getPreviousScheduledLocation(position, time);
-        position = location.getLocation();
-        time = location.getScheduledTime();
-        return new RiderStatus(location.getLocation(),
-                               location.getScheduledTime(), trip);
+        final VehicleEvent event = iterator.next();
+        return new RiderStatus(event.getLocation(), event.getScheduledTime(),
+                               trip);
     }
 
 }

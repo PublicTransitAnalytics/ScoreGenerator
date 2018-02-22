@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableList;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,41 +29,41 @@ public class Appending {
 
     public static Trip makeReplacementTrip(
             final Trip originalTrip,
-            final List<ScheduledLocation> newStops) {
+            final List<VehicleEvent> newStops) {
         return new Trip(originalTrip.getTripId(), originalTrip.getRouteName(),
                         originalTrip.getRouteNumber(), newStops);
     }
 
-    public static List<ScheduledLocation> appendToSchedule(
-            final List<ScheduledLocation> schedule,
+    public static List<VehicleEvent> appendToSchedule(
+            final List<VehicleEvent> schedule,
             final List<RouteSequenceItem> extension) {
         final LocalDateTime baseTime
                 = schedule.get(schedule.size() - 1).getScheduledTime();
-        final ImmutableList.Builder<ScheduledLocation> builder
+        final ImmutableList.Builder<VehicleEvent> builder
                 = ImmutableList.builder();
         builder.addAll(schedule);
         LocalDateTime lastTime = baseTime;
         for (final RouteSequenceItem item : extension) {
             final LocalDateTime newTime = lastTime.plus(item.getDelta());
-            builder.add(new ScheduledLocation(item.getStop(), newTime));
+            builder.add(new VehicleEvent(item.getStop(), newTime));
             lastTime = newTime;
         }
         return builder.build();
     }
 
-    public static List<ScheduledLocation> prependToSchedule(
-            final List<ScheduledLocation> schedule,
+    public static List<VehicleEvent> prependToSchedule(
+            final List<VehicleEvent> schedule,
             final List<RouteSequenceItem> extension) {
         final LocalDateTime baseTime = schedule.get(0).getScheduledTime();
-        final ImmutableList.Builder<ScheduledLocation> extensionBuilder
+        final ImmutableList.Builder<VehicleEvent> extensionBuilder
                 = ImmutableList.builder();
         LocalDateTime lastTime = baseTime;
         for (final RouteSequenceItem item : extension) {
             final LocalDateTime newTime = lastTime.minus(item.getDelta());
-            extensionBuilder.add(new ScheduledLocation(item.getStop(), newTime));
+            extensionBuilder.add(new VehicleEvent(item.getStop(), newTime));
             lastTime = newTime;
         }
-        return ImmutableList.<ScheduledLocation>builder().addAll(
+        return ImmutableList.<VehicleEvent>builder().addAll(
                 extensionBuilder.build().reverse()).addAll(schedule).build();
     }
 

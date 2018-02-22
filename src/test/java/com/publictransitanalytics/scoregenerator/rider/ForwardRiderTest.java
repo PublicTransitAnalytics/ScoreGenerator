@@ -23,10 +23,14 @@ import com.publictransitanalytics.scoregenerator.GeoPoint;
 import com.publictransitanalytics.scoregenerator.AngleUnit;
 import com.publictransitanalytics.scoregenerator.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.GeoLongitude;
+import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduleEntry;
+import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
+import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.Optional;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -61,17 +65,21 @@ public class ForwardRiderTest {
     private static final String ROUTE_NUMBER = "-1";
     private static final String ROUTE_NAME = "Somewhere via Elsewhere";
 
+    private static final ScheduleInterpolator INTERPOLATOR
+            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
+
     @Test
     public void testCannotContinueBeyondEnd() {
         final Trip trip = new Trip(
                 new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
                 ROUTE_NUMBER, ImmutableSet.of(new ScheduleEntry(
-                        0, STOP_TIME, STOP_ON_TRIP)));
+                        0, Optional.of(STOP_TIME), STOP_ON_TRIP)), 
+                INTERPOLATOR);
 
         final LocalDateTime cutoffTime = LocalDateTime.of(2017, Month.FEBRUARY,
                                                           12, 10, 45, 0);
         final ForwardRider rider = new ForwardRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
+                new EntryPoint(trip, STOP_TIME, 0), cutoffTime);
         Assert.assertTrue(!rider.canContinueTrip());
     }
 
@@ -80,14 +88,15 @@ public class ForwardRiderTest {
         final Trip trip = new Trip(
                 new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
                 ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, STOP_TIME, STOP_ON_TRIP),
-                        new ScheduleEntry(1, LATER_STOP_TIME,
-                                          LATER_STOP_ON_TRIP)));
+                        new ScheduleEntry(0, Optional.of(STOP_TIME),
+                                          STOP_ON_TRIP),
+                        new ScheduleEntry(1, Optional.of(LATER_STOP_TIME),
+                                          LATER_STOP_ON_TRIP)), INTERPOLATOR);
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 35, 0);
         final ForwardRider rider = new ForwardRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
+                new EntryPoint(trip, STOP_TIME, 0), cutoffTime);
         Assert.assertTrue(!rider.canContinueTrip());
     }
 
@@ -96,15 +105,16 @@ public class ForwardRiderTest {
         final Trip trip = new Trip(
                 new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
                 ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, STOP_TIME, STOP_ON_TRIP),
-                        new ScheduleEntry(1, LATER_STOP_TIME,
-                                          LATER_STOP_ON_TRIP)));
+                        new ScheduleEntry(0, Optional.of(STOP_TIME),
+                                          STOP_ON_TRIP),
+                        new ScheduleEntry(1, Optional.of(LATER_STOP_TIME),
+                                          LATER_STOP_ON_TRIP)), INTERPOLATOR);
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 45, 0);
 
         final ForwardRider rider = new ForwardRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
+                new EntryPoint(trip, STOP_TIME, 0), cutoffTime);
         Assert.assertTrue(rider.canContinueTrip());
     }
 
@@ -113,15 +123,16 @@ public class ForwardRiderTest {
         final Trip trip = new Trip(
                 new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
                 ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, STOP_TIME, STOP_ON_TRIP),
-                        new ScheduleEntry(1, LATER_STOP_TIME,
-                                          LATER_STOP_ON_TRIP)));
+                        new ScheduleEntry(0, Optional.of(STOP_TIME),
+                                          STOP_ON_TRIP),
+                        new ScheduleEntry(1, Optional.of(LATER_STOP_TIME),
+                                          LATER_STOP_ON_TRIP)), INTERPOLATOR);
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 40, 0);
 
         final ForwardRider rider = new ForwardRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
+                new EntryPoint(trip, STOP_TIME, 0), cutoffTime);
         Assert.assertTrue(rider.canContinueTrip());
     }
 
@@ -130,15 +141,16 @@ public class ForwardRiderTest {
         final Trip trip = new Trip(
                 new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
                 ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, STOP_TIME, STOP_ON_TRIP),
-                        new ScheduleEntry(1, LATER_STOP_TIME,
-                                          LATER_STOP_ON_TRIP)));
+                        new ScheduleEntry(0, Optional.of(STOP_TIME),
+                                          STOP_ON_TRIP),
+                        new ScheduleEntry(1, Optional.of(LATER_STOP_TIME),
+                                          LATER_STOP_ON_TRIP)), INTERPOLATOR);
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 45, 0);
 
         final ForwardRider rider = new ForwardRider(
-                STOP_ON_TRIP, STOP_TIME, cutoffTime, trip);
+                new EntryPoint(trip, STOP_TIME, 0), cutoffTime);
 
         final RiderStatus status = rider.continueTrip();
         Assert.assertEquals(LATER_STOP_TIME, status.getTime());

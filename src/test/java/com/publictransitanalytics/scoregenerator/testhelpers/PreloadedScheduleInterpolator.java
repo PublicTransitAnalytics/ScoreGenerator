@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,32 +15,32 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.rider.Rider;
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
+import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
-import com.publictransitanalytics.scoregenerator.rider.ScheduleReader;
-import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 
 /**
  *
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public class PreloadedRiderBehaviorFactory implements RiderFactory {
+public class PreloadedScheduleInterpolator implements ScheduleInterpolator {
 
-    private final PreloadedScheduleReader reader;
-    private final PreloadedRider rider;
+    private final LocalDateTime time;
 
     @Override
-    public ScheduleReader getScheduleReader() {
-        return reader;
+    public LocalDateTime getInterpolatedTime(final TransitStop stop) {
+        return time;
     }
 
     @Override
-    public Rider getNewRider(final EntryPoint entryPoint, 
-                             final LocalDateTime cutoffTime) {
-        return rider;
+    public void setBaseTime(final LocalDateTime baseTime) {
+    }
+
+    @Override
+    public void setNextKnownEvent(final LocalDateTime time,
+                                  final TransitStop stop) {
     }
 
 }

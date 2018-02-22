@@ -33,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
@@ -50,6 +51,7 @@ public class DirectoryReadingTripCreator implements TripCreator {
     private final TripDetailsDirectory tripDetailsDirectory;
     private final ServiceTypeCalendar calendar;
     private final Map<String, TransitStop> stopIdMap;
+    private final ScheduleInterpolatorFactory interpolatorFactory;
 
     @Override
     public Set<Trip> createTrips() throws InterruptedException {
@@ -69,8 +71,8 @@ public class DirectoryReadingTripCreator implements TripCreator {
                     .getRouteDetails(tripDetails.getRouteId());
             if (routeDetails == null) {
                 throw new ScoreGeneratorFatalException(String.format(
-                        "Trip %s provided route id %s, "
-                                + "which does not have route details.",
+                        "Trip %s provided route id %s, " +
+                        "which does not have route details.",
                         tripDetails, tripDetails.getRouteId()));
             }
 
@@ -100,12 +102,23 @@ public class DirectoryReadingTripCreator implements TripCreator {
                             = ImmutableSet.builder();
 
                     for (final TripStop tripStopEntry : tripStopEntries) {
-                        final Duration timeOffset = TransitTime.durationBetween(
-                                startTransitTime, tripStopEntry.getTime());
-                        final LocalDateTime time
-                                = intervalStartTime.plus(timeOffset);
-                        if (time.isAfter(endTime)) {
-                            break;
+                        final TransitTime entryTime = tripStopEntry.getTime();
+
+                        final Optional<LocalDateTime> optionalTime;
+                        if (entryTime == null) {
+                            optionalTime = Optional.empty();
+                        } else {
+
+                            final Duration timeOffset = TransitTime
+                                    .durationBetween(
+                                            startTransitTime, tripStopEntry
+                                                    .getTime());
+                            final LocalDateTime time
+                                    = intervalStartTime.plus(timeOffset);
+                            if (time.isAfter(endTime)) {
+                                break;
+                            }
+                            optionalTime = Optional.of(time);
                         }
 
                         final int sequence = tripStopEntry.getSequence();
@@ -115,8 +128,8 @@ public class DirectoryReadingTripCreator implements TripCreator {
                              * map. Do not add these stops. */
                             final TransitStop stop = stopIdMap.get(stopId);
                             final ScheduleEntry scheduleEntry
-                                    = new ScheduleEntry(
-                                            sequence, time, stop);
+                                    = new ScheduleEntry(sequence, optionalTime,
+                                                        stop);
                             tripScheduleBuilder.add(scheduleEntry);
                         }
                     }
@@ -124,7 +137,10 @@ public class DirectoryReadingTripCreator implements TripCreator {
                             = tripScheduleBuilder.build();
                     if (!tripSchedule.isEmpty()) {
                         final Trip trip = new Trip(
-                                tripId, routeName, routeNumber, tripSchedule);
+                                tripId, routeName, routeNumber, tripSchedule,
+                                interpolatorFactory.getInterpolator(
+                                        intervalStartTime));
+
                         tripsBuilder.add(trip);
                     }
                 }

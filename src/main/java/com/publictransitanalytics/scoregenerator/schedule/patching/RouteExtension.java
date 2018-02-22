@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduledLocation;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +38,7 @@ public class RouteExtension implements Patch {
 
     @Override
     public Optional<Trip> patch(final Trip original) {
-        final List<ScheduledLocation> schedule = original.getSchedule();
+        final List<VehicleEvent> schedule = original.getSchedule();
         final Trip newTrip;
         if (routeNumber.equals(original.getRouteNumber())) {
 
@@ -50,13 +50,13 @@ public class RouteExtension implements Patch {
                 final TransitStop stop = schedule.get(0).getLocation();
                 if (referenceStop.equals(stop)) {
                     if (type.equals(ReferenceDirection.AFTER_LAST)) {
-                        final List<ScheduledLocation> newSchedule
+                        final List<VehicleEvent> newSchedule
                                 = Appending.appendToSchedule(
                                         schedule, extensionSequence);
                         newTrip = Appending.makeReplacementTrip(original,
                                                                 newSchedule);
                     } else if (type.equals(ReferenceDirection.BEFORE_FIRST)) {
-                        final List<ScheduledLocation> newSchedule
+                        final List<VehicleEvent> newSchedule
                                 = Appending.prependToSchedule(
                                         schedule, extensionSequence);
                         newTrip = Appending.makeReplacementTrip(original,
@@ -75,7 +75,7 @@ public class RouteExtension implements Patch {
                     final TransitStop lastStop = schedule.get(
                             schedule.size() - 1).getLocation();
                     if (referenceStop.equals(lastStop)) {
-                        final List<ScheduledLocation> newSchedule
+                        final List<VehicleEvent> newSchedule
                                 = Appending.appendToSchedule(
                                         schedule, extensionSequence);
                         newTrip = Appending.makeReplacementTrip(original,
@@ -91,7 +91,7 @@ public class RouteExtension implements Patch {
                     final TransitStop firstStop
                             = schedule.get(0).getLocation();
                     if (referenceStop.equals(firstStop)) {
-                        final List<ScheduledLocation> newSchedule
+                        final List<VehicleEvent> newSchedule
                                 = Appending.prependToSchedule(
                                         schedule, extensionSequence);
                         newTrip = Appending.makeReplacementTrip(

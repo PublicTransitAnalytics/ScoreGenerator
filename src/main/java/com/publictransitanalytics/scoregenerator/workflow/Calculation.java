@@ -68,12 +68,14 @@ import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingTripCreator;
+import com.publictransitanalytics.scoregenerator.schedule.LastTimeScheduleInterpolator;
+import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolatorFactory;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.LocalDateTime;
 import java.util.Set;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
-import com.publictransitanalytics.scoregenerator.schedule.TripProcessingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.TripCreatingTransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.patching.RouteDeletion;
 import com.publictransitanalytics.scoregenerator.schedule.patching.ReferenceDirection;
 import com.publictransitanalytics.scoregenerator.schedule.patching.RouteExtension;
@@ -81,8 +83,6 @@ import com.publictransitanalytics.scoregenerator.schedule.patching.RouteReroute;
 import com.publictransitanalytics.scoregenerator.schedule.patching.RouteSequenceItem;
 import com.publictransitanalytics.scoregenerator.schedule.patching.RouteTruncation;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
-import com.publictransitanalytics.scoregenerator.walking.BackwardTimeTracker;
-import com.publictransitanalytics.scoregenerator.walking.ForwardTimeTracker;
 import com.squareup.okhttp.OkHttpClient;
 import java.io.IOException;
 import java.time.Duration;
@@ -435,16 +435,18 @@ public class Calculation<S extends ScoreCard> {
             final LocalDateTime earliestTime, final LocalDateTime latestTime,
             final BiMap<String, TransitStop> stopIdMap)
             throws IOException, InterruptedException {
+        
+        final ScheduleInterpolatorFactory interpolatorFactory = 
+                (baseTime) -> new LastTimeScheduleInterpolator(baseTime);
 
-        final TransitNetwork transitNetwork
-                = new TripProcessingTransitNetwork(
-                        new DirectoryReadingTripCreator(
-                                earliestTime, latestTime,
-                                serviceData.getStopTimesDirectory(),
-                                serviceData.getRouteDetailsDirectory(),
-                                serviceData.getTripDetailsDirectory(),
-                                serviceData.getServiceTypeCalendar(),
-                                stopIdMap));
+        final TransitNetwork transitNetwork = new TripCreatingTransitNetwork(
+                new DirectoryReadingTripCreator(
+                        earliestTime, latestTime,
+                        serviceData.getStopTimesDirectory(),
+                        serviceData.getRouteDetailsDirectory(),
+                        serviceData.getTripDetailsDirectory(),
+                        serviceData.getServiceTypeCalendar(),
+                        stopIdMap, interpolatorFactory));
         return transitNetwork;
     }
 

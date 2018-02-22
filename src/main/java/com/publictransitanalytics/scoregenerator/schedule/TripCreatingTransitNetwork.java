@@ -20,6 +20,7 @@ import com.google.common.collect.TreeBasedTable;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import lombok.Getter;
 
@@ -29,13 +30,13 @@ import lombok.Getter;
  *
  * @author Public Transit Analytics
  */
-public class TripProcessingTransitNetwork implements TransitNetwork {
+public class TripCreatingTransitNetwork implements TransitNetwork {
 
     final TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> entryPoints;
     @Getter
     final Set<Trip> trips;
 
-    public TripProcessingTransitNetwork(final TripCreator tripCreator)
+    public TripCreatingTransitNetwork(final TripCreator tripCreator)
             throws InterruptedException {
 
         trips = tripCreator.createTrips();
@@ -81,13 +82,14 @@ public class TripProcessingTransitNetwork implements TransitNetwork {
                                 stop2.getIdentifier()),
                         (time1, time2) -> time1.compareTo(time2));
         for (final Trip trip : trips) {
-            for (final ScheduledLocation scheduledLocation
-                         : trip.getSchedule()) {
+            final List<VehicleEvent> schedule =  trip.getSchedule();
+            for (int i = 0; i < schedule.size(); i++) {
+                final VehicleEvent scheduledLocation = schedule.get(i);
                 final LocalDateTime time = scheduledLocation.getScheduledTime();
                 final EntryPointTimeKey timeKey = new EntryPointTimeKey(time);
                 final TransitStop transitStop
                         = scheduledLocation.getLocation();
-                final EntryPoint entryPoint = new EntryPoint(trip, time);
+                final EntryPoint entryPoint = new EntryPoint(trip, time, i);
                 entryPoints.put(transitStop, timeKey, entryPoint);
             }
         }

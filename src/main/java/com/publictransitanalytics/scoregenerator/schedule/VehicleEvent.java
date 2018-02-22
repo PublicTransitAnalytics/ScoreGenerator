@@ -15,16 +15,18 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.LocalDateTime;
 import lombok.Value;
 
 /**
- *
+ * A record of being at a stop at a location.
+ * 
  * @author Public Transit Analytics
  */
 @Value
-public class EntryPoint {
-    private final Trip trip;
-    private final LocalDateTime time;
-    private final int sequence;
+public class VehicleEvent {
+
+    private final TransitStop location;
+    private final LocalDateTime scheduledTime;
 }

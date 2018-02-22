@@ -50,10 +50,10 @@ public class ForwardMovementAssembler implements MovementAssembler {
             final ModeInfo mode = record.getMode();
             final ModeType type = mode.getType();
             if (type.equals(ModeType.TRANSIT)) {
-                final EntryPoint trip = mode.getTransitTrip();
+                final EntryPoint entryPoint = mode.getTransitTrip();
                 final Movement movement = new TransitRideMovement(
-                        trip.getTrip(), record.getPredecessor(),
-                        trip.getTime(), location, record.getReachTime());
+                        entryPoint.getTrip(), record.getPredecessor(),
+                        entryPoint.getTime(), location, record.getReachTime());
                 movementsBuilder.add(movement);
 
             } else if (type.equals(ModeType.WALKING)) {

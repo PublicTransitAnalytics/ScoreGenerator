@@ -18,9 +18,11 @@ package com.publictransitanalytics.scoregenerator.schedule;
 import com.publictransitanalytics.scoregenerator.schedule.patching.PatchingTripCreator;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
+import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedTransitNetwork;
-import edu.emory.mathcs.backport.java.util.Collections;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import junit.framework.Assert;
@@ -32,10 +34,14 @@ import org.junit.Test;
  */
 public class PatchingTripCreatorTest {
 
+    private static final ScheduleInterpolator INTERPOLATOR
+            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
+
     @Test
     public void testRemovesEmpties() throws Exception {
         final Trip trip70_1 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                       "70", "70", Collections.emptySet());
+                                       "70", "70", Collections.emptySet(),
+                                       INTERPOLATOR);
         final TransitNetwork baseNetwork = new PreloadedTransitNetwork(
                 ImmutableSet.of(trip70_1));
         final Patch patch = trip -> Optional.empty();
@@ -49,7 +55,8 @@ public class PatchingTripCreatorTest {
     @Test
     public void testRetainsPresents() throws Exception {
         final Trip trip70_1 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                       "70", "70", Collections.emptySet());
+                                       "70", "70", Collections.emptySet(),
+                                       INTERPOLATOR);
         final TransitNetwork baseNetwork = new PreloadedTransitNetwork(
                 ImmutableSet.of(trip70_1));
         final Patch patch = trip -> Optional.of(trip);
@@ -64,10 +71,12 @@ public class PatchingTripCreatorTest {
     @Test
     public void testAcceptsChanges() throws Exception {
         final Trip trip70_1 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                       "70", "70", Collections.emptySet());
+                                       "70", "70", Collections.emptySet(),
+                                       INTERPOLATOR);
         final Trip trip70_1Modified
                 = new Trip(new TripId("70_1M", LocalDate.MIN),
-                           "70", "70", Collections.emptySet());
+                           "70", "70", Collections.emptySet(),
+                           INTERPOLATOR);
         final TransitNetwork baseNetwork = new PreloadedTransitNetwork(
                 ImmutableSet.of(trip70_1));
         final Patch patch = trip -> Optional.of(trip70_1Modified);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,35 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
+import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.LocalDateTime;
-import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class EntryPoint {
-    private final Trip trip;
-    private final LocalDateTime time;
-    private final int sequence;
+public class LastTimeScheduleInterpolator implements ScheduleInterpolator {
+
+    private LocalDateTime lastTime;
+
+    public LastTimeScheduleInterpolator(final LocalDateTime baseTime) {
+        lastTime = baseTime;
+    }
+
+    @Override
+    public LocalDateTime getInterpolatedTime(final TransitStop stop) {
+        return lastTime;
+    }
+
+    @Override
+    public void setBaseTime(final LocalDateTime baseTime) {
+        lastTime = baseTime;
+    }
+
+    @Override
+    public void setNextKnownEvent(final LocalDateTime time,
+                                  final TransitStop stop) {
+
+    }
+
 }
