@@ -22,7 +22,6 @@ import com.bitvantage.bitvantagecaching.InMemorySortedStore;
 import com.bitvantage.bitvantagecaching.Key;
 import com.bitvantage.bitvantagecaching.KeyMaterializer;
 import com.bitvantage.bitvantagecaching.LmdbStore;
-import com.bitvantage.bitvantagecaching.RangedCache;
 import com.bitvantage.bitvantagecaching.RangedKey;
 import com.bitvantage.bitvantagecaching.RangedLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
@@ -49,7 +48,7 @@ public class UnboundedCacheStoreFactory implements StoreFactory {
     public <K extends RangedKey<K>, V> RangedStore getRangedStore(
             final Path path, final KeyMaterializer<K> keyMaterializer,
             final Class<V> valueClass) {
-        return new CachingRangedStore<K, V>(
+        return new CachingRangedStore<>(
                 new RangedLmdbStore<>(path, keyMaterializer, valueClass),
                 new UnboundedRangedCache<>(new InMemorySortedStore<>()));
     }

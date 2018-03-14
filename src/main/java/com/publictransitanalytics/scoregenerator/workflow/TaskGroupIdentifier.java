@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Center;
 import lombok.Value;
 
 /**
@@ -25,5 +25,5 @@ import lombok.Value;
  */
 @Value
 public class TaskGroupIdentifier {
-    private final PointLocation center;
+    private final Center center;
 }

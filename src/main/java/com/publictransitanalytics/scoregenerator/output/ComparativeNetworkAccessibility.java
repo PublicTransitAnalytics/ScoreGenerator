@@ -75,7 +75,7 @@ public class ComparativeNetworkAccessibility {
     public ComparativeNetworkAccessibility(
             final int taskCount, final int trialTaskCount,
             final ScoreCard scoreCard, final ScoreCard trialScoreCard,
-            final Grid grid, final Set<PointLocation> centerPoints,
+            final Grid grid, final Set<Sector> centerSectors,
             final LocalDateTime startTime, final LocalDateTime endTime,
             final LocalDateTime trialStartTime,
             final LocalDateTime trialEndTime, final Duration tripDuration,
@@ -125,8 +125,9 @@ public class ComparativeNetworkAccessibility {
 
         sectorCounts = countBuilder.build();
 
-        this.centerPoints = centerPoints.stream().map(
-                point -> new Point(point)).collect(Collectors.toSet());
+        this.centerPoints = centerSectors.stream().map(
+                sector -> new Point(sector.getBounds().getCenter()))
+                .collect(Collectors.toSet());
         sampleCount = centerPoints.size();
 
         this.trialName = trialName;

@@ -19,7 +19,7 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import edu.emory.mathcs.backport.java.util.Collections;
+import java.util.Collections;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Set;

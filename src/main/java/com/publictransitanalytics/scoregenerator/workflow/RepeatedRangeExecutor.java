@@ -15,7 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.location.Center;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
@@ -52,7 +53,8 @@ public class RepeatedRangeExecutor implements RangeExecutor {
                 = calculation.getReachabilityClient();
 
         final Instant profileStartTime = Instant.now();
-        final PointLocation startLocation = taskGroup.getCenter();
+        final Center center = taskGroup.getCenter();
+        final PointLocation startLocation = center.getPhysicalCenter();
 
         final Iterator<LocalDateTime> timeIterator
                 = timeTracker.getTimeIterator(calculation.getTimes());
@@ -62,13 +64,13 @@ public class RepeatedRangeExecutor implements RangeExecutor {
             final LocalDateTime cutoffTime = timeTracker.adjust(
                     startTime, duration);
             Map<PointLocation, DynamicProgrammingRecord> map
-                    = algorithm.getOutput(
+                    = algorithm.execute(
                             startTime, cutoffTime, startLocation, timeTracker,
                             duration, reachabilityClient, riderFactory)
                             .getMap();
 
             final TaskIdentifier latestFullTask = new TaskIdentifier(
-                    startTime, startLocation);
+                    startTime, center);
 
             scoreCard.scoreTask(latestFullTask, map);
         }

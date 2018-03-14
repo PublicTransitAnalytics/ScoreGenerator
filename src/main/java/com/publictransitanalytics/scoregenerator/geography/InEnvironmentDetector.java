@@ -15,9 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.geography;
 
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.GeoBounds;
-
 /**
  * Detects whether points or regions are on water.
  * 

@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.GeoAngle;
-import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.GeoAngle;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.environment.Segment;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 import lombok.EqualsAndHashCode;
@@ -33,10 +33,14 @@ public class GridPoint extends PointLocation {
 
     public GridPoint(final GeoPoint location, final Segment segment,
                      final GeoAngle angle) {
+        this(location, String.format("gridpoint:%sx%s", segment.toString(),
+                                   angle.toString()));
+    }
+    
+    public GridPoint(final GeoPoint location, final String identifier) {
         super(location);
         name = location.toDegreeString();
-        identifier = String.format("gridpoint:%sx%s", segment.toString(),
-                                   angle.toString());
+        this.identifier = identifier;
     }
 
     @Override

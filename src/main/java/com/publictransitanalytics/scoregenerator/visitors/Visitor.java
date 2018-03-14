@@ -21,7 +21,7 @@ import com.publictransitanalytics.scoregenerator.location.TransitStop;
 
 /**
  * A visitor that visits a variety of locations.
- * 
+ *
  * @author Public Transit Analytics
  */
 public interface Visitor {
@@ -30,6 +30,6 @@ public interface Visitor {
 
     void visit(Landmark point) throws InterruptedException;
 
-    void visit(GridPoint point);
+    void visit(GridPoint point) throws InterruptedException;
 
 }

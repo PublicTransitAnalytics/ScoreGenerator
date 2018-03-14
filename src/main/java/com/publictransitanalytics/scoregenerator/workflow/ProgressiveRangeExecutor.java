@@ -17,11 +17,9 @@ package com.publictransitanalytics.scoregenerator.workflow;
 
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.ModeType;
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
-import com.publictransitanalytics.scoregenerator.environment.Grid;
+import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.location.Center;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
-import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.visitors.FlatTransitRideVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.FlatWalkVisitor;
@@ -37,7 +35,6 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.util.HashMap;
 
@@ -66,7 +63,8 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
                 = calculation.getReachabilityClient();
 
         final Instant profileStartTime = Instant.now();
-        final PointLocation startLocation = taskGroup.getCenter();
+        final Center center = taskGroup.getCenter();
+        final PointLocation startLocation = center.getPhysicalCenter();
 
         final Iterator<LocalDateTime> timeIterator
                 = timeTracker.getTimeIterator(calculation.getTimes());
@@ -75,14 +73,14 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
         final LocalDateTime latestCutoffTime = timeTracker.adjust(
                 latestStartTime, duration);
 
-        final AlgorithmOutput output = algorithm.getOutput(
+        final AlgorithmOutput output = algorithm.execute(
                 latestStartTime, latestCutoffTime, startLocation, timeTracker,
                 duration, reachabilityClient, riderFactory);
         Map<PointLocation, DynamicProgrammingRecord> map
                 = output.getMap();
 
         final TaskIdentifier latestFullTask = new TaskIdentifier(
-                latestStartTime, startLocation);
+                latestStartTime, center);
 
         scoreCard.scoreTask(latestFullTask, map);
 
@@ -104,7 +102,7 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
                                     initialWalks, implicitLocations);
 
             final TaskIdentifier nextTask = new TaskIdentifier(
-                    nextStartTime, startLocation);
+                    nextStartTime, center);
 
             scoreCard.scoreTask(nextTask, nextMap);
             map = nextMap;

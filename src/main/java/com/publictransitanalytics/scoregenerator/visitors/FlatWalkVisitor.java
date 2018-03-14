@@ -18,8 +18,8 @@ package com.publictransitanalytics.scoregenerator.visitors;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.ModeType;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.distance.DistanceClientException;
+import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
@@ -28,7 +28,6 @@ import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -65,8 +64,8 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
     }
 
     @Override
-    public void visit(final GridPoint gridPoint) {
-        output = Collections.emptySet();
+    public void visit(final GridPoint gridPoint) throws InterruptedException {
+        walkFrom(gridPoint);
     }
 
     private void walkFrom(final PointLocation location)
@@ -99,7 +98,7 @@ public class FlatWalkVisitor implements FlatVisitor<Set<ReachabilityOutput>> {
             final PointLocation location) throws InterruptedException {
         try {
             final Map<PointLocation, WalkingCosts> walkCosts
-                    = reachabilityClient.getWalkingDistances(
+                    = reachabilityClient.getWalkingCosts(
                             location, currentTime, cutoffTime);
             return walkCosts;
         } catch (DistanceClientException e) {

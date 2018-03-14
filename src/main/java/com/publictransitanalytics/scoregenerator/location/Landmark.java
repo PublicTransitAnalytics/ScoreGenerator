@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 
 /**
@@ -23,7 +23,7 @@ import com.publictransitanalytics.scoregenerator.visitors.Visitor;
  *
  * @author Public Transit Analytics.
  */
-public class Landmark extends PointLocation {
+public class Landmark extends PointLocation implements LogicalCenter {
 
     private final String name;
     private final String id;

@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.workflow;
 
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Center;
 import java.time.LocalDateTime;
 import lombok.Value;
 
@@ -27,5 +27,5 @@ import lombok.Value;
 @Value
 public class TaskIdentifier {
     private final LocalDateTime time;
-    private final PointLocation center;
+    private final Center center;
 }

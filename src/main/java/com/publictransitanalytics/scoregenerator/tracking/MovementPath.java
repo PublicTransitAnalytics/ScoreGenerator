@@ -27,7 +27,7 @@ import lombok.RequiredArgsConstructor;
  * @author Public Transit Analytics
  */
 @RequiredArgsConstructor
-public abstract class MovementPath implements Comparable<MovementPath> {
+public abstract class MovementPath /*implements Comparable<MovementPath> */{
 
     @Getter
     protected final ImmutableList<Movement> movements;
@@ -42,7 +42,7 @@ public abstract class MovementPath implements Comparable<MovementPath> {
         return Duration.between(startTime, endTime);
     }
 
-    private double getWalkingDistance() {
+    public double getWalkingDistance() {
         double walkingDistance = 0;
         for (Movement modeChange : movements) {
             walkingDistance += modeChange.getWalkingDistance();
@@ -50,55 +50,55 @@ public abstract class MovementPath implements Comparable<MovementPath> {
         return walkingDistance;
     }
 
-    @Override
-    public int compareTo(final MovementPath o) {
-        if (movements.isEmpty()) {
-            // If we are empty, the other path is worse, unless it's empty too.
-            return -o.movements.size();
-        }
-        if (o.movements.isEmpty()) {
-            // If the other one is empty, we're worse, unless we're empty too.
-            return movements.size();
-        }
-
-        final LocalDateTime endTime
-                = movements.get(movements.size() - 1).getEndTime();
-        final LocalDateTime otherEndTime
-                = o.movements.get(o.movements.size() - 1).getEndTime();
-
-        final LocalDateTime startTime
-                = movements.get(0).getStartTime();
-        final LocalDateTime otherStartTime
-                = o.movements.get(0).getStartTime();
-
-        // What gets me there first?
-        if (!endTime.equals(otherEndTime)) {
-            return endTime.compareTo(otherEndTime);
-        }
-        // What lets me start the latest?
-        if (!startTime.equals(otherStartTime)) {
-            return -startTime.compareTo(otherStartTime);
-        }
-        // What gets me there with the least walking?
-        if (Double.compare(getWalkingDistance(), o.getWalkingDistance())
-                    != 0) {
-            return Double.compare(getWalkingDistance(), o
-                                  .getWalkingDistance());
-        }
-        
-        // What gets me there with the fewest changes in mode?
-        if (movements.size()
-                    != o.movements.size()) {
-            return movements.size() - o.movements.size();
-        }
-        
-        // Are they exactly the same?
-        if (movements.equals(o.movements)) {
-            return 0;
-        }
-              
-        // Break ties arbitrarily.
-        return System.identityHashCode(this) - System.identityHashCode(o);
-    }
+//    @Override
+//    public int compareTo(final MovementPath o) {
+//        if (movements.isEmpty()) {
+//            // If we are empty, the other path is worse, unless it's empty too.
+//            return -o.movements.size();
+//        }
+//        if (o.movements.isEmpty()) {
+//            // If the other one is empty, we're worse, unless we're empty too.
+//            return movements.size();
+//        }
+//
+//        final LocalDateTime endTime
+//                = movements.get(movements.size() - 1).getEndTime();
+//        final LocalDateTime otherEndTime
+//                = o.movements.get(o.movements.size() - 1).getEndTime();
+//
+//        final LocalDateTime startTime
+//                = movements.get(0).getStartTime();
+//        final LocalDateTime otherStartTime
+//                = o.movements.get(0).getStartTime();
+//
+//        // What gets me there first?
+//        if (!endTime.equals(otherEndTime)) {
+//            return endTime.compareTo(otherEndTime);
+//        }
+//        // What lets me start the latest?
+//        if (!startTime.equals(otherStartTime)) {
+//            return -startTime.compareTo(otherStartTime);
+//        }
+//        // What gets me there with the least walking?
+//        if (Double.compare(getWalkingDistance(), o.getWalkingDistance())
+//                    != 0) {
+//            return Double.compare(getWalkingDistance(), o
+//                                  .getWalkingDistance());
+//        }
+//        
+//        // What gets me there with the fewest changes in mode?
+//        if (movements.size()
+//                    != o.movements.size()) {
+//            return movements.size() - o.movements.size();
+//        }
+//        
+//        // Are they exactly the same?
+//        if (movements.equals(o.movements)) {
+//            return 0;
+//        }
+//              
+//        // Break ties arbitrarily.
+//        return System.identityHashCode(this) - System.identityHashCode(o);
+//    }
 
 }

@@ -16,10 +16,10 @@
 package com.publictransitanalytics.scoregenerator.environment;
 
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.AngleUnit;
-import com.publictransitanalytics.scoregenerator.GeoLatitude;
-import com.publictransitanalytics.scoregenerator.GeoLongitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
+import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;

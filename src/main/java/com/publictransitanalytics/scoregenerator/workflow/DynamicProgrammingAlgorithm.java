@@ -18,7 +18,7 @@ package com.publictransitanalytics.scoregenerator.workflow;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.ModeType;
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.visitors.FlatTransitRideVisitor;
 import com.publictransitanalytics.scoregenerator.visitors.FlatWalkVisitor;
@@ -45,7 +45,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class DynamicProgrammingAlgorithm {
 
-    public AlgorithmOutput getOutput(
+    public AlgorithmOutput execute(
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
             final PointLocation startLocation,
             final TimeTracker timeTracker,

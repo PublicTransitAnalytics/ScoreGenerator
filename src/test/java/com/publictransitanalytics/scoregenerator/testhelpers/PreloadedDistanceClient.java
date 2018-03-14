@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
+import com.publictransitanalytics.scoregenerator.distance.DistanceClient;
+import com.publictransitanalytics.scoregenerator.distance.DistanceClientException;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
 import java.util.Map;
@@ -37,6 +37,8 @@ public class PreloadedDistanceClient implements DistanceClient {
             getDistances(final PointLocation origins,
                          final Set<PointLocation> destinations)
             throws DistanceClientException {
+                
+                
         return map;
     }
 

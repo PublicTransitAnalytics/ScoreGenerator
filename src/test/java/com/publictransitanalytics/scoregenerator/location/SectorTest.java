@@ -15,11 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.AngleUnit;
-import com.publictransitanalytics.scoregenerator.GeoBounds;
-import com.publictransitanalytics.scoregenerator.GeoLatitude;
-import com.publictransitanalytics.scoregenerator.GeoLongitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
+import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
+import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import junit.framework.Assert;
 import org.junit.Test;
 

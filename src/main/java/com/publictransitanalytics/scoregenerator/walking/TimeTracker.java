@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.walking;
 
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Iterator;
@@ -37,8 +38,10 @@ public interface TimeTracker {
 
     boolean shouldReplace(LocalDateTime baseTime, LocalDateTime otherTime);
 
+    boolean shouldReplace(MovementPath currentPath, LocalDateTime otherTime);
+
     boolean meetsCutoff(LocalDateTime time, LocalDateTime cutoffTime);
-    
-    Iterator<LocalDateTime> getTimeIterator(NavigableSet<LocalDateTime> times); 
+
+    Iterator<LocalDateTime> getTimeIterator(NavigableSet<LocalDateTime> times);
 
 }

@@ -21,6 +21,7 @@ import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.scoring.LogicalTask;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.Duration;
@@ -91,13 +92,13 @@ public class PointAccessibility {
                 = ImmutableMap.builder();
 
         for (final Sector sector : sectors) {
-            final Map<TaskIdentifier, MovementPath> sectorPaths
+            final Map<LogicalTask, MovementPath> taskPaths
                     = scoreCard.getBestPaths(sector);
-            if (!sectorPaths.isEmpty()) {
+            if (!taskPaths.isEmpty()) {
                 final ImmutableSet.Builder<MovementPath> bestPathsBuilder
                         = ImmutableSet.builder();
                 int count = 0;
-                for (final MovementPath taskPath : sectorPaths.values()) {
+                for (final MovementPath taskPath : taskPaths.values()) {
                     if (taskPath != null) {
                         bestPathsBuilder.add(taskPath);
                         count++;

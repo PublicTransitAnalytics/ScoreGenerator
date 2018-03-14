@@ -18,8 +18,10 @@ package com.publictransitanalytics.scoregenerator.output;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
+import com.publictransitanalytics.scoregenerator.environment.StoredGrid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.scoring.LogicalTask;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
@@ -108,9 +110,9 @@ public class ComparativePointAccessibility {
                 = ImmutableMap.builder();
 
         for (final Sector sector : sectors) {
-            final Map<TaskIdentifier, MovementPath> bestPaths
+            final Map<LogicalTask, MovementPath> bestPaths
                     = scoreCard.getBestPaths(sector);
-            final Map<TaskIdentifier, MovementPath> trialBestPaths
+            final Map<LogicalTask, MovementPath> trialBestPaths
                     = trialScoreCard.getBestPaths(sector);
             if (!bestPaths.isEmpty() || !trialBestPaths.isEmpty()) {
                 final Set<MovementPath> bestPathSet = getBestPathSet(bestPaths);
@@ -140,11 +142,11 @@ public class ComparativePointAccessibility {
     }
 
     private static Set<MovementPath> getBestPathSet(
-            final Map<TaskIdentifier, MovementPath> sectorPaths) {
+            final Map<LogicalTask, MovementPath> taskPaths) {
         final ImmutableSet.Builder<MovementPath> bestPathsBuilder
                 = ImmutableSet.builder();
 
-        for (final MovementPath taskPath : sectorPaths.values()) {
+        for (final MovementPath taskPath : taskPaths.values()) {
             if (taskPath != null) {
                 bestPathsBuilder.add(taskPath);
             }

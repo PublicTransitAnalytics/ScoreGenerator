@@ -17,10 +17,10 @@ package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.AngleUnit;
-import com.publictransitanalytics.scoregenerator.GeoLatitude;
-import com.publictransitanalytics.scoregenerator.GeoLongitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
+import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduleEntry;
 import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;

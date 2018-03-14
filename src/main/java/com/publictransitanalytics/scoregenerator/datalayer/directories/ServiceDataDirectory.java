@@ -31,10 +31,8 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.key
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripSequenceKey;
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationDistanceKey;
-import com.publictransitanalytics.scoregenerator.datalayer.distanceestimates.LocationKey;
-import com.publictransitanalytics.scoregenerator.distanceclient.types.DistanceCacheKey;
-import com.publictransitanalytics.scoregenerator.distanceclient.types.WalkingDistanceMeasurement;
+import com.publictransitanalytics.scoregenerator.datalayer.distance.LocationKey;
+import com.publictransitanalytics.scoregenerator.datalayer.distance.LocationTimeKey;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -52,12 +50,9 @@ public class ServiceDataDirectory {
     private static final String GTFS_DIRECTORY = "gtfs";
 
     private static final String STOP_DETAILS_STORE = "stop_details_store";
-    private static final String WALKING_DISTANCE_STORE
-            = "new_walking_distance_store";
-    private static final String MAX_CANDIDATE_STOP_DISTANCE_STORE
-            = "max_candidate_distance_store";
-    private static final String CANDIDATE_STOP_DISTANCES_STORE
-            = "candidate_distance_store";
+
+    private static final String WALKING_TIME_STORE = "walking_time_store";
+    private static final String MAX_WALKING_TIME_STORE = "max_walking_time_store";
     private static final String TRIP_SEQUENCE_STORE = "trip_sequence_store";
     private static final String STOP_TIMES_STORE = "stop_times_store";
     private static final String TRIPS_STORE = "trips_store";
@@ -84,11 +79,9 @@ public class ServiceDataDirectory {
     @Getter
     private final StopTimesDirectory stopTimesDirectory;
     @Getter
-    private final Store<LocationKey, Double> maxCandidateDistanceStore;
+    private final RangedStore<LocationTimeKey, String> walkingTimeStore;
     @Getter
-    private final RangedStore<LocationDistanceKey, String> candidateDistancesStore;
-    @Getter
-    final Store<DistanceCacheKey, WalkingDistanceMeasurement> walkingDistanceStore;
+    private final Store<LocationKey, Integer> maxWalkingTimeStore;
 
     public ServiceDataDirectory(final Path root, final String files,
                                 final StoreFactory storeFactory)
@@ -103,27 +96,26 @@ public class ServiceDataDirectory {
                 = buildRouteDetailsDirectory(storeFactory, root, files);
         stopTimesDirectory
                 = buildStopTimesDirectory(storeFactory, root, files);
-        final Path maxCandidateDistanceStorePath = root.resolve(
-                files).resolve(MAX_CANDIDATE_STOP_DISTANCE_STORE);
 
-        maxCandidateDistanceStore = storeFactory.getStore(
-                maxCandidateDistanceStorePath, Double.class);
-        final Path candidateDistancesStorePath = root.resolve(files)
-                .resolve(CANDIDATE_STOP_DISTANCES_STORE);
-        candidateDistancesStore = storeFactory.getRangedStore(
-                candidateDistancesStorePath,
-                new LocationDistanceKey.Materializer(), String.class);
-        walkingDistanceStore = storeFactory.getStore(
-                root.resolve(files).resolve(WALKING_DISTANCE_STORE),
-                WalkingDistanceMeasurement.class);
+        final Path walkingTimeStorePath = root.resolve(files)
+                .resolve(WALKING_TIME_STORE);
+        walkingTimeStore = storeFactory
+                .<LocationTimeKey, String>getRangedStore(
+                        walkingTimeStorePath,
+                        new LocationTimeKey.Materializer(), String.class);
+        final Path maxWalkingTimeStorePath = root.resolve(files)
+                .resolve(MAX_WALKING_TIME_STORE);
+        maxWalkingTimeStore = storeFactory.<LocationKey, Integer>getStore(
+                maxWalkingTimeStorePath, Integer.class);
     }
 
     private static StopDetailsDirectory buildStopDetailsDirectory(
             final StoreFactory storeFactory, final Path baseDirectory,
             final String revision) throws InterruptedException, IOException {
         final Store<StopIdKey, StopDetails> stopDetailsStore
-                = storeFactory.getStore(baseDirectory.resolve(revision).resolve(
-                        STOP_DETAILS_STORE), StopDetails.class);
+                = storeFactory.<StopIdKey, StopDetails>getStore(
+                        baseDirectory.resolve(revision).resolve(
+                                STOP_DETAILS_STORE), StopDetails.class);
 
         final Reader stopDetailsReader = new FileReader(
                 baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
@@ -139,8 +131,9 @@ public class ServiceDataDirectory {
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
         final Store<DateKey, ServiceSet> serviceTypesStore
-                = storeFactory.getStore(root.resolve(revision).resolve(
-                        SERVICE_TYPES_STORE), ServiceSet.class);
+                = storeFactory.<DateKey, ServiceSet>getStore(
+                        root.resolve(revision).resolve(
+                                SERVICE_TYPES_STORE), ServiceSet.class);
 
         final Reader calendarReader = new FileReader(
                 root.resolve(revision).resolve(GTFS_DIRECTORY).
@@ -159,8 +152,9 @@ public class ServiceDataDirectory {
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
         final Store<TripGroupKey, TripDetails> tripDetailsStore
-                = storeFactory.getStore(root.resolve(revision).resolve(
-                        TRIP_DETAILS_STORE), TripDetails.class);
+                = storeFactory.<TripGroupKey, TripDetails>getStore(
+                        root.resolve(revision).resolve(
+                                TRIP_DETAILS_STORE), TripDetails.class);
 
         final Reader tripReader = new FileReader(root.resolve(revision)
                 .resolve(GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
@@ -176,19 +170,20 @@ public class ServiceDataDirectory {
         final Path tripSequenceStorePath
                 = root.resolve(revision).resolve(TRIP_SEQUENCE_STORE);
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
-                = storeFactory.getRangedStore(
+                = storeFactory.<TripSequenceKey, TripStop>getRangedStore(
                         tripSequenceStorePath,
                         new TripSequenceKey.Materializer(), TripStop.class);
 
         final Path stopTimesStorePath = root.resolve(revision)
                 .resolve(STOP_TIMES_STORE);
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = storeFactory.getRangedStore(stopTimesStorePath,
-                                              new StopTimeKey.Materializer(),
-                                              TripStop.class);
+                = storeFactory.<StopTimeKey, TripStop>getRangedStore(
+                        stopTimesStorePath, new StopTimeKey.Materializer(),
+                        TripStop.class);
 
-        final Store<TripIdKey, TripId> tripsStore = storeFactory.getStore(
-                root.resolve(revision).resolve(TRIPS_STORE), TripId.class);
+        final Store<TripIdKey, TripId> tripsStore = storeFactory
+                .<TripIdKey, TripId>getStore(root.resolve(revision).resolve(
+                        TRIPS_STORE), TripId.class);
 
         final Path frequenciesPath = root.resolve(revision).resolve(
                 GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
@@ -212,8 +207,9 @@ public class ServiceDataDirectory {
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
         final Store<RouteIdKey, RouteDetails> routeDetailsStore
-                = storeFactory.getStore(root.resolve(revision).resolve(
-                        ROUTE_DETAILS_STORE), RouteDetails.class);
+                = storeFactory.<RouteIdKey, RouteDetails>getStore(
+                        root.resolve(revision).resolve(
+                                ROUTE_DETAILS_STORE), RouteDetails.class);
 
         final Reader routeReader = new FileReader(root
                 .resolve(revision).resolve(GTFS_DIRECTORY)
@@ -224,7 +220,5 @@ public class ServiceDataDirectory {
                         routeDetailsStore, routeReader);
         return routeDetailsDirectory;
     }
-
-   
 
 }

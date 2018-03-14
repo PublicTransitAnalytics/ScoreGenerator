@@ -160,8 +160,8 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
 
         final SortedSetMultimap<String, RawTripStop> rawTripMap = TreeMultimap
                 .create(Comparator.naturalOrder(),
-                        (stop1, stop2) -> Integer
-                                .compare(a.getSequence(), b.getSequence()));
+                        (stop1, stop2) -> Integer.compare(
+                                stop1.getSequence(), stop2.getSequence()));
 
         final Iterator<CSVRecord> stopTimesIter = parser.iterator();
         while (stopTimesIter.hasNext()) {
@@ -175,9 +175,8 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
                     : TransitTime.parse(stopTimeString);
 
             if (frequencyRecordMap.containsKey(rawTripId)) {
-                final RawTripStop rawTripStop
-                        = new RawTripStop(stopTime, stopId, rawTripId,
-                                          stopSequence);
+                final RawTripStop rawTripStop = new RawTripStop(
+                        stopTime, stopId, rawTripId, stopSequence);
                 rawTripMap.put(rawTripId, rawTripStop);
             } else {
                 final TripId tripId = new TripId(rawTripId);

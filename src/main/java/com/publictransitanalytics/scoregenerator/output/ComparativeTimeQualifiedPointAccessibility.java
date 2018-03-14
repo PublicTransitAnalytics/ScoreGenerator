@@ -17,6 +17,8 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
+import com.publictransitanalytics.scoregenerator.location.Center;
+import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
@@ -63,7 +65,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
 
     public ComparativeTimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
-            final Grid grid, final PointLocation centerPoint,
+            final Grid grid, final Center centerPoint,
             final LocalDateTime time, LocalDateTime trialTime,
             final Duration tripDuration, final boolean backward,
             final String name, final String trialName,
@@ -73,7 +75,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
         type = AccessibilityType.COMPARATIVE_TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(grid.getBounds());
-        center = new Point(centerPoint);
+        center = new Point(centerPoint.getPhysicalCenter());
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.trialTime = trialTime.format(DateTimeFormatter.ofPattern(

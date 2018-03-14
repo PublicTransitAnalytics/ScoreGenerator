@@ -15,6 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.walking;
 
+import com.google.common.collect.ImmutableList;
+import com.publictransitanalytics.scoregenerator.tracking.Movement;
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Iterator;
@@ -51,6 +54,18 @@ public class BackwardTimeTracker implements TimeTracker {
     public boolean shouldReplace(final LocalDateTime baseTime,
                                  final LocalDateTime otherTime) {
         return otherTime.isAfter(baseTime);
+    }
+    
+    @Override
+    public boolean shouldReplace(final MovementPath currentPath,
+                                 final LocalDateTime otherTime) {
+        final ImmutableList<Movement> movements = currentPath.getMovements();
+        if (movements.isEmpty()) {
+            return false;
+        }
+        
+        final Movement terminal = movements.get(0);
+        return otherTime.isAfter(terminal.getStartTime());
     }
 
     @Override

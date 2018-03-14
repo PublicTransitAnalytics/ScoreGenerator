@@ -26,7 +26,7 @@ import lombok.Value;
 @Value
 public class WalkingCosts {
 
-    Duration duration;
-    double distanceMeters;
+    private final Duration duration;
+    private final double distanceMeters;
 
 }

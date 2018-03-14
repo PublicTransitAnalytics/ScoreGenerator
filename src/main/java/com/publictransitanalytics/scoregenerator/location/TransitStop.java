@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import lombok.Getter;
 import com.publictransitanalytics.scoregenerator.visitors.Visitor;
 

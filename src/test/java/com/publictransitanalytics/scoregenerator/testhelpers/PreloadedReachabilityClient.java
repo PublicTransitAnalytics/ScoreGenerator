@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClientException;
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.distance.DistanceClientException;
+import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
@@ -34,7 +34,7 @@ public class PreloadedReachabilityClient implements ReachabilityClient {
     final Map<PointLocation, WalkingCosts> costs;
 
     @Override
-    public Map<PointLocation, WalkingCosts> getWalkingDistances(
+    public Map<PointLocation, WalkingCosts> getWalkingCosts(
             final PointLocation location, final LocalDateTime currentTime,
             final LocalDateTime cutoffTime) throws DistanceClientException {
         return costs;

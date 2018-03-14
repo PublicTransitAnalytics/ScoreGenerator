@@ -15,7 +15,6 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
-import com.publictransitanalytics.scoregenerator.datalayer.directories.GTFSReadingTripDetailsDirectory;
 import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripDetails;
@@ -35,7 +34,7 @@ public class GTFSReadingTripDetailsDirectoryTest {
 
     @Test
     public void testPutsTrips() throws Exception {
-        final Store<TripGroupKey, TripDetails> store = new MapStore(
+        final Store<TripGroupKey, TripDetails> store = new MapStore<>(
                 new HashMap<>());
         final Reader reader = new StringReader(
                 "route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id,peak_flag,fare_id\n"
@@ -47,7 +46,7 @@ public class GTFSReadingTripDetailsDirectoryTest {
 
     @Test
     public void testMakesValue() throws Exception {
-        final Store<TripGroupKey, TripDetails> store = new MapStore(
+        final Store<TripGroupKey, TripDetails> store = new MapStore<>(
                 new HashMap<>());
         final Reader reader = new StringReader(
                 "route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id,peak_flag,fare_id\n"
@@ -59,7 +58,7 @@ public class GTFSReadingTripDetailsDirectoryTest {
 
     @Test
     public void testMakesKey() throws Exception {
-        final Store<TripGroupKey, TripDetails> store = new MapStore(
+        final Store<TripGroupKey, TripDetails> store = new MapStore<>(
                 new HashMap<>());
         final Reader reader = new StringReader(
                 "route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id,peak_flag,fare_id\n"
@@ -70,7 +69,7 @@ public class GTFSReadingTripDetailsDirectoryTest {
 
     @Test
     public void testGets() throws Exception {
-        final Store<TripGroupKey, TripDetails> store = new MapStore(
+        final Store<TripGroupKey, TripDetails> store = new MapStore<>(
                 new HashMap<>());
         final Reader reader = new StringReader(
                 "route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id,peak_flag,fare_id\n"
@@ -88,7 +87,7 @@ public class GTFSReadingTripDetailsDirectoryTest {
                 new TripGroupKey("11367651").getKeyString(),
                 new TripDetails("11367651", "100340", "4425"));
         final Store<TripGroupKey, TripDetails> store
-                = new MapStore(immutableMap);
+                = new MapStore<>(immutableMap);
         final Reader reader = new StringReader(
                 "route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id,peak_flag,fare_id\n"
                 + "100340,4425,11367651,\"DOWNTOWN SEATTLE PACIFIC PLACE STATION\",\"LOCAL\",1,3984607,20098504,0,101\n"

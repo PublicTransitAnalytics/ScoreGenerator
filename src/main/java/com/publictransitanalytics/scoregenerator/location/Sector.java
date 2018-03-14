@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.GeoBounds;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
 import lombok.Getter;
 
 /**
@@ -24,20 +24,20 @@ import lombok.Getter;
  *
  * @author Public Transit Analytics
  */
-public class Sector {
+public class Sector implements LogicalCenter {
 
     @Getter
     private final GeoBounds bounds;
-    
+
     private final String boundsString;
     private final String boundsDegreeString;
-    
+
     public Sector(final GeoBounds bounds) {
         this.bounds = bounds;
         boundsString = bounds.toString();
         boundsDegreeString = bounds.toDegreeString();
     }
-    
+
     public boolean contains(final GeoPoint location) {
         return bounds.contains(location);
     }
@@ -49,14 +49,14 @@ public class Sector {
     public String getCommonName() {
         return boundsDegreeString;
     }
-    
+
     public GeoPoint getCenter() {
         return bounds.getCenter();
     }
-    
+
     @Override
     public String toString() {
-        return "Sector";
+        return boundsString;
     }
 
 }

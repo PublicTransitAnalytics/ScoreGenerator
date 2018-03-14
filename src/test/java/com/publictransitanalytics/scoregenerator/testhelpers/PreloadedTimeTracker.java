@@ -15,6 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
+import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -69,6 +70,12 @@ public class PreloadedTimeTracker implements TimeTracker {
     public Iterator<LocalDateTime> getTimeIterator(
             final NavigableSet<LocalDateTime> times) {
         return Collections.emptyIterator();
+    }
+
+    @Override
+    public boolean shouldReplace(MovementPath currentPath,
+                                 LocalDateTime otherTime) {
+        return true;
     }
 
 }

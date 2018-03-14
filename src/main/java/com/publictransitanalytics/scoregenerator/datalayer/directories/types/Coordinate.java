@@ -18,8 +18,7 @@ package com.publictransitanalytics.scoregenerator.datalayer.directories.types;
 import lombok.Value;
 
 /**
- * A position on the surface of the earth. Measured in degrees, as per the GTFS
- * format.
+ * A position on the surface of the earth.
  * 
  * @author Public Transit Analytics
  */

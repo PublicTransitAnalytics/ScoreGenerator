@@ -81,12 +81,13 @@ public class StopTimeKey extends RangedKey<StopTimeKey> {
 
     public static class Materializer implements KeyMaterializer<StopTimeKey> {
 
-        final Pattern pattern = Pattern.compile("(.+)::(.+)::(.+)");
+        private static final Pattern PATTERN 
+                = Pattern.compile("(.+)::(.+)::(.+)");
 
         @Override
         public StopTimeKey materialize(final String keyString)
                 throws BitvantageStoreException {
-            final Matcher matcher = pattern.matcher(keyString);
+            final Matcher matcher = PATTERN.matcher(keyString);
             if (matcher.matches()) {
                 final String stopId = matcher.group(1);
                 final String transitTimeString = matcher.group(2);

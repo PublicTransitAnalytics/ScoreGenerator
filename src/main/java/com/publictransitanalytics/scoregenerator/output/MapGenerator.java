@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.GeoBounds;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.environment.Segment;
@@ -190,26 +190,29 @@ public class MapGenerator {
 
     private static double getLatDelta(final GeoBounds bounds,
                                       final GeoPoint topCorner) {
-        return topCorner.getDistanceMeters(new GeoPoint(topCorner.getLongitude(),
-                                      bounds.getNorthLat()));
+        return topCorner.getDistanceMeters(
+                new GeoPoint(topCorner.getLongitude(),
+                             bounds.getNorthLat()));
     }
 
     private static double getLonDelta(final GeoBounds bounds,
                                       final GeoPoint topCorner) {
         return topCorner.getDistanceMeters(new GeoPoint(bounds.getWestLon(),
-                                      topCorner.getLatitude()));
+                                                        topCorner.getLatitude()));
     }
 
     private static double getLatSize(final GeoBounds bounds) {
         return new GeoPoint(bounds.getWestLon(),
-                                     bounds.getNorthLat()).getDistanceMeters(new GeoPoint(bounds.getWestLon(),
-                                      bounds.getSouthLat()));
+                            bounds.getNorthLat()).getDistanceMeters(
+                new GeoPoint(bounds.getWestLon(),
+                             bounds.getSouthLat()));
     }
 
     private static double getLonSize(final GeoBounds bounds) {
         return new GeoPoint(bounds.getEastLon(),
-                                     bounds.getNorthLat()).getDistanceMeters(new GeoPoint(bounds.getWestLon(),
-                                      bounds.getNorthLat()));
+                            bounds.getNorthLat()).getDistanceMeters(
+                new GeoPoint(bounds.getWestLon(),
+                             bounds.getNorthLat()));
     }
 
     private static Shape getPoint(final GeoBounds bounds,

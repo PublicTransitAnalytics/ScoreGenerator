@@ -15,17 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
-import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.distanceclient.CompositeDistanceEstimator;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.DistanceEstimator;
-import com.publictransitanalytics.scoregenerator.distanceclient.EstimateRefiningReachabilityClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.SingletonEphemeralEstimateStorage;
-import com.publictransitanalytics.scoregenerator.distanceclient.EstimateStorage;
-import com.publictransitanalytics.scoregenerator.distanceclient.PairGenerator;
-import com.publictransitanalytics.scoregenerator.distanceclient.ReachabilityClient;
-import com.publictransitanalytics.scoregenerator.distanceclient.StoredDistanceEstimator;
-import com.publictransitanalytics.scoregenerator.distanceclient.SupplementalPairGenerator;
+import com.publictransitanalytics.scoregenerator.distance.DistanceClient;
+import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
@@ -40,7 +31,6 @@ import com.publictransitanalytics.scoregenerator.schedule.TripCreatingTransitNet
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -61,7 +51,6 @@ public class Transformer {
     private final Set<GridPoint> gridPoints;
     private final Set<TransitStop> stops;
     private final Set<PointLocation> centers;
-    private final DistanceEstimator originalDistanceEstimator;
     private final ReachabilityClient originalReachabilityClient;
     private final RiderFactory originalRiderFactory;
 
@@ -73,7 +62,6 @@ public class Transformer {
                        final Set<GridPoint> gridPoints,
                        final Set<TransitStop> stops,
                        final Set<PointLocation> centers,
-                       final DistanceEstimator distanceEstimator,
                        final ReachabilityClient reachabilityClient,
                        final RiderFactory riderFactory) {
 
@@ -86,7 +74,6 @@ public class Transformer {
         this.stops = stops;
         this.centers = centers;
         this.gridPoints = gridPoints;
-        originalDistanceEstimator = distanceEstimator;
         originalReachabilityClient = reachabilityClient;
         originalRiderFactory = riderFactory;
 
@@ -120,46 +107,10 @@ public class Transformer {
 
     }
 
-    public DistanceEstimator getDistanceEstimator()
-            throws InterruptedException {
-        if (addedStops.isEmpty()) {
-            return originalDistanceEstimator;
-        } else {
-            final ImmutableSet.Builder<DistanceEstimator> builder
-                    = ImmutableSet.builder();
-            final double maxDistance
-                    = longestDuration.getSeconds() * walkingMetersPerSecond;
-            builder.add(originalDistanceEstimator);
-            for (final TransitStop stop : addedStops) {
-                final EstimateStorage storage
-                        = new SingletonEphemeralEstimateStorage(stop);
-                final Set<TransitStop> allStops
-                        = ImmutableSet.<TransitStop>builder()
-                                .addAll(stops).addAll(addedStops).build();
-
-                final PairGenerator pairGenerator
-                        = new SupplementalPairGenerator(
-                                gridPoints, allStops, centers,
-                                Collections.singleton(stop));
-
-                final StoredDistanceEstimator addedLocationEstimator
-                        = new StoredDistanceEstimator(
-                                pairGenerator, maxDistance, storage);
-                builder.add(addedLocationEstimator);
-            }
-            return new CompositeDistanceEstimator(builder.build());
-        }
-    }
-
     public ReachabilityClient getReachabilityClient()
             throws InterruptedException {
-        if (addedStops.isEmpty()) {
-            return originalReachabilityClient;
-        } else {
-            return new EstimateRefiningReachabilityClient(
-                    distanceClient, getDistanceEstimator(), timeTracker,
-                    walkingMetersPerSecond);
-        }
+        // TODO: Do not permanently store new destinations
+        return originalReachabilityClient;
     }
 
 }

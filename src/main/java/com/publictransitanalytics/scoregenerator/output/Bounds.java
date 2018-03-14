@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
-import com.publictransitanalytics.scoregenerator.GeoBounds;
+import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 
 /**

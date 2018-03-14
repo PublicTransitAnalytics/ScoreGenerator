@@ -15,8 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.GeoBounds;
-import com.publictransitanalytics.scoregenerator.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetector;
 import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetectorException;
 import java.util.Set;

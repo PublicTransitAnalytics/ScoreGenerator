@@ -24,8 +24,6 @@ import com.esri.core.geometry.OperatorImportFromGeoJson;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.SpatialReference;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.GeoBounds;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

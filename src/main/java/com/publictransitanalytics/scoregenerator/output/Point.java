@@ -30,7 +30,7 @@ public class Point {
         this(point.getLocation());
     }
 
-    public Point(final com.publictransitanalytics.scoregenerator.GeoPoint point) {
+    public Point(final com.publictransitanalytics.scoregenerator.geography.GeoPoint point) {
         pointString = String.format(
                 "%f,%f", point.getLatitude().getDegrees(),
                 point.getLongitude().getDegrees());

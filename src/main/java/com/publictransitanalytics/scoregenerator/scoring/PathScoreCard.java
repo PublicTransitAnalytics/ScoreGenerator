@@ -26,7 +26,6 @@ import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingReco
 import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,7 +37,7 @@ import java.util.stream.Collectors;
  */
 public class PathScoreCard extends ScoreCard {
 
-    private final Table<Sector, TaskIdentifier, MovementPath> bestPaths;
+    private final Table<Sector, LogicalTask, MovementPath> bestPaths;
     private final SetMultimap<PointLocation, Sector> pointSectorMap;
     private final MovementAssembler assembler;
     private final TimeTracker timeTracker;
@@ -54,39 +53,34 @@ public class PathScoreCard extends ScoreCard {
         this.timeTracker = timeTracker;
     }
 
-    public synchronized boolean hasNoBetterPath(
-            final PointLocation location, final TaskIdentifier task,
-            final MovementPath path) {
-        if (!bestPaths.contains(location, task)) {
-            return true;
-        }
-        final MovementPath bestPath = bestPaths.get(location, task);
-
-        return path.compareTo(bestPath) < 0;
-    }
-
     @Override
     public synchronized void scoreTask(
             final TaskIdentifier task,
             final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
-        final Map<Sector, LocalDateTime> arrivalTimes = new HashMap<>();
-        for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
-                     : stateMap.entrySet()) {
-            final PointLocation location = entry.getKey();
-            final Set<Sector> sectors = pointSectorMap.get(location);
-            final MovementPath path = assembler.assemble(location, stateMap);
-            final LocalDateTime time = entry.getValue().getReachTime();
-            for (final Sector sector : sectors) {
-                if (arrivalTimes.containsKey(sector)) {
-                    if (timeTracker.shouldReplace(
-                            arrivalTimes.get(sector), time)) {
-                        arrivalTimes.put(sector, time);
-                        bestPaths.put(sector, task, path);
-                    }
+        final Set<LogicalTask> logicalTasks = task.getCenter()
+                .getLogicalCenters().stream()
+                .map(logicalCenter -> new LogicalTask(task.getTime(),
+                                                      logicalCenter))
+                .collect(Collectors.toSet());
 
-                } else {
-                    arrivalTimes.put(sector, time);
-                    bestPaths.put(sector, task, path);
+        for (final LogicalTask logicalTask : logicalTasks) {
+            for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
+                         : stateMap.entrySet()) {
+                final PointLocation location = entry.getKey();
+                final Set<Sector> sectors = pointSectorMap.get(location);
+                final MovementPath path
+                        = assembler.assemble(location, stateMap);
+                final LocalDateTime time = entry.getValue().getReachTime();
+                
+                for (final Sector sector : sectors) {
+                    if (bestPaths.contains(sector, logicalTask)) {
+                        if (timeTracker.shouldReplace(
+                                bestPaths.get(sector, logicalTask), time)) {
+                            bestPaths.put(sector, logicalTask, path);
+                        }
+                    } else {
+                        bestPaths.put(sector, logicalTask, path);
+                    }
                 }
             }
         }
@@ -97,7 +91,7 @@ public class PathScoreCard extends ScoreCard {
         return bestPaths.get(location, task);
     }
 
-    public synchronized Map<TaskIdentifier, MovementPath> getBestPaths(
+    public synchronized Map<LogicalTask, MovementPath> getBestPaths(
             final Sector location) {
         return bestPaths.row(location);
     }

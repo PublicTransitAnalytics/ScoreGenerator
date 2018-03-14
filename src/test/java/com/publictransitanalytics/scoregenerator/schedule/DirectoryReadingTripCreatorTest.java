@@ -20,10 +20,10 @@ import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedStopTimesD
 import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedTripDetailsDirectory;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.GeoPoint;
-import com.publictransitanalytics.scoregenerator.AngleUnit;
-import com.publictransitanalytics.scoregenerator.GeoLatitude;
-import com.publictransitanalytics.scoregenerator.GeoLongitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
+import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
+import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.RouteDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceTypeCalendar;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
