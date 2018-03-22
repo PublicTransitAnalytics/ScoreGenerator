@@ -81,7 +81,7 @@ public class MappingScoreCardTest {
         final MappingScoreCard scoreCard = new MappingScoreCard(
                 1, POINT_SECTOR_MAP);
         final Center center = new Center(
-                PHYSICAL_CENTER1, Collections.singleton(LOGICAL_CENTER1));
+                LOGICAL_CENTER1, Collections.singleton(PHYSICAL_CENTER1));
 
         final TaskIdentifier task = new TaskIdentifier(LocalDateTime.MIN,
                                                        center);
@@ -96,7 +96,7 @@ public class MappingScoreCardTest {
         final MappingScoreCard scoreCard = new MappingScoreCard(
                 1, POINT_SECTOR_MAP);
         final Center center = new Center(
-                PHYSICAL_CENTER1, Collections.singleton(LOGICAL_CENTER1));
+                LOGICAL_CENTER1, Collections.singleton(PHYSICAL_CENTER1));
 
         final TaskIdentifier task1 = new TaskIdentifier(LocalDateTime.MIN,
                                                         center);
@@ -107,42 +107,6 @@ public class MappingScoreCardTest {
         scoreCard.scoreTask(task2, FULL_STATE_MAP);
         Assert.assertTrue(scoreCard.hasPath(REACHED_SECTOR));
         Assert.assertEquals(2, scoreCard.getReachedCount(REACHED_SECTOR));
-    }
-
-    @Test
-    public void testScoresEachLogicalCenter() {
-        final MappingScoreCard scoreCard = new MappingScoreCard(
-                1, POINT_SECTOR_MAP);
-        final Center center = new Center(
-                PHYSICAL_CENTER1, ImmutableSet.of(LOGICAL_CENTER1,
-                                                  LOGICAL_CENTER2));
-
-        final TaskIdentifier task = new TaskIdentifier(LocalDateTime.MIN,
-                                                       center);
-
-        scoreCard.scoreTask(task, FULL_STATE_MAP);
-        Assert.assertTrue(scoreCard.hasPath(REACHED_SECTOR));
-        Assert.assertEquals(2, scoreCard.getReachedCount(REACHED_SECTOR));
-    }
-
-    @Test
-    public void testDeduplicatesPhysicalCenters() {
-        final MappingScoreCard scoreCard = new MappingScoreCard(
-                1, POINT_SECTOR_MAP);
-        final Center center1 = new Center(
-                PHYSICAL_CENTER1, ImmutableSet.of(LOGICAL_CENTER1));
-        final Center center2 = new Center(
-                PHYSICAL_CENTER2, ImmutableSet.of(LOGICAL_CENTER1));
-
-        final TaskIdentifier task1 = new TaskIdentifier(LocalDateTime.MIN,
-                                                        center1);
-        final TaskIdentifier task2 = new TaskIdentifier(LocalDateTime.MIN,
-                                                        center2);
-
-        scoreCard.scoreTask(task1, FULL_STATE_MAP);
-        scoreCard.scoreTask(task2, FULL_STATE_MAP);
-        Assert.assertTrue(scoreCard.hasPath(REACHED_SECTOR));
-        Assert.assertEquals(1, scoreCard.getReachedCount(REACHED_SECTOR));
-    }
+    } 
 
 }

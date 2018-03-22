@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,36 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
+import com.bitvantage.bitvantagecaching.RangedStore;
 import com.google.common.collect.SetMultimap;
+import com.google.common.io.Files;
+import com.publictransitanalytics.scoregenerator.StoreFactory;
+import com.publictransitanalytics.scoregenerator.datalayer.scoring.ScoreMappingKey;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import java.nio.file.Path;
+import lombok.RequiredArgsConstructor;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public class MappingScoreCardFactory implements
-        ScoreCardFactory<MappingScoreCard> {
+@RequiredArgsConstructor
+public class StoringMappingScoreCardFactory implements
+        ScoreCardFactory<StoringMappingScoreCard> {
+
+    private final StoreFactory factory;
 
     @Override
-    public MappingScoreCard makeScoreCard(
+    public StoringMappingScoreCard makeScoreCard(
             final int taskCount,
             final SetMultimap<PointLocation, Sector> pointSectorMap) {
-        return new MappingScoreCard(taskCount, pointSectorMap);
+        final Path path = Files.createTempDir().toPath();
+        final RangedStore<ScoreMappingKey, String> store
+                = factory.<ScoreMappingKey, String>getRangedStore(
+                        path, new ScoreMappingKey.Materializer(),
+                        String.class);
+        return new StoringMappingScoreCard(taskCount, store, pointSectorMap);
     }
 
 }

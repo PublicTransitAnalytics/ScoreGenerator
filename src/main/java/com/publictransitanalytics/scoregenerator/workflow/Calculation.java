@@ -180,7 +180,8 @@ public class Calculation<S extends ScoreCard> {
 
         distanceClient = buildOsrmDistanceClient(pointSequencerFactory);
         final Set<PointLocation> centerPoints = centers.stream()
-                .map(Center::getPhysicalCenter).collect(Collectors.toSet());
+                .map(Center::getPhysicalCenters).flatMap(Collection::stream)
+                .collect(Collectors.toSet());
 
         final BiMap<String, PointLocation> basePointIdMap = buildPointIdMap(
                 centerPoints, baseStopIdMap, grid);
@@ -260,8 +261,7 @@ public class Calculation<S extends ScoreCard> {
         }
 
         final Set<LogicalCenter> logicalCenters = centers.stream()
-                .map(Center::getLogicalCenters).flatMap(Collection::stream)
-                .collect(Collectors.toSet());
+                .map(Center::getLogicalCenter).collect(Collectors.toSet());
         scoreCard = scoreCardFactory.makeScoreCard(
                 times.size() * logicalCenters.size(), pointSectorMap);
 

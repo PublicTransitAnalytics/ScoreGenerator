@@ -54,4 +54,9 @@ public class Landmark extends PointLocation implements LogicalCenter {
         return id;
     }
 
+    @Override
+    public GeoPoint getPointRepresentation() {
+        return getLocation();
+    }
+
 }

@@ -75,7 +75,8 @@ public class ComparativeTimeQualifiedPointAccessibility {
         type = AccessibilityType.COMPARATIVE_TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(grid.getBounds());
-        center = new Point(centerPoint.getPhysicalCenter());
+        center = new Point(
+                centerPoint.getLogicalCenter().getPointRepresentation());
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.trialTime = trialTime.format(DateTimeFormatter.ofPattern(

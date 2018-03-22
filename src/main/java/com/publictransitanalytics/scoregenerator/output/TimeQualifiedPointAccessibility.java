@@ -63,7 +63,8 @@ public class TimeQualifiedPointAccessibility {
         type = AccessibilityType.TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(grid.getBounds());
-        this.center = new Point(center.getPhysicalCenter());
+        this.center = new Point(
+                center.getLogicalCenter().getPointRepresentation());
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
 

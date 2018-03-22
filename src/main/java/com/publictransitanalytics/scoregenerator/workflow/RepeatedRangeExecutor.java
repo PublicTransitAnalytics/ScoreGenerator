@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,7 +55,8 @@ public class RepeatedRangeExecutor implements RangeExecutor {
 
         final Instant profileStartTime = Instant.now();
         final Center center = taskGroup.getCenter();
-        final PointLocation startLocation = center.getPhysicalCenter();
+        final Set<? extends PointLocation> startLocations 
+                = center.getPhysicalCenters();
 
         final Iterator<LocalDateTime> timeIterator
                 = timeTracker.getTimeIterator(calculation.getTimes());
@@ -65,7 +67,7 @@ public class RepeatedRangeExecutor implements RangeExecutor {
                     startTime, duration);
             Map<PointLocation, DynamicProgrammingRecord> map
                     = algorithm.execute(
-                            startTime, cutoffTime, startLocation, timeTracker,
+                            startTime, cutoffTime, startLocations, timeTracker,
                             duration, reachabilityClient, riderFactory)
                             .getMap();
 

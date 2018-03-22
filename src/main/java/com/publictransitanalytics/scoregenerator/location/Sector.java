@@ -59,4 +59,9 @@ public class Sector implements LogicalCenter {
         return boundsString;
     }
 
+    @Override
+    public GeoPoint getPointRepresentation() {
+        return getCenter();
+    }
+
 }

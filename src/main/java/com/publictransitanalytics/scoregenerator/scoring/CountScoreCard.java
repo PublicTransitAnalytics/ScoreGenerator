@@ -15,9 +15,8 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
+import com.google.common.collect.ConcurrentHashMultiset;
+import com.google.common.collect.Multiset;
 import com.google.common.collect.SetMultimap;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
@@ -29,32 +28,31 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * ScoreCard that maps Sectors to the Centers that allowed them to be reached.
- * This allows a count of the number of times a Sector was reached.
+ * ScoreCard that counts how many tasks reach a Sector.
  *
  * @author Public Transit Analytics
  */
-public class MappingScoreCard extends ScoreCard {
+public class CountScoreCard extends ScoreCard {
 
-    private final Multimap<Sector, LogicalTask> locations;
+    private final Multiset<Sector> locations;
     private final SetMultimap<PointLocation, Sector> pointSectorMap;
 
-    public MappingScoreCard(
+    public CountScoreCard(
             final int taskCount,
             final SetMultimap<PointLocation, Sector> pointSectorMap) {
         super(taskCount);
-        locations = Multimaps.synchronizedSetMultimap(HashMultimap.create());
+        locations = ConcurrentHashMultiset.create();
         this.pointSectorMap = pointSectorMap;
     }
 
     @Override
     public int getReachedCount(final Sector location) {
-        return locations.get(location).size();
+        return locations.count(location);
     }
 
     @Override
     public boolean hasPath(final Sector location) {
-        return locations.containsKey(location);
+        return locations.contains(location);
     }
 
     @Override
@@ -65,12 +63,7 @@ public class MappingScoreCard extends ScoreCard {
         final Set<Sector> reachedSectors = reachedLocations.stream().map(
                 location -> pointSectorMap.get(location))
                 .flatMap(Collection::stream).collect(Collectors.toSet());
-        final LogicalTask logicalTask = new LogicalTask(
-                task.getTime(), task.getCenter().getLogicalCenter());
-
-        for (final Sector sector : reachedSectors) {
-            locations.put(sector, logicalTask);
-        }
+        locations.addAll(reachedSectors);
     }
 
 }

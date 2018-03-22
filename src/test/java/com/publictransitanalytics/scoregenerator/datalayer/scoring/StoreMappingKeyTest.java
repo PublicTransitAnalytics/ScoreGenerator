@@ -13,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.location;
+package com.publictransitanalytics.scoregenerator.datalayer.scoring;
 
-import java.util.Set;
-import lombok.Value;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class Center {
+public class StoreMappingKeyTest {
 
-    private final LogicalCenter logicalCenter;
-    private final Set<? extends PointLocation> physicalCenters;
+    @Test
+    public void testMinKey() {
+        final ScoreMappingKey key = ScoreMappingKey.getMinKey("originId");
+        Assert.assertEquals("originId::0000-01-01T00:00::", key.getKeyString());
+    }
+
+    @Test
+    public void testMaxKey() {
+        final ScoreMappingKey key = ScoreMappingKey.getMaxKey("originId");
+        Assert.assertEquals("originId::9999-12-31T23:59::", key.getKeyString());
+    }
 
 }

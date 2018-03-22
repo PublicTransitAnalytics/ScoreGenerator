@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Public Transit Analytics.
+ * Copyright 2017 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.location;
+package com.publictransitanalytics.scoregenerator.scoring;
 
-import java.util.Set;
-import lombok.Value;
+import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.location.PointLocation;
+import com.publictransitanalytics.scoregenerator.location.Sector;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@Value
-public class Center {
+public class CountScoreCardFactory implements ScoreCardFactory<CountScoreCard> {
 
-    private final LogicalCenter logicalCenter;
-    private final Set<? extends PointLocation> physicalCenters;
+    @Override
+    public CountScoreCard makeScoreCard(
+            final int taskCount,
+            final SetMultimap<PointLocation, Sector> pointSectorMap) {
+        return new CountScoreCard(taskCount, pointSectorMap);
+    }
 
 }

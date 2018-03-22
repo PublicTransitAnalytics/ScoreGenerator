@@ -32,7 +32,6 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import java.util.Collections;
 import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 
@@ -47,9 +46,9 @@ public class DynamicProgrammingAlgorithm {
 
     public AlgorithmOutput execute(
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
-            final PointLocation startLocation,
+            final Set<? extends PointLocation> startLocations,
             final TimeTracker timeTracker,
-            final Duration duration, 
+            final Duration duration,
             final ReachabilityClient reachabilityClient,
             final RiderFactory riderFactory) throws InterruptedException {
 
@@ -61,23 +60,21 @@ public class DynamicProgrammingAlgorithm {
                         startTime, ModeInfo.NONE, null);
 
         stateMap = new HashMap<>();
-        stateMap.put(startLocation, initialRecord);
-        updateSet = getRoundUpdates(Collections.singleton(startLocation),
-                                    stateMap,
-                                    cutoffTime, timeTracker, reachabilityClient,
+        for (final PointLocation startLocation : startLocations) {
+            stateMap.put(startLocation, initialRecord);
+        }
+        updateSet = getRoundUpdates(startLocations, stateMap, cutoffTime,
+                                    timeTracker, reachabilityClient,
                                     riderFactory);
 
-        final ImmutableMap.Builder<PointLocation, WalkingCosts> walkBuilder
+        final ImmutableMap.Builder<PointLocation, DynamicProgrammingRecord> walkBuilder
                 = ImmutableMap.builder();
-        final ImmutableSet.Builder<PointLocation> implicitLocationBuilder
-                = ImmutableSet.builder();
         for (final PointLocation location : updateSet) {
-            final ModeInfo mode = stateMap.get(location).getMode();
+            final DynamicProgrammingRecord record = stateMap.get(location);
+            final ModeInfo mode = record.getMode();
             final ModeType type = mode.getType();
             if (type.equals(ModeType.WALKING)) {
-                walkBuilder.put(location, mode.getWalkCosts());
-            } else {
-                implicitLocationBuilder.add(location);
+                walkBuilder.put(location, record);
             }
         }
 
@@ -92,12 +89,11 @@ public class DynamicProgrammingAlgorithm {
             }
 
         }
-        return new AlgorithmOutput(stateMap, walkBuilder.build(),
-                                   implicitLocationBuilder.build());
+        return new AlgorithmOutput(stateMap, walkBuilder.build());
     }
 
     private static Set<PointLocation> getRoundUpdates(
-            final Set<PointLocation> updateSet,
+            final Set<? extends PointLocation> updateSet,
             final Map<PointLocation, DynamicProgrammingRecord> stateMap,
             final LocalDateTime cutoffTime, final TimeTracker timeTracker,
             final ReachabilityClient reachabilityClient,

@@ -100,6 +100,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
+import com.publictransitanalytics.scoregenerator.scoring.StoringMappingScoreCard;
+import com.publictransitanalytics.scoregenerator.scoring.StoringMappingScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.workflow.SequentialTaskExecutor;
 
 @Slf4j
@@ -261,12 +264,15 @@ public class Main {
                     comparisonDescription, publisher, serializer, mapGenerator,
                     outputName, consoleFactory);
         } else if ("generateNetworkAccessibility".equals(command)) {
-            final ScoreCardFactory<MappingScoreCard> scoreCardFactory
-                    = new MappingScoreCardFactory();
+
+//            final ScoreCardFactory<StoringMappingScoreCard> scoreCardFactory
+//                    = new StoringMappingScoreCardFactory(storeFactory);
+            final ScoreCardFactory scoreCardFactory
+                    = new CountScoreCardFactory();
             final Set<Center> centers = getAllCenters(grid);
 
-            final BiMap<OperationDescription, Calculation<MappingScoreCard>> result
-                    = Main.<MappingScoreCard>calculate(
+            final BiMap<OperationDescription, Calculation<ScoreCard>> result
+                    = Main.<ScoreCard>calculate(
                             baseDescription, scoreCardFactory, centers,
                             samplingInterval, span, backward, timeTracker,
                             grid, serviceDirectoriesMap, durations.last(),
@@ -280,8 +286,8 @@ public class Main {
                                         mapGenerator, outputName);
         } else if ("generateSampledNetworkAccessibility".equals(command)) {
 
-            final ScoreCardFactory scoreCardFactory
-                    = new MappingScoreCardFactory();
+            final ScoreCardFactory scoreCardFactory 
+                    = new CountScoreCardFactory();
 
             final int samples = Integer.valueOf(namespace.get("samples"));
 
@@ -293,8 +299,8 @@ public class Main {
                     = ImmutableSet.copyOf(sectorList.subList(0, samples));
             final Set<Center> centers = getSampleCenters(sampleSectors, grid);
 
-            final BiMap<OperationDescription, Calculation<MappingScoreCard>> result
-                    = Main.<MappingScoreCard>calculate(
+            final BiMap<OperationDescription, Calculation<ScoreCard>> result
+                    = Main.<ScoreCard>calculate(
                             baseDescription, scoreCardFactory, centers,
                             samplingInterval, span, backward, timeTracker, grid,
                             serviceDirectoriesMap, durations.last(),
@@ -313,11 +319,7 @@ public class Main {
         final ImmutableSet.Builder<Center> builder
                 = ImmutableSet.builder();
         for (final Sector sector : samples) {
-            for (final GridPoint gridPoint : grid.getGridPoints(sector)) {
-                final Set<Sector> gridPointSectors = Sets.intersection(grid
-                        .getSectors(gridPoint), samples);
-                builder.add(new Center(gridPoint, gridPointSectors));
-            }
+            builder.add(new Center(sector, grid.getGridPoints(sector)));
         }
         return builder.build();
     }
@@ -325,15 +327,15 @@ public class Main {
     private static Set<Center> getAllCenters(final Grid grid) {
         final ImmutableSet.Builder<Center> builder = ImmutableSet
                 .builder();
-        for (final GridPoint gridPoint : grid.getGridPoints()) {
-            builder.add(new Center(gridPoint, grid.getSectors(gridPoint)));
+        for (final Sector sector : grid.getReachableSectors()) {
+            builder.add(new Center(sector, grid.getGridPoints(sector)));
         }
         return builder.build();
     }
 
     private static <S extends ScoreCard> BiMap<OperationDescription, Calculation<S>> calculate(
             final OperationDescription baseDescription,
-            final ScoreCardFactory<S> scoreCardFactory,
+            final ScoreCardFactory scoreCardFactory,
             final Set<Center> centers, final Duration samplingInterval,
             final Duration span, final boolean backward,
             final TimeTracker timeTracker, final Grid grid,
@@ -393,7 +395,7 @@ public class Main {
     private static void publishNetworkAccessibility(
             final OperationDescription base,
             final OperationDescription comparison,
-            final BiMap<OperationDescription, Calculation<MappingScoreCard>> calculations,
+            final BiMap<OperationDescription, Calculation<ScoreCard>> calculations,
             final Grid grid, final Set<Sector> centerSectors,
             final boolean markCenters, final NavigableSet<Duration> durations,
             final Duration span, final Duration samplingInterval,

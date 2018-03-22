@@ -57,33 +57,30 @@ public class PathScoreCard extends ScoreCard {
     public synchronized void scoreTask(
             final TaskIdentifier task,
             final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
-        final Set<LogicalTask> logicalTasks = task.getCenter()
-                .getLogicalCenters().stream()
-                .map(logicalCenter -> new LogicalTask(task.getTime(),
-                                                      logicalCenter))
-                .collect(Collectors.toSet());
 
-        for (final LogicalTask logicalTask : logicalTasks) {
-            for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
-                         : stateMap.entrySet()) {
-                final PointLocation location = entry.getKey();
-                final Set<Sector> sectors = pointSectorMap.get(location);
-                final MovementPath path
-                        = assembler.assemble(location, stateMap);
-                final LocalDateTime time = entry.getValue().getReachTime();
-                
-                for (final Sector sector : sectors) {
-                    if (bestPaths.contains(sector, logicalTask)) {
-                        if (timeTracker.shouldReplace(
-                                bestPaths.get(sector, logicalTask), time)) {
-                            bestPaths.put(sector, logicalTask, path);
-                        }
-                    } else {
+        final LogicalTask logicalTask = new LogicalTask(
+                task.getTime(), task.getCenter().getLogicalCenter());
+
+        for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
+                     : stateMap.entrySet()) {
+            final PointLocation location = entry.getKey();
+            final Set<Sector> sectors = pointSectorMap.get(location);
+            final MovementPath path
+                    = assembler.assemble(location, stateMap);
+            final LocalDateTime time = entry.getValue().getReachTime();
+
+            for (final Sector sector : sectors) {
+                if (bestPaths.contains(sector, logicalTask)) {
+                    if (timeTracker.shouldReplace(
+                            bestPaths.get(sector, logicalTask), time)) {
                         bestPaths.put(sector, logicalTask, path);
                     }
+                } else {
+                    bestPaths.put(sector, logicalTask, path);
                 }
             }
         }
+
     }
 
     public synchronized MovementPath getBestPath(

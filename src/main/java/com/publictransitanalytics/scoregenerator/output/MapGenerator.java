@@ -15,11 +15,13 @@
  */
 package com.publictransitanalytics.scoregenerator.output;
 
+import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.environment.Segment;
+import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -34,6 +36,8 @@ import java.io.Writer;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.jfree.graphics2d.svg.SVGGraphics2D;
 
@@ -101,7 +105,7 @@ public class MapGenerator {
                              final Set<PointLocation> markedPoints,
                              final double lowEnd, final double highEnd,
                              final String outputName)
-            throws IOException {
+            throws IOException, InterruptedException {
 
         final GeoBounds bounds = grid.getBounds();
         final int taskCount = scoreCard.getTaskCount();
@@ -113,34 +117,37 @@ public class MapGenerator {
             colorSet = NINE_GREEN_LEVELS;
         }
 
-        final Map<GeoBounds, Color> sectorColors
-                = grid.getAllSectors().stream().collect(Collectors.toMap(
-                        sector -> sector.getBounds(),
-                        sector -> getColor(
-                                scoreCard.getReachedCount(sector),
-                                taskCount, lowEnd, highEnd, colorSet)));
+        final ImmutableMap.Builder<GeoBounds, Color> builder
+                = ImmutableMap.builder();
 
+        for (final Sector sector : grid.getAllSectors()) {
+            builder.put(sector.getBounds(), getColor(
+                        scoreCard.getReachedCount(sector),
+                        taskCount, lowEnd, highEnd, colorSet));
+        }
         makeMap(outputName, bounds, markedPoints, Collections.emptySet(),
-                sectorColors);
+                builder.build());
     }
 
     public void makeComparativeMap(
             final Grid grid, final ScoreCard scoreCard,
             final ScoreCard trialScoreCard,
             final Set<PointLocation> markedPoints, final double range,
-            final String outputName) throws IOException {
+            final String outputName) throws IOException, InterruptedException {
         final GeoBounds bounds = grid.getBounds();
 
-        final Map<GeoBounds, Color> sectorColors
-                = grid.getAllSectors().stream().collect(Collectors.toMap(
-                        sector -> sector.getBounds(),
-                        sector -> getComparativeColor(
-                                trialScoreCard.getReachedCount(sector) -
-                                scoreCard.getReachedCount(sector),
-                                range, NINE_ORANGE_LEVELS, NINE_BLUE_LEVELS)));
+        final ImmutableMap.Builder<GeoBounds, Color> builder
+                = ImmutableMap.builder();
+
+        for (final Sector sector : grid.getAllSectors()) {
+            builder.put(sector.getBounds(), getComparativeColor(
+                        trialScoreCard.getReachedCount(sector) -
+                        scoreCard.getReachedCount(sector),
+                        range, NINE_ORANGE_LEVELS, NINE_BLUE_LEVELS));
+        }
 
         makeMap(outputName, bounds, markedPoints, Collections.emptySet(),
-                sectorColors);
+                builder.build());
     }
 
     private void makeMap(final String outputName, final GeoBounds bounds,

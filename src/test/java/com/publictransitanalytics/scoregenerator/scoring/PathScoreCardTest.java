@@ -47,7 +47,8 @@ import org.junit.Test;
  * @author Public Transit Analytics
  */
 public class PathScoreCardTest {
-     private static final PointLocation REACHED_POINT = new Landmark(
+
+    private static final PointLocation REACHED_POINT = new Landmark(
             new GeoPoint(new GeoLongitude("-122.32370", AngleUnit.DEGREES),
                          new GeoLatitude("47.654656", AngleUnit.DEGREES)));
     private static final Sector REACHED_SECTOR = new Sector(new GeoBounds(
@@ -67,29 +68,21 @@ public class PathScoreCardTest {
             new GeoPoint(new GeoLongitude("-122", AngleUnit.DEGREES),
                          new GeoLatitude("47", AngleUnit.DEGREES)));
 
-    private static final PointLocation PHYSICAL_CENTER2 = new Landmark(
-            new GeoPoint(new GeoLongitude("-123", AngleUnit.DEGREES),
-                         new GeoLatitude("47", AngleUnit.DEGREES)));
-
     private static final LogicalCenter LOGICAL_CENTER1 = new Landmark(
             new GeoPoint(new GeoLongitude("-123", AngleUnit.DEGREES),
                          new GeoLatitude("48", AngleUnit.DEGREES)));
 
-    private static final LogicalCenter LOGICAL_CENTER2 = new Landmark(
-            new GeoPoint(new GeoLongitude("-123.5", AngleUnit.DEGREES),
-                         new GeoLatitude("48.5", AngleUnit.DEGREES)));
-    
-    private static final MovementAssembler ASSEMBLER 
+    private static final MovementAssembler ASSEMBLER
             = new PreloadedMovementAssembler();
-    
+
     private static final TimeTracker TIME_TRACKER = new ForwardTimeTracker();
-    
+
     @Test
     public void testScoresTask() {
         final PathScoreCard scoreCard = new PathScoreCard(
                 1, POINT_SECTOR_MAP, ASSEMBLER, TIME_TRACKER);
         final Center center = new Center(
-                PHYSICAL_CENTER1, Collections.singleton(LOGICAL_CENTER1));
+                LOGICAL_CENTER1, Collections.singleton(PHYSICAL_CENTER1));
 
         final TaskIdentifier task = new TaskIdentifier(LocalDateTime.MIN,
                                                        center);
@@ -99,39 +92,4 @@ public class PathScoreCardTest {
         Assert.assertEquals(1, scoreCard.getReachedCount(REACHED_SECTOR));
     }
 
-    @Test
-    public void testScoresEachLogicalCenter() {
-        final PathScoreCard scoreCard = new PathScoreCard(
-                1, POINT_SECTOR_MAP, ASSEMBLER, TIME_TRACKER);
-        final Center center = new Center(
-                PHYSICAL_CENTER1, ImmutableSet.of(LOGICAL_CENTER1,
-                                                  LOGICAL_CENTER2));
-
-        final TaskIdentifier task = new TaskIdentifier(LocalDateTime.MIN,
-                                                       center);
-
-        scoreCard.scoreTask(task, FULL_STATE_MAP);
-        Assert.assertTrue(scoreCard.hasPath(REACHED_SECTOR));
-        Assert.assertEquals(2, scoreCard.getReachedCount(REACHED_SECTOR));
-    }
-
-    @Test
-    public void testDeduplicatesPhysicalCenters() {
-        final PathScoreCard scoreCard = new PathScoreCard(
-                1, POINT_SECTOR_MAP, ASSEMBLER, TIME_TRACKER);
-        final Center center1 = new Center(
-                PHYSICAL_CENTER1, ImmutableSet.of(LOGICAL_CENTER1));
-        final Center center2 = new Center(
-                PHYSICAL_CENTER2, ImmutableSet.of(LOGICAL_CENTER1));
-
-        final TaskIdentifier task1 = new TaskIdentifier(LocalDateTime.MIN,
-                                                       center1);
-        final TaskIdentifier task2 = new TaskIdentifier(LocalDateTime.MIN,
-                                                       center2);
-
-        scoreCard.scoreTask(task1, FULL_STATE_MAP);
-        scoreCard.scoreTask(task2, FULL_STATE_MAP);
-        Assert.assertTrue(scoreCard.hasPath(REACHED_SECTOR));
-        Assert.assertEquals(1, scoreCard.getReachedCount(REACHED_SECTOR));
-    }
 }

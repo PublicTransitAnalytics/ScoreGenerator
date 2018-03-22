@@ -35,7 +35,8 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
     public ParallelTaskExecutor(
             final RangeExecutor timeRangeExecutor) {
         this.timeRangeExecutor = timeRangeExecutor;
-        pool = Executors.newWorkStealingPool();
+        pool = Executors.newFixedThreadPool(
+                Runtime.getRuntime().availableProcessors());
     }
 
     @Override

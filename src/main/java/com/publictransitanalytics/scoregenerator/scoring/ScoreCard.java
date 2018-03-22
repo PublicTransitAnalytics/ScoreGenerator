@@ -34,12 +34,15 @@ public abstract class ScoreCard {
     @Getter
     private final int taskCount;
 
-    public abstract int getReachedCount(final Sector location);
+    public abstract int getReachedCount(final Sector location) 
+            throws InterruptedException;
 
-    public abstract boolean hasPath(final Sector location);
+    public abstract boolean hasPath(final Sector location) 
+            throws InterruptedException;
 
     public abstract void scoreTask(
             final TaskIdentifier task,
-            final Map<PointLocation, DynamicProgrammingRecord> stateMap);
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap) 
+            throws InterruptedException;
 
 }

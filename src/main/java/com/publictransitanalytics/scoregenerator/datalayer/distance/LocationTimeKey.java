@@ -38,6 +38,8 @@ public class LocationTimeKey extends RangedKey<LocationTimeKey> {
     @NonNull
     @Getter
     private final String destinationId;
+    @Getter
+    private final String keyString;
 
     private LocationTimeKey(final String originId, final int timeSeconds,
                             final String destinationId) {
@@ -54,6 +56,8 @@ public class LocationTimeKey extends RangedKey<LocationTimeKey> {
         this.originId = originId;
         this.timeSeconds = timeSeconds;
         this.destinationId = destinationId;
+        keyString = String.format("%s::%05d::%s", originId, timeSeconds,
+                             destinationId);
     }
 
     public static LocationTimeKey getWriteKey(final String originId,
@@ -80,12 +84,6 @@ public class LocationTimeKey extends RangedKey<LocationTimeKey> {
     @Override
     public LocationTimeKey getRangeMax() {
         return getMaxKey(originId, MAX_TIME_SECONDS);
-    }
-
-    @Override
-    public String getKeyString() {
-        return String.format("%s::%05d::%s", originId, timeSeconds,
-                             destinationId);
     }
 
     public static class Materializer implements

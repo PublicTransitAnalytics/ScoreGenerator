@@ -15,10 +15,16 @@
  */
 package com.publictransitanalytics.scoregenerator.location;
 
+import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
+
 /**
  *
  * @author Public Transit Analytics
  */
 public interface LogicalCenter {
+
+    String getIdentifier();
     
+    GeoPoint getPointRepresentation();
+
 }

@@ -64,7 +64,8 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
         final Instant profileStartTime = Instant.now();
         final Center center = taskGroup.getCenter();
-        final PointLocation startLocation = center.getPhysicalCenter();
+        final Set<? extends PointLocation> startLocations
+                = center.getPhysicalCenters();
 
         final Iterator<LocalDateTime> timeIterator
                 = timeTracker.getTimeIterator(calculation.getTimes());
@@ -74,7 +75,7 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
                 latestStartTime, duration);
 
         final AlgorithmOutput output = algorithm.execute(
-                latestStartTime, latestCutoffTime, startLocation, timeTracker,
+                latestStartTime, latestCutoffTime, startLocations, timeTracker,
                 duration, reachabilityClient, riderFactory);
         Map<PointLocation, DynamicProgrammingRecord> map
                 = output.getMap();
@@ -84,10 +85,8 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
         scoreCard.scoreTask(latestFullTask, map);
 
-        final Map<PointLocation, WalkingCosts> initialWalks
+        final Map<PointLocation, DynamicProgrammingRecord> initialWalks
                 = output.getInitialWalks();
-        final Set<PointLocation> implicitLocations
-                = output.getImplicitLocations();
 
         while (timeIterator.hasNext()) {
 
@@ -97,9 +96,9 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
             final Map<PointLocation, DynamicProgrammingRecord> nextMap
                     = createNextMap(map, nextStartTime, nextCutoffTime,
-                                    startLocation, riderFactory,
+                                    startLocations, riderFactory,
                                     reachabilityClient, timeTracker,
-                                    initialWalks, implicitLocations);
+                                    initialWalks);
 
             final TaskIdentifier nextTask = new TaskIdentifier(
                     nextStartTime, center);
@@ -118,12 +117,11 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
     private Map<PointLocation, DynamicProgrammingRecord> createNextMap(
             final Map<PointLocation, DynamicProgrammingRecord> previousMap,
             final LocalDateTime startTime, final LocalDateTime cutoffTime,
-            final PointLocation startLocation,
+            final Set<? extends PointLocation> startLocations,
             final RiderFactory riderFactory,
             final ReachabilityClient reachabilityClient,
             final TimeTracker timeTracker,
-            final Map<PointLocation, WalkingCosts> initialWalks,
-            final Set<PointLocation> implicitLocations)
+            final Map<PointLocation, DynamicProgrammingRecord> initialWalks)
             throws InterruptedException {
 
         final Map<PointLocation, DynamicProgrammingRecord> stateMap
@@ -140,13 +138,16 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
 
         final DynamicProgrammingRecord newStartRecord
                 = new DynamicProgrammingRecord(startTime, ModeInfo.NONE, null);
-        stateMap.put(startLocation, newStartRecord);
+        for (final PointLocation startLocation : startLocations) {
+            stateMap.put(startLocation, newStartRecord);
+        }
 
         final ImmutableSet.Builder<PointLocation> initialUpdateSetBuilder
                 = ImmutableSet.builder();
-        for (final Map.Entry<PointLocation, WalkingCosts> entry
+        for (final Map.Entry<PointLocation, DynamicProgrammingRecord> entry
                      : initialWalks.entrySet()) {
-            final WalkingCosts walk = entry.getValue();
+            final DynamicProgrammingRecord record = entry.getValue();
+            final WalkingCosts walk = record.getMode().getWalkCosts();
             final LocalDateTime newReachTime = timeTracker.adjust(
                     startTime, walk.getDuration());
 
@@ -154,8 +155,8 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
             final ModeInfo newModeInfo = new ModeInfo(ModeType.WALKING, null,
                                                       walk);
             final DynamicProgrammingRecord newWalkRecord
-                    = new DynamicProgrammingRecord(
-                            newReachTime, newModeInfo, startLocation);
+                    = new DynamicProgrammingRecord(newReachTime, newModeInfo,
+                                                   record.getPredecessor());
 
             if (!stateMap.containsKey(location)) {
                 stateMap.put(location, newWalkRecord);
@@ -169,15 +170,6 @@ public class ProgressiveRangeExecutor implements RangeExecutor {
                     initialUpdateSetBuilder.add(location);
                 }
             }
-        }
-        for (final PointLocation location : implicitLocations) {
-            final ModeInfo newModeInfo = new ModeInfo(ModeType.NONE, null,
-                                                      null);
-            final DynamicProgrammingRecord newRecord
-                    = new DynamicProgrammingRecord(startTime, newModeInfo,
-                                                   startLocation);
-            initialUpdateSetBuilder.add(location);
-            stateMap.put(location, newRecord);
         }
 
         Set<PointLocation> updateSet = initialUpdateSetBuilder.build();

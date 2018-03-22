@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
+import com.bitvantage.bitvantagecaching.BitvantageStoreException;
+import com.bitvantage.bitvantagecaching.RangedStore;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.SetMultimap;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
+import com.publictransitanalytics.scoregenerator.datalayer.scoring.ScoreMappingKey;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.workflow.DynamicProgrammingRecord;
@@ -29,38 +31,45 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * ScoreCard that maps Sectors to the Centers that allowed them to be reached.
- * This allows a count of the number of times a Sector was reached.
  *
  * @author Public Transit Analytics
  */
-public class MappingScoreCard extends ScoreCard {
+public class StoringMappingScoreCard extends ScoreCard {
 
-    private final Multimap<Sector, LogicalTask> locations;
+    private final RangedStore<ScoreMappingKey, String> store;
     private final SetMultimap<PointLocation, Sector> pointSectorMap;
 
-    public MappingScoreCard(
+    public StoringMappingScoreCard(
             final int taskCount,
+            final RangedStore<ScoreMappingKey, String> store,
             final SetMultimap<PointLocation, Sector> pointSectorMap) {
         super(taskCount);
-        locations = Multimaps.synchronizedSetMultimap(HashMultimap.create());
+        this.store = store;
         this.pointSectorMap = pointSectorMap;
     }
 
     @Override
-    public int getReachedCount(final Sector location) {
-        return locations.get(location).size();
+    public int getReachedCount(final Sector location)
+            throws InterruptedException {
+        try {
+            return store.getValuesInRange(
+                    ScoreMappingKey.getMinKey(location.getIdentifier()),
+                    ScoreMappingKey.getMaxKey(location.getIdentifier())).size();
+        } catch (BitvantageStoreException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
     }
 
     @Override
-    public boolean hasPath(final Sector location) {
-        return locations.containsKey(location);
+    public boolean hasPath(final Sector location) throws InterruptedException {
+        return getReachedCount(location) > 0;
     }
 
     @Override
     public void scoreTask(
             final TaskIdentifier task,
-            final Map<PointLocation, DynamicProgrammingRecord> stateMap) {
+            final Map<PointLocation, DynamicProgrammingRecord> stateMap)
+            throws InterruptedException {
         final Set<PointLocation> reachedLocations = stateMap.keySet();
         final Set<Sector> reachedSectors = reachedLocations.stream().map(
                 location -> pointSectorMap.get(location))
@@ -68,9 +77,16 @@ public class MappingScoreCard extends ScoreCard {
         final LogicalTask logicalTask = new LogicalTask(
                 task.getTime(), task.getCenter().getLogicalCenter());
 
+        final ImmutableMap.Builder<ScoreMappingKey, String> keysBuilder
+                = ImmutableMap.builder();
         for (final Sector sector : reachedSectors) {
-            locations.put(sector, logicalTask);
+            keysBuilder.put(ScoreMappingKey.getWriteKey(
+                    sector.getIdentifier(),
+                    logicalTask.getTime().toString(),
+                    logicalTask.getCenter().getIdentifier()), "");
         }
+
+        store.putAll(keysBuilder.build());
     }
 
 }
