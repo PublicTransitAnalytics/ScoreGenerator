@@ -15,14 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator.distance;
 
-import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.RangedKeyStore;
 import com.bitvantage.bitvantagecaching.Store;
-import com.bitvantage.bitvantagecaching.mocks.MapRangedStore;
+import com.bitvantage.bitvantagecaching.mocks.SetRangedKeyStore;
 import com.bitvantage.bitvantagecaching.mocks.MapStore;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.ImmutableSortedSet;
 import com.publictransitanalytics.scoregenerator.datalayer.distance.LocationKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distance.LocationTimeKey;
 import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
@@ -40,8 +40,8 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
+import java.util.NavigableSet;
+import java.util.TreeSet;
 import junit.framework.Assert;
 import org.junit.Test;
 
@@ -73,10 +73,10 @@ public class RangedCachingReachabilityClientTest {
 
     @Test
     public void testHasStoredDistances() throws Exception {
-        final RangedStore<LocationTimeKey, String> timeStore
-                = new MapRangedStore<>(ImmutableSortedMap.of(
+        final RangedKeyStore<LocationTimeKey> timeStore
+                = new SetRangedKeyStore<>(ImmutableSortedSet.of(
                         LocationTimeKey.getWriteKey(
-                                LOCATION_1_ID, 60, LOCATION_2_ID), ""));
+                                LOCATION_1_ID, 60, LOCATION_2_ID)));
         final Store<LocationKey, Integer> maxTimeStore = new MapStore<>(
                 ImmutableMap.of(new LocationKey(LOCATION_1_ID).getKeyString(),
                                 60));
@@ -95,10 +95,9 @@ public class RangedCachingReachabilityClientTest {
 
     @Test
     public void testHasNoStoredDistances() throws Exception {
-        final NavigableMap<LocationTimeKey, String> timeStoreMap
-                = new TreeMap<>();
-        final RangedStore<LocationTimeKey, String> timeStore
-                = new MapRangedStore<>(timeStoreMap);
+        final NavigableSet<LocationTimeKey> timeStoreSet = new TreeSet<>();
+        final RangedKeyStore<LocationTimeKey> timeStore
+                = new SetRangedKeyStore<>(timeStoreSet);
 
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
         final Store<LocationKey, Integer> maxTimeStore
@@ -126,21 +125,20 @@ public class RangedCachingReachabilityClientTest {
                 = new LocationKey(LOCATION_1_ID).getKeyString();
         Assert.assertEquals(60,
                             maxTimestoreMap.get(location1KeyString).intValue());
-        Assert.assertEquals(1, timeStoreMap.size());
+        Assert.assertEquals(1, timeStoreSet.size());
         final LocationTimeKey newKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 60, LOCATION_3_ID);
-        Assert.assertTrue(timeStoreMap.containsKey(newKey));
+        Assert.assertTrue(timeStoreSet.contains(newKey));
     }
 
     @Test
     public void testHasSomeStoredDistances() throws Exception {
-        final NavigableMap<LocationTimeKey, String> timeStoreMap
-                = new TreeMap<>();
+        final NavigableSet<LocationTimeKey> timeStoreSet = new TreeSet<>();
         final LocationTimeKey location1TimeKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 30, LOCATION_2_ID);
-        timeStoreMap.put(location1TimeKey, "");
-        final RangedStore<LocationTimeKey, String> timeStore
-                = new MapRangedStore<>(timeStoreMap);
+        timeStoreSet.add(location1TimeKey);
+        final RangedKeyStore<LocationTimeKey> timeStore 
+                = new SetRangedKeyStore<>(timeStoreSet);
 
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
         final String location1KeyString
@@ -170,22 +168,22 @@ public class RangedCachingReachabilityClientTest {
                             result);
         Assert.assertEquals(60,
                             maxTimestoreMap.get(location1KeyString).intValue());
-        Assert.assertEquals(2, timeStoreMap.size());
-        Assert.assertTrue(timeStoreMap.containsKey(location1TimeKey));
+        Assert.assertEquals(2, timeStoreSet.size());
+        Assert.assertTrue(timeStoreSet.contains(location1TimeKey));
         final LocationTimeKey newKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 60, LOCATION_3_ID);
-        Assert.assertTrue(timeStoreMap.containsKey(newKey));
+        Assert.assertTrue(timeStoreSet.contains(newKey));
     }
 
     @Test
     public void testNoNewDistances() throws Exception {
-        final NavigableMap<LocationTimeKey, String> timeStoreMap
-                = new TreeMap<>();
+        final NavigableSet<LocationTimeKey> timeStoreSet
+                = new TreeSet<>();
         final LocationTimeKey location1TimeKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 30, LOCATION_2_ID);
-        timeStoreMap.put(location1TimeKey, "");
-        final RangedStore<LocationTimeKey, String> timeStore
-                = new MapRangedStore<>(timeStoreMap);
+        timeStoreSet.add(location1TimeKey);
+        final RangedKeyStore<LocationTimeKey> timeStore
+                = new SetRangedKeyStore<>(timeStoreSet);
 
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
         final String location1KeyString
@@ -214,19 +212,19 @@ public class RangedCachingReachabilityClientTest {
                             result);
         Assert.assertEquals(60,
                             maxTimestoreMap.get(location1KeyString).intValue());
-        Assert.assertEquals(1, timeStoreMap.size());
-        Assert.assertTrue(timeStoreMap.containsKey(location1TimeKey));
+        Assert.assertEquals(1, timeStoreSet.size());
+        Assert.assertTrue(timeStoreSet.contains(location1TimeKey));
     }
 
     @Test
     public void testEstimateShortCircuitsDistance() throws Exception {
-        final NavigableMap<LocationTimeKey, String> timeStoreMap
-                = new TreeMap<>();
+        final NavigableSet<LocationTimeKey> timeStoreSet
+                = new TreeSet<>();
         final LocationTimeKey location1TimeKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 30, LOCATION_2_ID);
-        timeStoreMap.put(location1TimeKey, "");
-        final RangedStore<LocationTimeKey, String> timeStore
-                = new MapRangedStore<>(timeStoreMap);
+        timeStoreSet.add(location1TimeKey);
+        final RangedKeyStore<LocationTimeKey> timeStore 
+                = new SetRangedKeyStore<>(timeStoreSet);
 
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
         final String location1KeyString
@@ -241,7 +239,7 @@ public class RangedCachingReachabilityClientTest {
                                 75), -1.0)));
 
         final ReachabilityClient client = new RangedCachingReachabilityClient(
-                timeStore, maxTimeStore, tracker, null, distanceEstimator, 
+                timeStore, maxTimeStore, tracker, null, distanceEstimator,
                 POINT_ID_MAP);
         final Map<PointLocation, WalkingCosts> result = client.getWalkingCosts(
                 LOCATION_1, LocalDateTime.of(1987, Month.MARCH, 8, 4, 39),
@@ -252,8 +250,8 @@ public class RangedCachingReachabilityClientTest {
                             result);
         Assert.assertEquals(60,
                             maxTimestoreMap.get(location1KeyString).intValue());
-        Assert.assertEquals(1, timeStoreMap.size());
-        Assert.assertTrue(timeStoreMap.containsKey(location1TimeKey));
+        Assert.assertEquals(1, timeStoreSet.size());
+        Assert.assertTrue(timeStoreSet.contains(location1TimeKey));
     }
 
 }

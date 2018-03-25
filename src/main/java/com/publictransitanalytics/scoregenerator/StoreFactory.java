@@ -18,7 +18,9 @@ package com.publictransitanalytics.scoregenerator;
 import com.bitvantage.bitvantagecaching.Key;
 import com.bitvantage.bitvantagecaching.KeyMaterializer;
 import com.bitvantage.bitvantagecaching.RangedKey;
+import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Serializer;
 import com.bitvantage.bitvantagecaching.Store;
 import java.nio.file.Path;
 
@@ -28,9 +30,14 @@ import java.nio.file.Path;
  */
 public interface StoreFactory {
 
-    <K extends Key, V> Store<K, V> getStore(Path path, Class<V> valueClass);
+    <K extends Key, V> Store<K, V> getStore(Path path,
+                                            Serializer<V> serializer);
 
     <K extends RangedKey<K>, V> RangedStore getRangedStore(
-            Path path, KeyMaterializer<K> keyMaterializer, Class<V> valueClass);
+            Path path, KeyMaterializer<K> keyMaterializer,
+            Serializer<V> serializer);
+
+    <K extends RangedKey<K>> StoreBackedRangedKeyStore getRangedKeyStore(
+            Path path, KeyMaterializer<K> keyMaterializer);
 
 }

@@ -16,8 +16,8 @@
 package com.publictransitanalytics.scoregenerator.scoring;
 
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
-import com.bitvantage.bitvantagecaching.RangedStore;
-import com.google.common.collect.ImmutableMap;
+import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.scoring.ScoreMappingKey;
@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
  */
 public class StoringMappingScoreCard extends ScoreCard {
 
-    private final RangedStore<ScoreMappingKey, String> store;
+    private final StoreBackedRangedKeyStore<ScoreMappingKey> store;
     private final SetMultimap<PointLocation, Sector> pointSectorMap;
 
     public StoringMappingScoreCard(
             final int taskCount,
-            final RangedStore<ScoreMappingKey, String> store,
+            final StoreBackedRangedKeyStore<ScoreMappingKey> store,
             final SetMultimap<PointLocation, Sector> pointSectorMap) {
         super(taskCount);
         this.store = store;
@@ -77,13 +77,13 @@ public class StoringMappingScoreCard extends ScoreCard {
         final LogicalTask logicalTask = new LogicalTask(
                 task.getTime(), task.getCenter().getLogicalCenter());
 
-        final ImmutableMap.Builder<ScoreMappingKey, String> keysBuilder
-                = ImmutableMap.builder();
+        final ImmutableSet.Builder<ScoreMappingKey> keysBuilder
+                = ImmutableSet.builder();
         for (final Sector sector : reachedSectors) {
-            keysBuilder.put(ScoreMappingKey.getWriteKey(
+            keysBuilder.add(ScoreMappingKey.getWriteKey(
                     sector.getIdentifier(),
                     logicalTask.getTime().toString(),
-                    logicalTask.getCenter().getIdentifier()), "");
+                    logicalTask.getCenter().getIdentifier()));
         }
 
         store.putAll(keysBuilder.build());

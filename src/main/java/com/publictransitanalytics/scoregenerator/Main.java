@@ -15,12 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator;
 
+import com.bitvantage.bitvantagecaching.GsonSerializer;
 import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
 import com.publictransitanalytics.scoregenerator.geography.GeoBounds;
 import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Serializer;
 import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.console.NetworkConsoleFactory;
 import com.publictransitanalytics.scoregenerator.console.DummyNetworkConsole;
@@ -264,9 +266,6 @@ public class Main {
                     comparisonDescription, publisher, serializer, mapGenerator,
                     outputName, consoleFactory);
         } else if ("generateNetworkAccessibility".equals(command)) {
-
-//            final ScoreCardFactory<StoringMappingScoreCard> scoreCardFactory
-//                    = new StoringMappingScoreCardFactory(storeFactory);
             final ScoreCardFactory scoreCardFactory
                     = new CountScoreCardFactory();
             final Set<Center> centers = getAllCenters(grid);
@@ -286,7 +285,7 @@ public class Main {
                                         mapGenerator, outputName);
         } else if ("generateSampledNetworkAccessibility".equals(command)) {
 
-            final ScoreCardFactory scoreCardFactory 
+            final ScoreCardFactory scoreCardFactory
                     = new CountScoreCardFactory();
 
             final int samples = Integer.valueOf(namespace.get("samples"));
@@ -608,18 +607,26 @@ public class Main {
         final ReadingSegmentFinder segmentFinder = new ReadingSegmentFinder(
                 osmPath, bounds);
 
+        final Serializer<GridInfo> gridInfoSerializer
+                = new GsonSerializer<>(GridInfo.class);
         final Store<GridIdKey, GridInfo> gridInfoStore = storeFactory.getStore(
-                root.resolve(GRID_INFO_STORE), GridInfo.class);
+                root.resolve(GRID_INFO_STORE), gridInfoSerializer);
+
+        final Serializer<SectorInfo> sectorInfoSerializer
+                = new GsonSerializer<>(SectorInfo.class);
         final RangedStore<SectorKey, SectorInfo> sectorStore
                 = storeFactory.<SectorKey, SectorInfo>getRangedStore(
                         root.resolve(SECTOR_INFO_STORE),
-                        new SectorKey.Materializer(), SectorInfo.class);
+                        new SectorKey.Materializer(), sectorInfoSerializer);
+
+        final Serializer<GridPointAssociation> gridPointAssociationSerializer
+                = new GsonSerializer<>(GridPointAssociation.class);
         final RangedStore<GridPointAssociationKey, GridPointAssociation> assocationStore
                 = storeFactory
                         .<GridPointAssociationKey, GridPointAssociation>getRangedStore(
                                 root.resolve(GRID_POINT_ASSOCATION_STORE),
                                 new GridPointAssociationKey.Materializer(),
-                                GridPointAssociation.class);
+                                gridPointAssociationSerializer);
 
         return new StoredGrid(segmentFinder, bounds, RESOLUTION_METERS,
                               detector, gridInfoStore, sectorStore,

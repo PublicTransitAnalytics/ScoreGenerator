@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.scoring;
 
-import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
 import com.google.common.collect.SetMultimap;
 import com.google.common.io.Files;
 import com.publictransitanalytics.scoregenerator.StoreFactory;
@@ -40,10 +40,9 @@ public class StoringMappingScoreCardFactory implements
             final int taskCount,
             final SetMultimap<PointLocation, Sector> pointSectorMap) {
         final Path path = Files.createTempDir().toPath();
-        final RangedStore<ScoreMappingKey, String> store
-                = factory.<ScoreMappingKey, String>getRangedStore(
-                        path, new ScoreMappingKey.Materializer(),
-                        String.class);
+        final StoreBackedRangedKeyStore<ScoreMappingKey> store
+                = factory.<ScoreMappingKey>getRangedKeyStore(
+                        path, new ScoreMappingKey.Materializer());
         return new StoringMappingScoreCard(taskCount, store, pointSectorMap);
     }
 

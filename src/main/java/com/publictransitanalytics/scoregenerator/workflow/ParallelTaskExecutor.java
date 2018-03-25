@@ -66,6 +66,8 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
                 });
             }
         }
+        
+
         pool.shutdown();
         while (!pool.awaitTermination(10, TimeUnit.SECONDS)) {
             log.debug("Continuing to wait.");

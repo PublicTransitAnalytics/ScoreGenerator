@@ -16,7 +16,7 @@
 package com.publictransitanalytics.scoregenerator.distance;
 
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
-import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.RangedKeyStore;
 import com.bitvantage.bitvantagecaching.Store;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableMap;
@@ -32,8 +32,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NavigableSet;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
@@ -44,7 +44,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RangedCachingReachabilityClient implements ReachabilityClient {
 
-    private final RangedStore<LocationTimeKey, String> timeStore;
+    private final RangedKeyStore<LocationTimeKey> timeStore;
     private final Store<LocationKey, Integer> maxTimeStore;
     private final TimeTracker timeTracker;
     private final DistanceClient distanceClient;
@@ -72,7 +72,7 @@ public class RangedCachingReachabilityClient implements ReachabilityClient {
             final Set<PointLocation> uncached;
             final boolean updateMaxStored;
             if (maxStored != null) {
-                final SortedMap<LocationTimeKey, String> values
+                final NavigableSet<LocationTimeKey> values
                         = timeStore.getValuesBelow(LocationTimeKey.getMaxKey(
                                 locationId, durationSeconds));
                 final Map<PointLocation, WalkingCosts> cached
@@ -122,22 +122,22 @@ public class RangedCachingReachabilityClient implements ReachabilityClient {
     }
 
     private Map<PointLocation, WalkingCosts> convertFromKeys(
-            final Map<LocationTimeKey, String> values) {
-        return values.keySet().stream().collect(Collectors.toMap(
+            final Set<LocationTimeKey> keys) {
+        return keys.stream().collect(Collectors.toMap(
                 key -> pointIdMap.get(key.getDestinationId()),
                 key -> new WalkingCosts(Duration.ofSeconds(
                         key.getTimeSeconds()), -1)));
     }
 
-    private Map<LocationTimeKey, String> convertToKeys(
+    private Set<LocationTimeKey> convertToKeys(
             final String locationId,
             final Map<PointLocation, WalkingCosts> values) {
-        return values.entrySet().stream().collect(Collectors.toMap(
+        return values.entrySet().stream().map(
                 entry -> LocationTimeKey.getWriteKey(
                         locationId,
                         (int) entry.getValue().getDuration().getSeconds(),
-                        entry.getKey().getIdentifier()),
-                entry -> ""));
+                        entry.getKey().getIdentifier()))
+                .collect(Collectors.toSet());
     }
 
     private Map<PointLocation, WalkingCosts> filterTimes(

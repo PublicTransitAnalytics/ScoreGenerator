@@ -19,12 +19,15 @@ import com.bitvantage.bitvantagecaching.CachingRangedStore;
 import com.bitvantage.bitvantagecaching.CachingStore;
 import com.bitvantage.bitvantagecaching.InMemoryHashStore;
 import com.bitvantage.bitvantagecaching.InMemorySortedStore;
+import com.bitvantage.bitvantagecaching.IntegerSerializer;
 import com.bitvantage.bitvantagecaching.Key;
 import com.bitvantage.bitvantagecaching.KeyMaterializer;
 import com.bitvantage.bitvantagecaching.LmdbStore;
 import com.bitvantage.bitvantagecaching.RangedKey;
+import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
 import com.bitvantage.bitvantagecaching.RangedLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Serializer;
 import com.bitvantage.bitvantagecaching.Store;
 import com.bitvantage.bitvantagecaching.UnboundedCache;
 import com.bitvantage.bitvantagecaching.UnboundedRangedCache;
@@ -37,20 +40,28 @@ import java.nio.file.Path;
 public class UnboundedCacheStoreFactory implements StoreFactory {
 
     @Override
-    public <K extends Key, V> Store<K, V> getStore(final Path path,
-                                                   final Class<V> valueClass) {
+    public <K extends Key, V> Store<K, V> getStore(
+            final Path path, final Serializer<V> serializer) {
         return new CachingStore<>(
-                new LmdbStore<>(path, valueClass),
+                new LmdbStore<>(path, serializer),
                 new UnboundedCache<>(new InMemoryHashStore<>()));
     }
 
     @Override
     public <K extends RangedKey<K>, V> RangedStore getRangedStore(
             final Path path, final KeyMaterializer<K> keyMaterializer,
-            final Class<V> valueClass) {
+            final Serializer<V> serializer) {
         return new CachingRangedStore<>(
-                new RangedLmdbStore<>(path, keyMaterializer, valueClass),
+                new RangedLmdbStore<>(path, keyMaterializer, serializer),
                 new UnboundedRangedCache<>(new InMemorySortedStore<>()));
+    }
+
+    @Override
+    public <K extends RangedKey<K>> StoreBackedRangedKeyStore getRangedKeyStore(
+            final Path path,
+            final KeyMaterializer<K> keyMaterializer) {
+        return new StoreBackedRangedKeyStore(getRangedStore(path, keyMaterializer,
+                                                 new IntegerSerializer()));
     }
 
 }

@@ -15,7 +15,11 @@
  */
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
+import com.bitvantage.bitvantagecaching.GsonSerializer;
+import com.bitvantage.bitvantagecaching.IntegerSerializer;
+import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
+import com.bitvantage.bitvantagecaching.Serializer;
 import com.bitvantage.bitvantagecaching.Store;
 import com.publictransitanalytics.scoregenerator.StoreFactory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.RouteDetails;
@@ -52,7 +56,8 @@ public class ServiceDataDirectory {
     private static final String STOP_DETAILS_STORE = "stop_details_store";
 
     private static final String WALKING_TIME_STORE = "walking_time_store";
-    private static final String MAX_WALKING_TIME_STORE = "max_walking_time_store";
+    private static final String MAX_WALKING_TIME_STORE
+            = "max_walking_time_store";
     private static final String TRIP_SEQUENCE_STORE = "trip_sequence_store";
     private static final String STOP_TIMES_STORE = "stop_times_store";
     private static final String TRIPS_STORE = "trips_store";
@@ -79,7 +84,7 @@ public class ServiceDataDirectory {
     @Getter
     private final StopTimesDirectory stopTimesDirectory;
     @Getter
-    private final RangedStore<LocationTimeKey, String> walkingTimeStore;
+    private final StoreBackedRangedKeyStore<LocationTimeKey> walkingTimeStore;
     @Getter
     private final Store<LocationKey, Integer> maxWalkingTimeStore;
 
@@ -100,22 +105,24 @@ public class ServiceDataDirectory {
         final Path walkingTimeStorePath = root.resolve(files)
                 .resolve(WALKING_TIME_STORE);
         walkingTimeStore = storeFactory
-                .<LocationTimeKey, String>getRangedStore(
+                .<LocationTimeKey>getRangedKeyStore(
                         walkingTimeStorePath,
-                        new LocationTimeKey.Materializer(), String.class);
+                        new LocationTimeKey.Materializer());
         final Path maxWalkingTimeStorePath = root.resolve(files)
                 .resolve(MAX_WALKING_TIME_STORE);
         maxWalkingTimeStore = storeFactory.<LocationKey, Integer>getStore(
-                maxWalkingTimeStorePath, Integer.class);
+                maxWalkingTimeStorePath, new IntegerSerializer());
     }
 
     private static StopDetailsDirectory buildStopDetailsDirectory(
             final StoreFactory storeFactory, final Path baseDirectory,
             final String revision) throws InterruptedException, IOException {
+        final Serializer<StopDetails> serializer
+                = new GsonSerializer<>(StopDetails.class);
         final Store<StopIdKey, StopDetails> stopDetailsStore
                 = storeFactory.<StopIdKey, StopDetails>getStore(
                         baseDirectory.resolve(revision).resolve(
-                                STOP_DETAILS_STORE), StopDetails.class);
+                                STOP_DETAILS_STORE), serializer);
 
         final Reader stopDetailsReader = new FileReader(
                 baseDirectory.resolve(revision).resolve(GTFS_DIRECTORY).resolve(
@@ -130,10 +137,12 @@ public class ServiceDataDirectory {
     private static ServiceTypeCalendar buildServiceTypeCalendar(
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
+        final Serializer<ServiceSet> serializer
+                = new GsonSerializer<>(ServiceSet.class);
         final Store<DateKey, ServiceSet> serviceTypesStore
                 = storeFactory.<DateKey, ServiceSet>getStore(
                         root.resolve(revision).resolve(
-                                SERVICE_TYPES_STORE), ServiceSet.class);
+                                SERVICE_TYPES_STORE), serializer);
 
         final Reader calendarReader = new FileReader(
                 root.resolve(revision).resolve(GTFS_DIRECTORY).
@@ -151,10 +160,12 @@ public class ServiceDataDirectory {
     private static TripDetailsDirectory buildTripDetailsDirectory(
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
+        final Serializer<TripDetails> serializer
+                = new GsonSerializer<>(TripDetails.class);
         final Store<TripGroupKey, TripDetails> tripDetailsStore
                 = storeFactory.<TripGroupKey, TripDetails>getStore(
                         root.resolve(revision).resolve(
-                                TRIP_DETAILS_STORE), TripDetails.class);
+                                TRIP_DETAILS_STORE), serializer);
 
         final Reader tripReader = new FileReader(root.resolve(revision)
                 .resolve(GTFS_DIRECTORY).resolve(TRIPS_FILE).toFile());
@@ -169,21 +180,25 @@ public class ServiceDataDirectory {
             final String revision) throws IOException, InterruptedException {
         final Path tripSequenceStorePath
                 = root.resolve(revision).resolve(TRIP_SEQUENCE_STORE);
+        final Serializer<TripStop> tripStopSerializer
+                = new GsonSerializer<>(TripStop.class);
         final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
                 = storeFactory.<TripSequenceKey, TripStop>getRangedStore(
                         tripSequenceStorePath,
-                        new TripSequenceKey.Materializer(), TripStop.class);
+                        new TripSequenceKey.Materializer(), tripStopSerializer);
 
         final Path stopTimesStorePath = root.resolve(revision)
                 .resolve(STOP_TIMES_STORE);
         final RangedStore<StopTimeKey, TripStop> stopTimesStore
                 = storeFactory.<StopTimeKey, TripStop>getRangedStore(
                         stopTimesStorePath, new StopTimeKey.Materializer(),
-                        TripStop.class);
+                        tripStopSerializer);
 
+        final Serializer<TripId> tripIdSerializer
+                = new GsonSerializer<>(TripId.class);
         final Store<TripIdKey, TripId> tripsStore = storeFactory
                 .<TripIdKey, TripId>getStore(root.resolve(revision).resolve(
-                        TRIPS_STORE), TripId.class);
+                        TRIPS_STORE), tripIdSerializer);
 
         final Path frequenciesPath = root.resolve(revision).resolve(
                 GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
@@ -206,10 +221,12 @@ public class ServiceDataDirectory {
     private static RouteDetailsDirectory buildRouteDetailsDirectory(
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
+        final Serializer<RouteDetails> serializer
+                = new GsonSerializer<>(RouteDetails.class);
         final Store<RouteIdKey, RouteDetails> routeDetailsStore
                 = storeFactory.<RouteIdKey, RouteDetails>getStore(
-                        root.resolve(revision).resolve(
-                                ROUTE_DETAILS_STORE), RouteDetails.class);
+                        root.resolve(revision).resolve(ROUTE_DETAILS_STORE),
+                        serializer);
 
         final Reader routeReader = new FileReader(root
                 .resolve(revision).resolve(GTFS_DIRECTORY)
