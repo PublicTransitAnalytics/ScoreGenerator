@@ -35,7 +35,6 @@ import com.google.common.collect.BiMap;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.FileNotFoundException;
@@ -68,7 +67,6 @@ import com.publictransitanalytics.scoregenerator.environment.ReadingSegmentFinde
 import com.publictransitanalytics.scoregenerator.geography.GeoJsonInEnvironmentDetector;
 import com.publictransitanalytics.scoregenerator.geography.InEnvironmentDetectorException;
 import com.publictransitanalytics.scoregenerator.location.Center;
-import com.publictransitanalytics.scoregenerator.location.GridPoint;
 import com.publictransitanalytics.scoregenerator.output.ComparativeNetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.ComparativePointAccessibility;
 import com.publictransitanalytics.scoregenerator.output.ComparativeTimeQualifiedPointAccessibility;
@@ -85,8 +83,6 @@ import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 import com.publictransitanalytics.scoregenerator.workflow.Workflow;
 import java.util.Map;
-import com.publictransitanalytics.scoregenerator.scoring.MappingScoreCard;
-import com.publictransitanalytics.scoregenerator.scoring.MappingScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCardFactory;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
@@ -103,9 +99,6 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
-import com.publictransitanalytics.scoregenerator.scoring.StoringMappingScoreCard;
-import com.publictransitanalytics.scoregenerator.scoring.StoringMappingScoreCardFactory;
-import com.publictransitanalytics.scoregenerator.workflow.SequentialTaskExecutor;
 
 @Slf4j
 /**

@@ -22,10 +22,10 @@ import com.bitvantage.bitvantagecaching.InMemorySortedStore;
 import com.bitvantage.bitvantagecaching.IntegerSerializer;
 import com.bitvantage.bitvantagecaching.Key;
 import com.bitvantage.bitvantagecaching.KeyMaterializer;
-import com.bitvantage.bitvantagecaching.LmdbStore;
+import com.bitvantage.bitvantagecaching.NativeLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedKey;
 import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
-import com.bitvantage.bitvantagecaching.RangedLmdbStore;
+import com.bitvantage.bitvantagecaching.RangedNativeLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.Serializer;
 import com.bitvantage.bitvantagecaching.Store;
@@ -42,8 +42,9 @@ public class UnboundedCacheStoreFactory implements StoreFactory {
     @Override
     public <K extends Key, V> Store<K, V> getStore(
             final Path path, final Serializer<V> serializer) {
+        final int readers = Runtime.getRuntime().availableProcessors();
         return new CachingStore<>(
-                new LmdbStore<>(path, serializer),
+                new NativeLmdbStore<>(path, serializer, readers),
                 new UnboundedCache<>(new InMemoryHashStore<>()));
     }
 
@@ -51,17 +52,18 @@ public class UnboundedCacheStoreFactory implements StoreFactory {
     public <K extends RangedKey<K>, V> RangedStore getRangedStore(
             final Path path, final KeyMaterializer<K> keyMaterializer,
             final Serializer<V> serializer) {
+        final int readers = Runtime.getRuntime().availableProcessors();
         return new CachingRangedStore<>(
-                new RangedLmdbStore<>(path, keyMaterializer, serializer),
+                new RangedNativeLmdbStore<>(path, keyMaterializer, serializer,
+                                            readers),
                 new UnboundedRangedCache<>(new InMemorySortedStore<>()));
     }
 
     @Override
     public <K extends RangedKey<K>> StoreBackedRangedKeyStore getRangedKeyStore(
-            final Path path,
-            final KeyMaterializer<K> keyMaterializer) {
-        return new StoreBackedRangedKeyStore(getRangedStore(path, keyMaterializer,
-                                                 new IntegerSerializer()));
+            final Path path, final KeyMaterializer<K> keyMaterializer) {
+        return new StoreBackedRangedKeyStore(getRangedStore(
+                 path, keyMaterializer, new IntegerSerializer()));
     }
 
 }

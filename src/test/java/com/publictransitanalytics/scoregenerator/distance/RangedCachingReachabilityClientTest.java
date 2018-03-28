@@ -80,10 +80,13 @@ public class RangedCachingReachabilityClientTest {
         final Store<LocationKey, Integer> maxTimeStore = new MapStore<>(
                 ImmutableMap.of(new LocationKey(LOCATION_1_ID).getKeyString(),
                                 60));
+        final DistanceStoreManager storeManager
+                = new StoreBackedDistanceStoreManager(timeStore, maxTimeStore,
+                                                 POINT_ID_MAP);
         final TimeTracker tracker = new ForwardTimeTracker();
 
         final ReachabilityClient client = new RangedCachingReachabilityClient(
-                timeStore, maxTimeStore, tracker, null, null, POINT_ID_MAP);
+                storeManager, POINT_ID_MAP.values(), tracker, null, null);
         final Map<PointLocation, WalkingCosts> result = client.getWalkingCosts(
                 LOCATION_1, LocalDateTime.of(1987, Month.MARCH, 8, 4, 39),
                 LocalDateTime.of(1987, Month.MARCH, 8, 4, 40));
@@ -102,6 +105,11 @@ public class RangedCachingReachabilityClientTest {
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
         final Store<LocationKey, Integer> maxTimeStore
                 = new MapStore<>(maxTimestoreMap);
+
+        final DistanceStoreManager storeManager
+                = new StoreBackedDistanceStoreManager(timeStore, maxTimeStore,
+                                                 POINT_ID_MAP);
+
         final TimeTracker tracker = new ForwardTimeTracker();
 
         final DistanceClient distanceClient = new PreloadedDistanceClient(
@@ -112,8 +120,8 @@ public class RangedCachingReachabilityClientTest {
                                 60), -1.0)));
 
         final ReachabilityClient client = new RangedCachingReachabilityClient(
-                timeStore, maxTimeStore, tracker, distanceClient,
-                distanceEstimator, POINT_ID_MAP);
+                storeManager, POINT_ID_MAP.values(), tracker, distanceClient,
+                distanceEstimator);
         final Map<PointLocation, WalkingCosts> result = client.getWalkingCosts(
                 LOCATION_1, LocalDateTime.of(1987, Month.MARCH, 8, 4, 39),
                 LocalDateTime.of(1987, Month.MARCH, 8, 4, 40));
@@ -137,15 +145,20 @@ public class RangedCachingReachabilityClientTest {
         final LocationTimeKey location1TimeKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 30, LOCATION_2_ID);
         timeStoreSet.add(location1TimeKey);
-        final RangedKeyStore<LocationTimeKey> timeStore 
+        final RangedKeyStore<LocationTimeKey> timeStore
                 = new SetRangedKeyStore<>(timeStoreSet);
-
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
+
         final String location1KeyString
                 = new LocationKey(LOCATION_1_ID).getKeyString();
         maxTimestoreMap.put(location1KeyString, 30);
         final Store<LocationKey, Integer> maxTimeStore
                 = new MapStore<>(maxTimestoreMap);
+
+        final DistanceStoreManager storeManager
+                = new StoreBackedDistanceStoreManager(timeStore, maxTimeStore,
+                                                 POINT_ID_MAP);
+
         final TimeTracker tracker = new ForwardTimeTracker();
 
         final DistanceClient distanceClient = new PreloadedDistanceClient(
@@ -156,8 +169,8 @@ public class RangedCachingReachabilityClientTest {
                                 60), -1.0)));
 
         final ReachabilityClient client = new RangedCachingReachabilityClient(
-                timeStore, maxTimeStore, tracker, distanceClient,
-                distanceEstimator, POINT_ID_MAP);
+                storeManager, POINT_ID_MAP.values(), tracker, distanceClient,
+                distanceEstimator);
         final Map<PointLocation, WalkingCosts> result = client.getWalkingCosts(
                 LOCATION_1, LocalDateTime.of(1987, Month.MARCH, 8, 4, 39),
                 LocalDateTime.of(1987, Month.MARCH, 8, 4, 40));
@@ -191,6 +204,11 @@ public class RangedCachingReachabilityClientTest {
         maxTimestoreMap.put(location1KeyString, 30);
         final Store<LocationKey, Integer> maxTimeStore
                 = new MapStore<>(maxTimestoreMap);
+
+        final DistanceStoreManager storeManager
+                = new StoreBackedDistanceStoreManager(timeStore, maxTimeStore,
+                                                 POINT_ID_MAP);
+
         final TimeTracker tracker = new ForwardTimeTracker();
 
         final DistanceClient distanceClient = new PreloadedDistanceClient(
@@ -201,8 +219,8 @@ public class RangedCachingReachabilityClientTest {
                                 75), -1.0)));
 
         final ReachabilityClient client = new RangedCachingReachabilityClient(
-                timeStore, maxTimeStore, tracker, distanceClient,
-                distanceEstimator, POINT_ID_MAP);
+                storeManager, POINT_ID_MAP.values(), tracker, distanceClient,
+                distanceEstimator);
         final Map<PointLocation, WalkingCosts> result = client.getWalkingCosts(
                 LOCATION_1, LocalDateTime.of(1987, Month.MARCH, 8, 4, 39),
                 LocalDateTime.of(1987, Month.MARCH, 8, 4, 40));
@@ -223,7 +241,7 @@ public class RangedCachingReachabilityClientTest {
         final LocationTimeKey location1TimeKey = LocationTimeKey.getWriteKey(
                 LOCATION_1_ID, 30, LOCATION_2_ID);
         timeStoreSet.add(location1TimeKey);
-        final RangedKeyStore<LocationTimeKey> timeStore 
+        final RangedKeyStore<LocationTimeKey> timeStore
                 = new SetRangedKeyStore<>(timeStoreSet);
 
         final Map<String, Integer> maxTimestoreMap = new HashMap<>();
@@ -232,6 +250,11 @@ public class RangedCachingReachabilityClientTest {
         maxTimestoreMap.put(location1KeyString, 30);
         final Store<LocationKey, Integer> maxTimeStore
                 = new MapStore<>(maxTimestoreMap);
+
+        final DistanceStoreManager storeManager
+                = new StoreBackedDistanceStoreManager(timeStore, maxTimeStore,
+                                                 POINT_ID_MAP);
+
         final TimeTracker tracker = new ForwardTimeTracker();
 
         final DistanceClient distanceEstimator = new PreloadedDistanceClient(
@@ -239,8 +262,8 @@ public class RangedCachingReachabilityClientTest {
                                 75), -1.0)));
 
         final ReachabilityClient client = new RangedCachingReachabilityClient(
-                timeStore, maxTimeStore, tracker, null, distanceEstimator,
-                POINT_ID_MAP);
+                storeManager, POINT_ID_MAP.values(), tracker, null, 
+                distanceEstimator);
         final Map<PointLocation, WalkingCosts> result = client.getWalkingCosts(
                 LOCATION_1, LocalDateTime.of(1987, Month.MARCH, 8, 4, 39),
                 LocalDateTime.of(1987, Month.MARCH, 8, 4, 40));

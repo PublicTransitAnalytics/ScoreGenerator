@@ -18,10 +18,10 @@ package com.publictransitanalytics.scoregenerator;
 import com.bitvantage.bitvantagecaching.DummySerializer;
 import com.bitvantage.bitvantagecaching.Key;
 import com.bitvantage.bitvantagecaching.KeyMaterializer;
-import com.bitvantage.bitvantagecaching.LmdbStore;
+import com.bitvantage.bitvantagecaching.NativeLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedKey;
 import com.bitvantage.bitvantagecaching.StoreBackedRangedKeyStore;
-import com.bitvantage.bitvantagecaching.RangedLmdbStore;
+import com.bitvantage.bitvantagecaching.RangedNativeLmdbStore;
 import com.bitvantage.bitvantagecaching.RangedStore;
 import com.bitvantage.bitvantagecaching.Serializer;
 import com.bitvantage.bitvantagecaching.Store;
@@ -36,20 +36,23 @@ public class NoCacheStoreFactory implements StoreFactory {
     @Override
     public <K extends Key, V> Store<K, V> getStore(
             final Path path, final Serializer<V> serializer) {
-        return new LmdbStore<>(path, serializer);
+        final int readers = Runtime.getRuntime().availableProcessors();
+        return new NativeLmdbStore<>(path, serializer, readers);
     }
 
     @Override
     public <K extends RangedKey<K>, V> RangedStore getRangedStore(
             final Path path, final KeyMaterializer<K> keyMaterializer,
             final Serializer<V> serializer) {
-        return new RangedLmdbStore<>(path, keyMaterializer, serializer);
+        final int readers = Runtime.getRuntime().availableProcessors();
+        return new RangedNativeLmdbStore<>(path, keyMaterializer, serializer,
+                                           readers);
     }
 
     @Override
     public <K extends RangedKey<K>> StoreBackedRangedKeyStore getRangedKeyStore(
             final Path path, final KeyMaterializer<K> keyMaterializer) {
-        return new StoreBackedRangedKeyStore<>(new RangedLmdbStore<K, Byte>(
+        return new StoreBackedRangedKeyStore<>(getRangedStore(
                 path, keyMaterializer, new DummySerializer()));
     }
 

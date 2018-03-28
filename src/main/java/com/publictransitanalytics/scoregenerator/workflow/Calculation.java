@@ -42,16 +42,16 @@ import com.publictransitanalytics.scoregenerator.comparison.Truncation;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceDataDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.StopDetails;
-import com.publictransitanalytics.scoregenerator.distance.BackwardPointOrderer;
 import com.publictransitanalytics.scoregenerator.distance.DistanceClient;
+import com.publictransitanalytics.scoregenerator.distance.DistanceStoreManager;
 import com.publictransitanalytics.scoregenerator.distance.EstimatingDistanceClient;
-import com.publictransitanalytics.scoregenerator.distance.ForwardPointOrderer;
 import com.publictransitanalytics.scoregenerator.distance.ForwardPointSequencer;
 import com.publictransitanalytics.scoregenerator.distance.OsrmLocalDistanceClient;
-import com.publictransitanalytics.scoregenerator.distance.PointOrdererFactory;
 import com.publictransitanalytics.scoregenerator.distance.PointSequencerFactory;
 import com.publictransitanalytics.scoregenerator.distance.RangedCachingReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
+import com.publictransitanalytics.scoregenerator.distance.StoreBackedDistanceStoreManager;
+import com.publictransitanalytics.scoregenerator.distance.SplitMergeDistanceClient;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.Center;
 import com.publictransitanalytics.scoregenerator.location.GridPoint;
@@ -110,7 +110,6 @@ public class Calculation<S extends ScoreCard> {
     private final boolean backward;
     private final Duration longestDuration;
     private final double walkingMetersPerSecond;
-    private final DistanceClient distanceClient;
     @Getter
     private final BiMap<String, TransitStop> stopIdMap;
     @Getter
@@ -160,25 +159,21 @@ public class Calculation<S extends ScoreCard> {
         final SetMultimap<PointLocation, Sector> basePointSectorMap
                 = buildPointSectorMap(grid, baseStopIdMap.values());
 
-        final PointOrdererFactory ordererFactory;
         final PointSequencerFactory pointSequencerFactory;
         final RiderFactory baseRiderFactory;
         if (!backward) {
             baseRiderFactory = new ForwardRiderFactory(baseTransitNetwork);
-            ordererFactory = (point, consideredPoint)
-                    -> new ForwardPointOrderer(point, consideredPoint);
             pointSequencerFactory = (origin, destinations)
                     -> new ForwardPointSequencer(origin, destinations);
         } else {
             baseRiderFactory = new RetrospectiveRiderFactory(
                     baseTransitNetwork);
-            ordererFactory = (point, consideredPoint)
-                    -> new BackwardPointOrderer(point, consideredPoint);
             pointSequencerFactory = (destination, origins)
                     -> new ForwardPointSequencer(destination, origins);
         }
 
-        distanceClient = buildOsrmDistanceClient(pointSequencerFactory);
+        final DistanceClient distanceClient = buildOsrmDistanceClient(
+                pointSequencerFactory, 1000);
         final Set<PointLocation> centerPoints = centers.stream()
                 .map(Center::getPhysicalCenters).flatMap(Collection::stream)
                 .collect(Collectors.toSet());
@@ -190,12 +185,16 @@ public class Calculation<S extends ScoreCard> {
         times = getTaskTimes(startTime, endTime, samplingInterval);
 
         final DistanceClient estimator = new EstimatingDistanceClient(
-                walkingMetersPerSecond);        
+                walkingMetersPerSecond);
+        final DistanceStoreManager storeManager
+                = new StoreBackedDistanceStoreManager(
+                        serviceDirectory.getWalkingTimeStore(),
+                        serviceDirectory.getMaxWalkingTimeStore(), 
+                        basePointIdMap);
         final ReachabilityClient baseReachabilityClient
                 = new RangedCachingReachabilityClient(
-                        serviceDirectory.getWalkingTimeStore(),
-                        serviceDirectory.getMaxWalkingTimeStore(),
-                        timeTracker, distanceClient, estimator, basePointIdMap);
+                        storeManager, basePointIdMap.values(),
+                        timeTracker, distanceClient, estimator);
 
         allowedModes = ImmutableSet.of(ModeType.TRANSIT, ModeType.WALKING);
 
@@ -207,8 +206,8 @@ public class Calculation<S extends ScoreCard> {
 
         final Transformer transformer = new Transformer(
                 timeTracker, baseTransitNetwork, backward, longestDuration,
-                walkingMetersPerSecond, distanceClient, gridPoints,
-                baseStopIdMap.values(), centerPoints, baseReachabilityClient,
+                walkingMetersPerSecond, distanceClient, estimator,
+                basePointIdMap, baseReachabilityClient, storeManager,
                 baseRiderFactory);
 
         if (operations != null) {
@@ -271,11 +270,12 @@ public class Calculation<S extends ScoreCard> {
     }
 
     private static DistanceClient buildOsrmDistanceClient(
-            final PointSequencerFactory pointSequencerFactory) {
+            final PointSequencerFactory pointSequencerFactory,
+            final int maxConsidered) {
         final DistanceClient osrmDistanceClient = new OsrmLocalDistanceClient(
                 new OkHttpClient(), "localhost", 5000, pointSequencerFactory);
 
-        return osrmDistanceClient;
+        return new SplitMergeDistanceClient(osrmDistanceClient, maxConsidered);
     }
 
     private static LocalDateTime getEarliestTime(

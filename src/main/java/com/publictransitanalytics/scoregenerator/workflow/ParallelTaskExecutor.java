@@ -56,19 +56,17 @@ public class ParallelTaskExecutor<S extends ScoreCard> implements Workflow<S> {
                         } catch (final InterruptedException e) {
                             Thread.currentThread().interrupt();
                         } catch (final Exception e) {
-                            log.error("Caught exception in task {}.", task,
-                                      e);
+                            log.error("Caught exception in task {}.", task, e);
                             pool.shutdownNow();
-                            log.info("Executor shut down.");
                             throw e;
                         }
                     }
                 });
             }
         }
-        
 
         pool.shutdown();
+        
         while (!pool.awaitTermination(10, TimeUnit.SECONDS)) {
             log.debug("Continuing to wait.");
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,25 @@ package com.publictransitanalytics.scoregenerator.distance;
 
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.walking.WalkingCosts;
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.Map;
 
 /**
- * Takes a location and a time range and returns all reachable locations and
- * their measurements.
  *
  * @author Public Transit Analytics
  */
-public interface ReachabilityClient {
+public interface DistanceStoreManager {
 
-    Map<PointLocation, WalkingCosts> getWalkingCosts(
-            final PointLocation location, final LocalDateTime currentTime,
-            final LocalDateTime cutoffTime)
-            throws DistanceClientException, InterruptedException;
+    Duration getMaxStored(PointLocation location) throws InterruptedException;
+
+    void updateMaxStored(PointLocation location, Duration duration) 
+            throws InterruptedException;
+
+    Map<PointLocation, WalkingCosts> get(PointLocation location,
+                                         Duration duration)
+            throws InterruptedException;
+
+    void putAll(PointLocation location, Map<PointLocation, WalkingCosts> costs)
+            throws InterruptedException;
+
 }
