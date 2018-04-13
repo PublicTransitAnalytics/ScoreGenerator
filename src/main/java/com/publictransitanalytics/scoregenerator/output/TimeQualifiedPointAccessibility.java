@@ -87,7 +87,7 @@ public class TimeQualifiedPointAccessibility {
             }
         }
         sectorPaths = builder.build();
-        totalSectors = sectors.size();
+        totalSectors = grid.getReachableSectors().size();
         inServiceSeconds = inServiceTime.getSeconds();
     }
 

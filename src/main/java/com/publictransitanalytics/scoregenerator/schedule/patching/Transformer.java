@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.distance.CompositeDistanceStoreManager;
 import com.publictransitanalytics.scoregenerator.distance.DistanceClient;
 import com.publictransitanalytics.scoregenerator.distance.DistanceStoreManager;
+import com.publictransitanalytics.scoregenerator.distance.FilteringReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distance.RangedCachingReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distance.ReachabilityClient;
 import com.publictransitanalytics.scoregenerator.distance.SingleEphemeralDistanceStoreManager;
@@ -51,6 +52,7 @@ public class Transformer {
 
     private final List<Patch> tripPatches;
     private final Set<TransitStop> addedStops;
+    private final Set<TransitStop> deletedStops;
     private final TimeTracker timeTracker;
     private final TransitNetwork originalTransitNetwork;
     private final boolean backward;
@@ -72,8 +74,7 @@ public class Transformer {
                        final BiMap<String, PointLocation> pointIdMap,
                        final ReachabilityClient reachabilityClient,
                        final DistanceStoreManager storeManager,
-                       final RiderFactory riderFactory
-    ) {
+                       final RiderFactory riderFactory) {
 
         this.timeTracker = timeTracker;
         originalTransitNetwork = transitNetwork;
@@ -89,6 +90,7 @@ public class Transformer {
 
         tripPatches = new ArrayList<>();
         addedStops = new HashSet<>();
+        deletedStops = new HashSet<>();
     }
 
     public void addTripPatch(final Patch patch) {
@@ -97,6 +99,10 @@ public class Transformer {
 
     public void addStop(final TransitStop stop) {
         addedStops.add(stop);
+    }
+
+    public void deleteStop(final TransitStop stop) {
+        deletedStops.add(stop);
     }
 
     public TransitNetwork getTransitNetwork() throws InterruptedException {
@@ -114,36 +120,43 @@ public class Transformer {
         } else {
             return originalRiderFactory;
         }
-
     }
 
     public ReachabilityClient getReachabilityClient()
             throws InterruptedException {
         final ReachabilityClient client;
-        if (addedStops.isEmpty()) {
+        if (addedStops.isEmpty() && deletedStops.isEmpty()) {
             client = originalReachabilityClient;
+        } else if (addedStops.isEmpty()) {
+            client = new FilteringReachabilityClient(originalReachabilityClient,
+                                                     deletedStops);
+        } else if (deletedStops.isEmpty()) {
+            client = replaceStore();
         } else {
-            final Map<PointLocation, DistanceStoreManager> supplementalStores
-                    = addedStops.stream().collect(Collectors.toMap(
-                            Function.identity(), location
-                            -> new SingleEphemeralDistanceStoreManager(
-                                    location)));
-
-            final DistanceStoreManager store
-                    = new CompositeDistanceStoreManager(supplementalStores,
-                                                        storeManager);
-
-            final ImmutableSet<PointLocation> points
-                    = ImmutableSet.<PointLocation>builder()
-                            .addAll(pointIdMap.values())
-                            .addAll(addedStops).build();
-
-            client = new RangedCachingReachabilityClient(
-                    store, points, timeTracker, distanceClient,
-                    estimationClient);
+            client = new FilteringReachabilityClient(replaceStore(),
+                                                     deletedStops);
         }
-
         return client;
     }
 
+    private RangedCachingReachabilityClient replaceStore() {
+        final Map<PointLocation, DistanceStoreManager> supplementalStores
+                = addedStops.stream().collect(Collectors.toMap(
+                        Function.identity(), location
+                        -> new SingleEphemeralDistanceStoreManager(
+                                location)));
+
+        final DistanceStoreManager store
+                = new CompositeDistanceStoreManager(supplementalStores,
+                                                    storeManager);
+
+        final ImmutableSet<PointLocation> points
+                = ImmutableSet.<PointLocation>builder()
+                        .addAll(pointIdMap.values())
+                        .addAll(addedStops).build();
+
+        return new RangedCachingReachabilityClient(
+                store, points, timeTracker, distanceClient,
+                estimationClient);
+    }
 }

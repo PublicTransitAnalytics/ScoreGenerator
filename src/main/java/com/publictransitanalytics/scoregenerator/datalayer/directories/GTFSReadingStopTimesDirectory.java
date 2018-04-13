@@ -170,25 +170,30 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
             final int stopSequence = Integer.valueOf(
                     record.get("stop_sequence"));
             final String stopId = record.get("stop_id");
-            final String stopTimeString = record.get("arrival_time");
-            final TransitTime stopTime = (stopTimeString == null) ? null
-                    : TransitTime.parse(stopTimeString);
+            final String arrivalTimeString = record.get("arrival_time");
+            final TransitTime arrivalTime = (arrivalTimeString == null) ? null
+                    : TransitTime.parse(arrivalTimeString);
+            final String departureTimeString = record.get("departure_time");
+            final TransitTime departureTime = (departureTimeString == null)
+                    ? null : TransitTime.parse(arrivalTimeString);
 
             if (frequencyRecordMap.containsKey(rawTripId)) {
                 final RawTripStop rawTripStop = new RawTripStop(
-                        stopTime, stopId, rawTripId, stopSequence);
+                        arrivalTime, departureTime, stopId, rawTripId,
+                        stopSequence);
                 rawTripMap.put(rawTripId, rawTripStop);
             } else {
                 final TripId tripId = new TripId(rawTripId);
-                final TripStop tripStop = new TripStop(stopTime, stopId,
+                final TripStop tripStop = new TripStop(arrivalTime, stopId,
                                                        tripId, stopSequence);
                 try {
                     final TripIdKey tripIdKey = new TripIdKey(rawTripId);
                     tripsStore.put(tripIdKey, tripId);
                     tripSequenceStore.put(new TripSequenceKey(
-                            tripIdKey, stopTime, stopSequence), tripStop);
-                    stopTimesStore.put(StopTimeKey.getWriteKey(
-                            stopId, stopTime), tripStop);
+                            tripIdKey, arrivalTime, stopSequence), tripStop);
+                    stopTimesStore.put(StopTimeKey.getWriteKey(stopId,
+                                                               arrivalTime),
+                                       tripStop);
                 } catch (final BitvantageStoreException e) {
                     throw new ScoreGeneratorFatalException(e);
                 }
@@ -201,21 +206,22 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
 
                 TransitTime recurringTime = frequencyRecord.getStartTime();
                 while (recurringTime.isBefore(frequencyRecord.getEndTime())) {
-                    final TransitTime baseTime
-                            = rawTripMap.get(rawTripId).first().getTime();
+                    final TransitTime baseArrivalTime = rawTripMap
+                            .get(rawTripId).first().getArrivalTime();
                     final TripId tripId = new TripId(
                             rawTripId, recurringTime.toString());
 
                     for (final RawTripStop rawTripStop : rawTripMap.get(
                             rawTripId)) {
-                        final TransitTime stopTime = recurringTime.plus(
+                        final TransitTime arrivalTime = recurringTime.plus(
                                 TransitTime.durationBetween(
-                                        baseTime, rawTripStop.getTime()));
+                                        baseArrivalTime,
+                                        rawTripStop.getArrivalTime()));
                         final int stopSequence = rawTripStop.getSequence();
                         final String stopId = rawTripStop.getStopId();
 
                         final TripStop tripStop = new TripStop(
-                                stopTime, stopId, tripId, stopSequence);
+                                arrivalTime, stopId, tripId, stopSequence);
 
                         final TripIdKey tripIdKey = new TripIdKey(
                                 tripId.getRawTripId(), tripId.getQualifier());
@@ -223,10 +229,10 @@ public class GTFSReadingStopTimesDirectory implements StopTimesDirectory {
                         try {
                             tripsStore.put(tripIdKey, tripId);
                             tripSequenceStore.put(new TripSequenceKey(
-                                    tripIdKey, stopTime, stopSequence),
+                                    tripIdKey, arrivalTime, stopSequence),
                                                   tripStop);
                             stopTimesStore.put(StopTimeKey.getWriteKey(
-                                    stopId, stopTime), tripStop);
+                                    stopId, arrivalTime), tripStop);
                         } catch (final BitvantageStoreException e) {
                             throw new ScoreGeneratorFatalException(e);
                         }

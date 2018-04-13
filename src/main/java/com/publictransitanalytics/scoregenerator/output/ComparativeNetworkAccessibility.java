@@ -105,7 +105,7 @@ public class ComparativeNetworkAccessibility {
         this.trialTaskCount = trialTaskCount;
         
         final Set<Sector> sectors = grid.getAllSectors();
-        totalSectors = sectors.size();
+        totalSectors = grid.getReachableSectors().size();
 
         final ImmutableMap.Builder<Bounds, CountComparison> countBuilder
                 = ImmutableMap.builder();

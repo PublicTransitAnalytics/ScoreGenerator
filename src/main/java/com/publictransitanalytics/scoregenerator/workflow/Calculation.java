@@ -71,6 +71,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.TripCreatingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
 import com.publictransitanalytics.scoregenerator.schedule.patching.RouteDeletion;
 import com.publictransitanalytics.scoregenerator.schedule.patching.ReferenceDirection;
 import com.publictransitanalytics.scoregenerator.schedule.patching.RouteExtension;
@@ -127,26 +128,23 @@ public class Calculation<S extends ScoreCard> {
                        final TimeTracker timeTracker,
                        final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
                        final ScoreCardFactory<S> scoreCardFactory,
-                       final OperationDescription description)
-            throws InterruptedException, IOException {
+                       final LocalDateTime startTime,
+                       final ServiceDataDirectory serviceDirectory,
+                       final List<Patch> patches, 
+                       final Set<TransitStop> addedStops,
+                       final Set<TransitStop> deletedStops,
+                       final BiMap<String, TransitStop> stopIdMap)
+            throws InterruptedException {
 
-        final String files = description.getFiles();
-        final LocalDateTime startTime
-                = LocalDateTime.parse(description.getStartTime());
         final LocalDateTime endTime = (span != null)
                 ? startTime.plus(span) : null;
-
-        final ServiceDataDirectory serviceDirectory
-                = serviceDirectoriesMap.get(files);
 
         this.walkingMetersPerSecond = walkingMetersPerSecond;
         this.longestDuration = longestDuration;
         this.backward = backward;
         this.timeTracker = timeTracker;
+        this.stopIdMap = stopIdMap;
         gridPoints = grid.getGridPoints();
-
-        final BiMap<String, TransitStop> baseStopIdMap = buildTransitStopIdMap(
-                grid, serviceDirectory.getStopDetailsDirectory());
 
         final LocalDateTime earliestTime = getEarliestTime(
                 startTime, longestDuration, backward);
@@ -154,10 +152,9 @@ public class Calculation<S extends ScoreCard> {
                 startTime, endTime, longestDuration, backward);
 
         final TransitNetwork baseTransitNetwork = buildTransitNetwork(
-                serviceDirectory, earliestTime, latestTime, baseStopIdMap);
+                serviceDirectory, earliestTime, latestTime, stopIdMap);
 
-        final SetMultimap<PointLocation, Sector> basePointSectorMap
-                = buildPointSectorMap(grid, baseStopIdMap.values());
+        pointSectorMap = buildPointSectorMap(grid, stopIdMap.values());
 
         final PointSequencerFactory pointSequencerFactory;
         final RiderFactory baseRiderFactory;
@@ -179,7 +176,7 @@ public class Calculation<S extends ScoreCard> {
                 .collect(Collectors.toSet());
 
         final BiMap<String, PointLocation> basePointIdMap = buildPointIdMap(
-                centerPoints, baseStopIdMap, grid);
+                centerPoints, stopIdMap, grid);
 
         taskGroups = getTaskGroups(centers);
         times = getTaskTimes(startTime, endTime, samplingInterval);
@@ -189,7 +186,7 @@ public class Calculation<S extends ScoreCard> {
         final DistanceStoreManager storeManager
                 = new StoreBackedDistanceStoreManager(
                         serviceDirectory.getWalkingTimeStore(),
-                        serviceDirectory.getMaxWalkingTimeStore(), 
+                        serviceDirectory.getMaxWalkingTimeStore(),
                         basePointIdMap);
         final ReachabilityClient baseReachabilityClient
                 = new RangedCachingReachabilityClient(
@@ -198,65 +195,21 @@ public class Calculation<S extends ScoreCard> {
 
         allowedModes = ImmutableSet.of(ModeType.TRANSIT, ModeType.WALKING);
 
-        stopIdMap = HashBiMap.create(baseStopIdMap);
-        pointSectorMap = HashMultimap.create(basePointSectorMap);
-
-        final List<ComparisonOperation> operations
-                = description.getOperations();
 
         final Transformer transformer = new Transformer(
                 timeTracker, baseTransitNetwork, backward, longestDuration,
                 walkingMetersPerSecond, distanceClient, estimator,
                 basePointIdMap, baseReachabilityClient, storeManager,
                 baseRiderFactory);
-
-        if (operations != null) {
-            for (final ComparisonOperation operation : operations) {
-                final String route = operation.getRoute();
-
-                switch (operation.getOperator()) {
-                case DELETE:
-                    final RouteDeletion deletion = new RouteDeletion(route);
-                    transformer.addTripPatch(deletion);
-                    break;
-                case ADD:
-                    final Stop stopData = operation.getStop();
-                    final GeoPoint location = GeoPoint.parseDegreeString(
-                            stopData.getLocation());
-                    if (grid.coversPoint(location)) {
-                        final String name = stopData.getStopId();
-
-                        final TransitStop newStop = new TransitStop(
-                                name, name, location);
-
-                        stopIdMap.put(name, newStop);
-                        pointSectorMap.putAll(newStop,
-                                              grid.getSectors(newStop));
-                        transformer.addStop(newStop);
-                    }
-                    break;
-                case EXTEND:
-                    final Extension extension = operation.getExtension();
-
-                    final RouteExtension routeExtension = getRouteExtension(
-                            route, extension, stopIdMap);
-                    transformer.addTripPatch(routeExtension);
-                    break;
-                case TRUNCATE:
-                    final Truncation truncation = operation.getTruncation();
-
-                    final RouteTruncation routeTruncation = getRouteTruncation(
-                            route, truncation, stopIdMap);
-                    transformer.addTripPatch(routeTruncation);
-                    break;
-                case REROUTE:
-                    final Reroute reroute = operation.getReroute();
-                    final RouteReroute routeReroute = getRouteReroute(
-                            route, reroute, stopIdMap);
-                    transformer.addTripPatch(routeReroute);
-                    break;
-                }
-            }
+        
+        for (final Patch patch : patches) {
+            transformer.addTripPatch(patch);
+        }
+        for (final TransitStop stop : addedStops) {
+            transformer.addStop(stop);
+        }
+        for (final TransitStop stop : deletedStops) {
+            transformer.deleteStop(stop);
         }
 
         final Set<LogicalCenter> logicalCenters = centers.stream()
@@ -308,35 +261,6 @@ public class Calculation<S extends ScoreCard> {
         return latestTime;
     }
 
-    private static BiMap<String, TransitStop> buildTransitStopIdMap(
-            final Grid grid, final StopDetailsDirectory stopDetailsDirectory)
-            throws InterruptedException {
-        final ImmutableBiMap.Builder<String, TransitStop> stopMapBuilder
-                = ImmutableBiMap.builder();
-        for (final StopDetails stopDetails : stopDetailsDirectory
-                .getAllStopDetails()) {
-            final GeoPoint location = new GeoPoint(
-                    new GeoLongitude(
-                            stopDetails.getCoordinate().getLongitude(),
-                            AngleUnit.DEGREES),
-                    new GeoLatitude(
-                            stopDetails.getCoordinate().getLatitude(),
-                            AngleUnit.DEGREES));
-
-            if (grid.coversPoint(location)) {
-                final TransitStop stop = new TransitStop(
-                        stopDetails.getStopId(), stopDetails.getStopName(),
-                        location);
-                stopMapBuilder.put(stop.getIdentifier(), stop);
-            } else {
-                log.debug(
-                        "Stop at {} location {} was skipped because it was not in the sector table.",
-                        stopDetails, location);
-            }
-        }
-        return stopMapBuilder.build();
-    }
-
     private static BiMap<String, PointLocation> buildPointIdMap(
             final Set<PointLocation> centerPoints,
             final BiMap<String, TransitStop> transitStops, final Grid grid) {
@@ -385,7 +309,7 @@ public class Calculation<S extends ScoreCard> {
             final ServiceDataDirectory serviceData,
             final LocalDateTime earliestTime, final LocalDateTime latestTime,
             final BiMap<String, TransitStop> stopIdMap)
-            throws IOException, InterruptedException {
+            throws InterruptedException {
 
         final ScheduleInterpolatorFactory interpolatorFactory = (baseTime)
                 -> new LastTimeScheduleInterpolator(baseTime);
@@ -399,80 +323,6 @@ public class Calculation<S extends ScoreCard> {
                         serviceData.getServiceTypeCalendar(),
                         stopIdMap, interpolatorFactory));
         return transitNetwork;
-    }
-
-    private static RouteTruncation getRouteTruncation(
-            final String route, final Truncation truncation,
-            final Map<String, TransitStop> stopIdMap) {
-        final ReferenceDirection type = mapDirection(truncation.getDirection());
-        final TransitStop referenceStop = stopIdMap.get(
-                truncation.getReferenceStopId());
-        final RouteTruncation routeTruncation = new RouteTruncation(
-                route, referenceStop, type);
-        return routeTruncation;
-    }
-
-    private static RouteExtension getRouteExtension(
-            final String route, final Extension extension,
-            final Map<String, TransitStop> stopIdMap) {
-        final ReferenceDirection type = mapDirection(extension.getDirection());
-        final TransitStop referenceStop = stopIdMap.get(
-                extension.getReferenceStopId());
-
-        final List<RouteSequenceItem> sequence
-                = mapSequence(extension.getSequence(), stopIdMap);
-        final RouteExtension routeExtension = new RouteExtension(
-                route, referenceStop, type, sequence);
-        return routeExtension;
-    }
-
-    private static RouteReroute getRouteReroute(
-            final String route, final Reroute reroute,
-            final Map<String, TransitStop> stopIdMap) {
-        final ReferenceDirection type = mapDirection(reroute.getDirection());
-        final TransitStop referenceStop
-                = stopIdMap.get(reroute.getReferenceStopId());
-        final String returnStopId = reroute.getReturnStopId();
-        final TransitStop returnStop = (returnStopId == null) ? null : stopIdMap
-                .get(returnStopId);
-        final String deltaString = reroute.getReturnDelta();
-        final Duration returnDelta = (deltaString == null) ? null : Duration
-                .parse(deltaString);
-
-        final List<RouteSequenceItem> sequence
-                = mapSequence(reroute.getSequence(), stopIdMap);
-        final RouteReroute routeReroute = new RouteReroute(
-                route, referenceStop, type, sequence, returnStop, returnDelta);
-        return routeReroute;
-    }
-
-    private static ReferenceDirection mapDirection(
-            final com.publictransitanalytics.scoregenerator.comparison.ReferenceDirection type) {
-        switch (type) {
-        case BEFORE_FIRST:
-            return ReferenceDirection.BEFORE_FIRST;
-        case AFTER_LAST:
-            return ReferenceDirection.AFTER_LAST;
-        default:
-            throw new ScoreGeneratorFatalException(String.format(
-                    "Cannot convert extension type %s", type));
-
-        }
-    }
-
-    private static List<RouteSequenceItem> mapSequence(
-            final List<SequenceItem> sequence,
-            final Map<String, TransitStop> stopIdMap) {
-        final ImmutableList.Builder<RouteSequenceItem> builder
-                = ImmutableList.builder();
-        for (final SequenceItem item : sequence) {
-            final String deltaString = item.getDelta();
-            final String stopId = item.getStopId();
-            final Duration delta = Duration.parse(deltaString);
-            final TransitStop stop = stopIdMap.get(stopId);
-            builder.add(new RouteSequenceItem(delta, stop));
-        }
-        return builder.build();
     }
 
     private static SetMultimap<PointLocation, Sector> buildPointSectorMap(

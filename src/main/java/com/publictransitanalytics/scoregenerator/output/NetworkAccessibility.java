@@ -87,7 +87,7 @@ public class NetworkAccessibility {
         this.taskCount = taskCount;
         
         final Set<Sector> sectors = grid.getAllSectors();
-        totalSectors = sectors.size();
+        totalSectors = grid.getReachableSectors().size();
 
         final ImmutableMap.Builder<Bounds, Integer> countBuilder
                 = ImmutableMap.builder();

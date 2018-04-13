@@ -17,7 +17,6 @@ package com.publictransitanalytics.scoregenerator.console;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.UnmodifiableIterator;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
 import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
@@ -99,7 +98,7 @@ public class InteractiveNetworkConsole implements NetworkConsole {
 
                 final Iterator<VehicleEvent> iterator = trip.getForwardIterator(
                         entryPoint.getSequence());
-                while (!stop.equals(endingStop)) {
+                while (iterator.hasNext() && !stop.equals(endingStop)) {
                     final VehicleEvent nextScheduledLocation = iterator.next();
                     final LocalDateTime nextTime
                             = nextScheduledLocation.getScheduledTime();

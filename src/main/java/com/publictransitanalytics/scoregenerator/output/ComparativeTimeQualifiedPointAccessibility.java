@@ -104,7 +104,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
             }
         }
         sectorPaths = builder.build();
-        totalSectors = sectors.size();
+        totalSectors = grid.getReachableSectors().size();
         this.name = name;
         this.trialName = trialName;
         inServiceSeconds = inServiceTime.getSeconds();

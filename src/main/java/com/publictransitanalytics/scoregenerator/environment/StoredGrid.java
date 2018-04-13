@@ -95,8 +95,8 @@ public class StoredGrid implements Grid {
                 final Map<String, Sector> sectorIdMap = allSectors.stream()
                         .collect(Collectors.toMap(Sector::getIdentifier,
                                                   Function.identity()));
-                gridPointSectorMap = getPointSectorMap(gridId, sectorIdMap,
-                                                       gridPointAssociationsStore);
+                gridPointSectorMap = getPointSectorMap(
+                        gridId, sectorIdMap, gridPointAssociationsStore);
             } else {
                 final Set<Segment> segments = segmentFinder.getSegments();
 

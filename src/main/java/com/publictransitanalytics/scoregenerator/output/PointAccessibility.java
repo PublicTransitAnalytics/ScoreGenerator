@@ -86,7 +86,7 @@ public class PointAccessibility {
         this.taskCount = taskCount;
 
         final Set<Sector> sectors = grid.getAllSectors();
-        totalSectors = sectors.size();
+        totalSectors = grid.getReachableSectors().size();
 
         final ImmutableMap.Builder<Bounds, SectorReachInformation> informationBuilder
                 = ImmutableMap.builder();

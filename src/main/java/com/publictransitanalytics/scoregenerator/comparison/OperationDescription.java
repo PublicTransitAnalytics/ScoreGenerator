@@ -30,14 +30,4 @@ public class OperationDescription {
     private String startTime;
     private final List<ComparisonOperation> operations;
     
-    @Override
-    public boolean equals(final Object other) {
-        return this == other;
-    }
-    
-    @Override
-    public int hashCode() {
-        return System.identityHashCode(this);
-    }
-    
 }
