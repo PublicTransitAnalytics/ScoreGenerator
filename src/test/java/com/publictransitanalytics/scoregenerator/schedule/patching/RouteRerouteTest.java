@@ -16,26 +16,20 @@
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
 import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleEntry;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
-import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import junit.framework.Assert;
 import org.junit.Test;
 
@@ -61,19 +55,17 @@ public class RouteRerouteTest {
     private final static TransitStop STOP_6 = new TransitStop("stop6",
                                                               "stop6", POINT);
 
-    private static final ScheduleInterpolator INTERPOLATOR
-            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
-
     @Test
     public void testReroutesSingleStopTripEnd() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime arrival1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime departure1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 41);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, arrival1, departure1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.AFTER_LAST, ImmutableList.of(
@@ -88,28 +80,34 @@ public class RouteRerouteTest {
                 = newSchedule.get(0);
         Assert.assertEquals(STOP_1, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 41),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_3, secondStop.getLocation());
-        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
-                            secondStop.getScheduledTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 46),
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 46),
+                            secondStop.getDepartureTime());
     }
 
     @Test
     public void testNoRejoinForward() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time3 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
+        final LocalDateTime time4 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 57);
 
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(3, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_3),
-                new ScheduleEntry(4, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 57)), STOP_5));
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_3, time3, time3),
+                new VehicleEvent(STOP_5, time4, time4));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.AFTER_LAST, ImmutableList.of(
@@ -124,35 +122,43 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_1, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_2, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 43),
-                            secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 43),
+                            secondStop.getDepartureTime());
 
         final VehicleEvent thirdStop = newSchedule.get(2);
         Assert.assertEquals(STOP_4, thirdStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 47),
-                            thirdStop.getScheduledTime());
+                            thirdStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 47),
+                            thirdStop.getDepartureTime());
     }
 
     @Test
     public void testRejoinsRouteForward() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(2, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 45)), STOP_2),
-                new ScheduleEntry(3, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_3),
-                new ScheduleEntry(4, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 57)), STOP_4));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time2 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 45);
+        final LocalDateTime time3 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
+        final LocalDateTime time4 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 57);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_2, time2, time2),
+                new VehicleEvent(STOP_3, time3, time3),
+                new VehicleEvent(STOP_4, time4, time4));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.AFTER_LAST, ImmutableList.of(
@@ -167,43 +173,55 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_1, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_5, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 43),
-                            secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 43),
+                            secondStop.getDepartureTime());
 
         final VehicleEvent thirdStop = newSchedule.get(2);
         Assert.assertEquals(STOP_6, thirdStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 44),
-                            thirdStop.getScheduledTime());
+                            thirdStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 44),
+                            thirdStop.getDepartureTime());
 
         final VehicleEvent fourthStop = newSchedule.get(3);
         Assert.assertEquals(STOP_3, fourthStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 46),
-                            fourthStop.getScheduledTime());
+                            fourthStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 46),
+                            fourthStop.getDepartureTime());
 
         final VehicleEvent fifthStop = newSchedule.get(4);
         Assert.assertEquals(STOP_4, fifthStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 53),
-                            fifthStop.getScheduledTime());
+                            fifthStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 53),
+                            fifthStop.getDepartureTime());
     }
 
     @Test
     public void testNoRejoinPointForward() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time2 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 45);
+        final LocalDateTime time3 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
 
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(2, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 45)), STOP_2),
-                new ScheduleEntry(3, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_3));
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_2, time2, time2),
+                new VehicleEvent(STOP_3, time3, time3));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.AFTER_LAST, ImmutableList.of(
@@ -217,24 +235,27 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_1, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_5, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 43),
-                            secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 43),
+                            secondStop.getDepartureTime());
     }
 
     @Test
     public void testNoDivergenceForward() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_2, ReferenceDirection.AFTER_LAST,
@@ -248,19 +269,93 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_1, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getDepartureTime());
+    }
+
+    @Test
+    public void testNoDivergenceForwardMultiple() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time2 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 45);
+
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_2, time2, time2));
+
+        final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
+                                      "71", "71", route71Schedule);
+
+        final RouteReroute reroute = new RouteReroute(
+                "71", STOP_3, ReferenceDirection.AFTER_LAST,
+                ImmutableList.of(new RouteSequenceItem(
+                        Duration.ofMinutes(3), STOP_4)), null, null);
+
+        final List<VehicleEvent> newSchedule
+                = reroute.patch(route71).get().getSchedule();
+        Assert.assertEquals(2, newSchedule.size());
+
+        final VehicleEvent firstStop = newSchedule.get(0);
+        Assert.assertEquals(STOP_1, firstStop.getLocation());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getDepartureTime());
+        final VehicleEvent secondStop = newSchedule.get(1);
+        Assert.assertEquals(STOP_2, secondStop.getLocation());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
+                            secondStop.getDepartureTime());
     }
 
     @Test
     public void testReroutesSingleStopTripBeginning() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime arrival1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 39);
+        final LocalDateTime departure1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, arrival1, departure1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
+
+        final RouteReroute reroute = new RouteReroute(
+                "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
+                ImmutableList.of(new RouteSequenceItem(Duration.ofMinutes(5),
+                                                       STOP_3)), null, null);
+
+        final List<VehicleEvent> newSchedule
+                = reroute.patch(route71).get().getSchedule();
+        Assert.assertEquals(2, newSchedule.size());
+
+        final VehicleEvent firstStop = newSchedule.get(0);
+        Assert.assertEquals(STOP_3, firstStop.getLocation());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 34),
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 34),
+                            firstStop.getDepartureTime());
+
+        final VehicleEvent secondStop = newSchedule.get(1);
+        Assert.assertEquals(STOP_1, secondStop.getLocation());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 39),
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            secondStop.getDepartureTime());
+    }
+
+    @Test
+    public void testReroutesSingleStopTripBegin() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
+
+        final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
@@ -274,59 +369,34 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_3, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_1, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
-                            secondStop.getScheduledTime());
-    }
-
-    @Test
-    public void testReroutesSingleStopTripBegin() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
-
-        final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
-
-        final RouteReroute reroute = new RouteReroute(
-                "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
-                ImmutableList.of(new RouteSequenceItem(Duration.ofMinutes(5),
-                                                       STOP_3)), null, null);
-
-        final List<VehicleEvent> newSchedule
-                = reroute.patch(route71).get().getSchedule();
-        Assert.assertEquals(2, newSchedule.size());
-
-        final VehicleEvent firstStop = newSchedule.get(0);
-        Assert.assertEquals(STOP_3, firstStop.getLocation());
-        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9,
-                                             35), firstStop.getScheduledTime());
-
-        final VehicleEvent secondStop = newSchedule.get(1);
-        Assert.assertEquals(STOP_1, secondStop.getLocation());
-        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9,
-                                             40), secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            secondStop.getDepartureTime());
     }
 
     @Test
     public void testNoRejoinBackward() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time3 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
+        final LocalDateTime time5 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 57);
 
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(3, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_3),
-                new ScheduleEntry(4, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 57)), STOP_5));
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_3, time3, time3),
+                new VehicleEvent(STOP_5, time5, time5));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_3, ReferenceDirection.BEFORE_FIRST, ImmutableList.of(
@@ -341,40 +411,51 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_4, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 46),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 46),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_2, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 49),
-                            secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 49),
+                            secondStop.getDepartureTime());
 
         final VehicleEvent thirdStop = newSchedule.get(2);
         Assert.assertEquals(STOP_3, thirdStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 50),
-                            thirdStop.getScheduledTime());
+                            thirdStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 50),
+                            thirdStop.getDepartureTime());
 
         final VehicleEvent fourthStop = newSchedule.get(3);
         Assert.assertEquals(STOP_5, fourthStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 57),
-                            fourthStop.getScheduledTime());
+                            fourthStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 57),
+                            fourthStop.getDepartureTime());
     }
 
     @Test
     public void testRejoinsRouteBackward() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time3 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
+        final LocalDateTime time5 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 56);
+        final LocalDateTime time6 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 57);
 
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(3, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_3),
-                new ScheduleEntry(4, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 56)), STOP_5),
-                new ScheduleEntry(6, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 57)), STOP_6));
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_3, time3, time3),
+                new VehicleEvent(STOP_5, time5, time5),
+                new VehicleEvent(STOP_6, time6, time6));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_6, ReferenceDirection.BEFORE_FIRST, ImmutableList.of(
@@ -389,43 +470,55 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_1, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 39),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 39),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_3, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 49),
-                            secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 49),
+                            secondStop.getDepartureTime());
 
         final VehicleEvent thirdStop = newSchedule.get(2);
         Assert.assertEquals(STOP_4, thirdStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 53),
-                            thirdStop.getScheduledTime());
+                            thirdStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 53),
+                            thirdStop.getDepartureTime());
 
         final VehicleEvent fourthStop = newSchedule.get(3);
         Assert.assertEquals(STOP_2, fourthStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 56),
-                            fourthStop.getScheduledTime());
+                            fourthStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 56),
+                            fourthStop.getDepartureTime());
 
         final VehicleEvent fifthStop = newSchedule.get(4);
         Assert.assertEquals(STOP_6, fifthStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 57),
-                            fifthStop.getScheduledTime());
+                            fifthStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 57),
+                            fifthStop.getDepartureTime());
     }
 
     @Test
     public void testNoRejoinPointBackward() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time5 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 56);
+        final LocalDateTime time6 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 57);
 
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(4, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 56)), STOP_5),
-                new ScheduleEntry(6, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 57)), STOP_6));
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_5, time5, time5),
+                new VehicleEvent(STOP_6, time6, time6));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_6, ReferenceDirection.BEFORE_FIRST, ImmutableList.of(
@@ -440,25 +533,67 @@ public class RouteRerouteTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_4, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 53),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 53),
+                            firstStop.getDepartureTime());
 
         final VehicleEvent secondStop = newSchedule.get(1);
         Assert.assertEquals(STOP_2, secondStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 56),
-                            secondStop.getScheduledTime());
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 56),
+                            secondStop.getDepartureTime());
 
         final VehicleEvent thirdStop = newSchedule.get(2);
         Assert.assertEquals(STOP_6, thirdStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 57),
-                            thirdStop.getScheduledTime());
+                            thirdStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 57),
+                            thirdStop.getDepartureTime());
+    }
+
+    @Test
+    public void testNoDivergenceBackwardMultiple() throws Exception {
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time2 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 45);
+
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_2, time2, time2));
+
+        final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
+                                      "71", "71", route71Schedule);
+
+        final RouteReroute reroute = new RouteReroute(
+                "71", STOP_3, ReferenceDirection.BEFORE_FIRST,
+                ImmutableList.of(new RouteSequenceItem(
+                        Duration.ofMinutes(3), STOP_4)), null, null);
+
+        final List<VehicleEvent> newSchedule
+                = reroute.patch(route71).get().getSchedule();
+        Assert.assertEquals(2, newSchedule.size());
+
+        final VehicleEvent firstStop = newSchedule.get(0);
+        Assert.assertEquals(STOP_1, firstStop.getLocation());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 40),
+                            firstStop.getDepartureTime());
+        final VehicleEvent secondStop = newSchedule.get(1);
+        Assert.assertEquals(STOP_2, secondStop.getLocation());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
+                            secondStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
+                            secondStop.getDepartureTime());
     }
 
     @Test
     public void testDoesNotChangeEmptyTrip() throws Exception {
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", Collections.emptySet(),
-                                      INTERPOLATOR);
+                                      "71", "71", Collections.emptyList());
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
@@ -471,13 +606,12 @@ public class RouteRerouteTest {
 
     @Test
     public void testDoesNotChangeNonMatchingTrip() throws Exception {
-
-        final Set<ScheduleEntry> route70Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route70Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
         final Trip route70 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                      "70", "70", route70Schedule,
-                                      INTERPOLATOR);
+                                      "70", "70", route70Schedule);
 
         final RouteReroute reroute = new RouteReroute(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,

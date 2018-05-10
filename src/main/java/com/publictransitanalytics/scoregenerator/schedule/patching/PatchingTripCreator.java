@@ -16,10 +16,8 @@
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableSet;
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
-import com.publictransitanalytics.scoregenerator.schedule.TripCreator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -30,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Public Transit Analytics
  */
 @Slf4j
-public class PatchingTripCreator implements TripCreator {
+public class PatchingTripCreator {
 
     private final Set<Trip> trips;
 
@@ -57,7 +55,6 @@ public class PatchingTripCreator implements TripCreator {
         trips = builder.build();
     }
 
-    @Override
     public Set<Trip> createTrips() throws InterruptedException {
         return trips;
     }

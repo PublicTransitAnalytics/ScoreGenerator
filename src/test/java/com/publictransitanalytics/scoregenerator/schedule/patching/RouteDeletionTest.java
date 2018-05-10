@@ -15,12 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
-import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
 import junit.framework.Assert;
@@ -32,14 +29,10 @@ import org.junit.Test;
  */
 public class RouteDeletionTest {
 
-    private static final ScheduleInterpolator INTERPOLATOR
-            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
-
     @Test
     public void testTurnsToEmptyOptional() {
         final Trip trip70_1 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                       "70", "70", Collections.emptySet(),
-                                       INTERPOLATOR);
+                                       "70", "70", Collections.emptyList());
         final RouteDeletion deletion = new RouteDeletion("70");
         Assert.assertEquals(Optional.<Trip>empty(), deletion.patch(trip70_1));
     }
@@ -47,8 +40,7 @@ public class RouteDeletionTest {
     @Test
     public void testRetains() {
         final Trip trip70_1 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                       "70", "70", Collections.emptySet(),
-                                       INTERPOLATOR);
+                                       "70", "70", Collections.emptyList());
         final RouteDeletion deletion = new RouteDeletion("71");
         Assert.assertEquals(Optional.of(trip70_1), deletion.patch(trip70_1));
     }

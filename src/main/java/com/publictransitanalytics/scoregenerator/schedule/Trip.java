@@ -16,15 +16,12 @@
 package com.publictransitanalytics.scoregenerator.schedule;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import lombok.Getter;
 
 /**
@@ -44,48 +41,16 @@ public class Trip {
     private final ImmutableList<VehicleEvent> sequence;
 
     public Trip(final TripId tripId, final String routeName,
-                final String routeNumber, final Set<ScheduleEntry> stops,
-                final ScheduleInterpolator interpolator) {
-        this(tripId, routeName, routeNumber, getSequence(stops, interpolator));
-    }
-
-    private static List<VehicleEvent> getSequence(
-            final Set<ScheduleEntry> stops, 
-            final ScheduleInterpolator interpolator) {
-        final ImmutableSortedMap.Builder<Integer, VehicleEvent> sequenceBuilder
-                = ImmutableSortedMap.naturalOrder();
-
-        for (final ScheduleEntry entry : stops) {
-            final Optional<LocalDateTime> optionalTime = entry.getTime();
-            final LocalDateTime time;
-            if (optionalTime.isPresent()) {
-                time = optionalTime.get();
-                interpolator.setBaseTime(time);
-            } else {
-                time = interpolator.getInterpolatedTime(entry.getStop());
-            }
-
-            final VehicleEvent scheduledLocation = new VehicleEvent(
-                    entry.getStop(), time);
-            final int sequenceNumber = entry.getSequence();
-            sequenceBuilder.put(sequenceNumber, scheduledLocation);
-        }
-        final List<VehicleEvent> sequence
-                = ImmutableList.copyOf(sequenceBuilder.build().values());
-        return sequence;
-    }
-    
-    public List<VehicleEvent> getSchedule() {
-        return sequence;
-    }
-
-    public Trip(final TripId tripId, final String routeName,
                 final String routeNumber,
                 final List<VehicleEvent> sequence) {
         this.tripId = tripId;
         this.routeName = routeName;
         this.routeNumber = routeNumber;
         this.sequence = ImmutableList.copyOf(sequence);
+    }
+
+    public List<VehicleEvent> getSchedule() {
+        return sequence;
     }
 
     public PeekingIterator<VehicleEvent> getForwardIterator(
@@ -110,10 +75,11 @@ public class Trip {
     }
 
     public Duration getInServiceTime() {
-        final LocalDateTime startTime = sequence.get(0).getScheduledTime();
+        final LocalDateTime startTime = sequence.get(0).getArrivalTime();
         final LocalDateTime endTime
-                = sequence.get(sequence.size() - 1).getScheduledTime();
+                = sequence.get(sequence.size() - 1).getDepartureTime();
         return Duration.between(startTime, endTime);
     }
+
 
 }

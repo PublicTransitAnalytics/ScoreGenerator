@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import lombok.Getter;
 
 /**
@@ -30,17 +31,25 @@ import lombok.Getter;
  *
  * @author Public Transit Analytics
  */
-public class TripCreatingTransitNetwork implements TransitNetwork {
+public class TripProcessingTransitNetwork implements TransitNetwork {
 
     final TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> entryPoints;
     @Getter
     final Set<Trip> trips;
 
-    public TripCreatingTransitNetwork(final TripCreator tripCreator)
+    public TripProcessingTransitNetwork(final Set<Trip> trips,
+                                        final boolean backward)
             throws InterruptedException {
 
-        trips = tripCreator.createTrips();
-        entryPoints = makeEntyPointTable(trips);
+        this.trips = trips;
+        final Function<VehicleEvent, LocalDateTime> extractTime;
+        if (!backward) {
+            extractTime = VehicleEvent::getArrivalTime;
+        } else {
+            extractTime = VehicleEvent::getDepartureTime;
+        }
+
+        entryPoints = makeEntyPointTable(trips, extractTime);
     }
 
     @Override
@@ -59,7 +68,7 @@ public class TripCreatingTransitNetwork implements TransitNetwork {
         }
         return builder.build();
     }
-    
+
     @Override
     public Set<EntryPoint> getEntryPoints(final TransitStop stop) {
         return ImmutableSet.copyOf(entryPoints.row(stop).values());
@@ -75,17 +84,18 @@ public class TripCreatingTransitNetwork implements TransitNetwork {
     }
 
     private static TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> makeEntyPointTable(
-            final Set<Trip> trips) {
+            final Set<Trip> trips,
+            final Function<VehicleEvent, LocalDateTime> extractTime) {
         final TreeBasedTable<TransitStop, EntryPointTimeKey, EntryPoint> entryPoints
                 = TreeBasedTable.create(
                         (stop1, stop2) -> stop1.getIdentifier().compareTo(
                                 stop2.getIdentifier()),
                         (time1, time2) -> time1.compareTo(time2));
         for (final Trip trip : trips) {
-            final List<VehicleEvent> schedule =  trip.getSchedule();
+            final List<VehicleEvent> schedule = trip.getSchedule();
             for (int i = 0; i < schedule.size(); i++) {
                 final VehicleEvent scheduledLocation = schedule.get(i);
-                final LocalDateTime time = scheduledLocation.getScheduledTime();
+                final LocalDateTime time = extractTime.apply(scheduledLocation);
                 final EntryPointTimeKey timeKey = new EntryPointTimeKey(time);
                 final TransitStop transitStop
                         = scheduledLocation.getLocation();

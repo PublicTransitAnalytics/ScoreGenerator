@@ -15,19 +15,14 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import java.time.LocalDateTime;
-
 /**
+ * Creates a fully formed trip from a schedule by interpolating unknown times.
  *
  * @author Public Transit Analytics
  */
 public interface ScheduleInterpolator {
 
-    LocalDateTime getInterpolatedTime(TransitStop stop);
-
-    void setBaseTime(LocalDateTime baseTime);
-
-    void setNextKnownEvent(LocalDateTime time, TransitStop stop);
+    public Trip createTrip(final TripSchedule schedule)
+            throws InterpolationException;
 
 }

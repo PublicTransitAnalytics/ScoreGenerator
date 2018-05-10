@@ -25,7 +25,7 @@ import java.util.List;
  *
  * @author Public Transit Analytics
  */
-public class Appending {
+public final class Appending {
 
     public static Trip makeReplacementTrip(
             final Trip originalTrip,
@@ -37,16 +37,18 @@ public class Appending {
     public static List<VehicleEvent> appendToSchedule(
             final List<VehicleEvent> schedule,
             final List<RouteSequenceItem> extension) {
-        final LocalDateTime baseTime
-                = schedule.get(schedule.size() - 1).getScheduledTime();
+        final LocalDateTime baseDepartureTime
+                = schedule.get(schedule.size() - 1).getDepartureTime();
         final ImmutableList.Builder<VehicleEvent> builder
                 = ImmutableList.builder();
         builder.addAll(schedule);
-        LocalDateTime lastTime = baseTime;
+        LocalDateTime lastTime = baseDepartureTime;
         for (final RouteSequenceItem item : extension) {
-            final LocalDateTime newTime = lastTime.plus(item.getDelta());
-            builder.add(new VehicleEvent(item.getStop(), newTime));
-            lastTime = newTime;
+            final LocalDateTime arrivalTime = lastTime.plus(item.getDelta());
+            final LocalDateTime departureTime = arrivalTime;
+            builder.add(new VehicleEvent(item.getStop(), arrivalTime,
+                                         departureTime));
+            lastTime = departureTime;
         }
         return builder.build();
     }
@@ -54,17 +56,21 @@ public class Appending {
     public static List<VehicleEvent> prependToSchedule(
             final List<VehicleEvent> schedule,
             final List<RouteSequenceItem> extension) {
-        final LocalDateTime baseTime = schedule.get(0).getScheduledTime();
+        final LocalDateTime baseArrivalTime = schedule.get(0).getArrivalTime();
         final ImmutableList.Builder<VehicleEvent> extensionBuilder
                 = ImmutableList.builder();
-        LocalDateTime lastTime = baseTime;
+        LocalDateTime lastTime = baseArrivalTime;
         for (final RouteSequenceItem item : extension) {
-            final LocalDateTime newTime = lastTime.minus(item.getDelta());
-            extensionBuilder.add(new VehicleEvent(item.getStop(), newTime));
-            lastTime = newTime;
+            final LocalDateTime arrivalTime = lastTime.minus(item.getDelta());
+            final LocalDateTime departureTime = arrivalTime;
+            extensionBuilder.add(new VehicleEvent(item.getStop(), arrivalTime,
+                                                  departureTime));
+            lastTime = departureTime;
         }
         return ImmutableList.<VehicleEvent>builder().addAll(
                 extensionBuilder.build().reverse()).addAll(schedule).build();
     }
+    
+    private Appending() { }
 
 }

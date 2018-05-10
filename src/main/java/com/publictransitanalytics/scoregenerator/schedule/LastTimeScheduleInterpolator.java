@@ -15,35 +15,99 @@
  */
 package com.publictransitanalytics.scoregenerator.schedule;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 /**
+ * Creates a fully formed trip from a schedule by replacing unknown times with
+ * the last known time.
  *
  * @author Public Transit Analytics
  */
+@RequiredArgsConstructor
 public class LastTimeScheduleInterpolator implements ScheduleInterpolator {
 
-    private LocalDateTime lastTime;
+    @Override
+    public Trip createTrip(final TripSchedule schedule)
+            throws InterpolationException {
 
-    public LastTimeScheduleInterpolator(final LocalDateTime baseTime) {
-        lastTime = baseTime;
+        final ImmutableSortedMap.Builder<Integer, VehicleEvent> sequenceBuilder
+                = ImmutableSortedMap.naturalOrder();
+
+        LocalDateTime lastArrivalTime = null;
+        LocalDateTime lastDepartureTime = null;
+
+        for (final ScheduleEntry entry : schedule.getScheduleEntries()) {
+            final Optional<LocalDateTime> optionalArrivalTime
+                    = entry.getArrivalTime();
+            final Optional<LocalDateTime> optionalDepartureTime
+                    = entry.getDepartureTime();
+
+            final LocalDateTime arrivalTime = getOrInterpolateArrival(
+                    optionalArrivalTime, optionalDepartureTime,
+                    lastArrivalTime);
+            final LocalDateTime departureTime = getOrInterpolateDeparture(
+                    optionalDepartureTime, optionalArrivalTime,
+                    lastDepartureTime);
+
+            final VehicleEvent scheduledLocation = new VehicleEvent(
+                    entry.getStop(), arrivalTime, departureTime);
+            final int sequenceNumber = entry.getSequence();
+            sequenceBuilder.put(sequenceNumber, scheduledLocation);
+            
+            lastArrivalTime = arrivalTime;
+            lastDepartureTime = departureTime;
+        }
+        final List<VehicleEvent> sequence
+                = ImmutableList.copyOf(sequenceBuilder.build().values());
+
+        return new Trip(schedule.getTripId(), schedule.getRouteName(),
+                        schedule.getRouteNumber(), sequence);
+
     }
 
-    @Override
-    public LocalDateTime getInterpolatedTime(final TransitStop stop) {
-        return lastTime;
+    private static LocalDateTime getOrInterpolateArrival(
+            final Optional<LocalDateTime> optionalArrivalTime,
+            final Optional<LocalDateTime> optionalDepartureTime,
+            final LocalDateTime lastArrivalTime) throws InterpolationException {
+        final LocalDateTime time;
+        if (optionalArrivalTime.isPresent()) {
+            time = optionalArrivalTime.get();
+        } else if (optionalDepartureTime.isPresent()) {
+            time = optionalDepartureTime.get();
+        } else {
+            if (lastArrivalTime == null) {
+                throw new InterpolationException(
+                        "Cannot interpolate from null initial arrival time.");
+            }
+            time = lastArrivalTime;
+        }
+        return time;
     }
 
-    @Override
-    public void setBaseTime(final LocalDateTime baseTime) {
-        lastTime = baseTime;
-    }
-
-    @Override
-    public void setNextKnownEvent(final LocalDateTime time,
-                                  final TransitStop stop) {
-
+    private static LocalDateTime getOrInterpolateDeparture(
+            final Optional<LocalDateTime> optionalDepartureTime,
+            final Optional<LocalDateTime> optionalArrivalTime,
+            final LocalDateTime lastDepartureTime)
+            throws InterpolationException {
+        final LocalDateTime time;
+        if (optionalDepartureTime.isPresent()) {
+            time = optionalDepartureTime.get();
+        } else if (optionalArrivalTime.isPresent()) {
+            time = optionalArrivalTime.get();
+        } else {
+            if (lastDepartureTime == null) {
+                throw new InterpolationException(
+                        "Cannot interpolate from null initial arrival time.");
+            }
+            time = lastDepartureTime;
+        }
+        return time;
     }
 
 }

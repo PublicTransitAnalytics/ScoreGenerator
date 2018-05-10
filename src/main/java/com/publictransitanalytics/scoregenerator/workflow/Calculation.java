@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import com.publictransitanalytics.scoregenerator.ModeType;
+import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.schedule.patching.Transformer;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceDataDirectory;
 import com.publictransitanalytics.scoregenerator.distance.DistanceClient;
@@ -45,15 +46,18 @@ import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.rider.ForwardRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RetrospectiveRiderFactory;
 import com.publictransitanalytics.scoregenerator.rider.RiderFactory;
-import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingTripCreator;
+import com.publictransitanalytics.scoregenerator.schedule.DirectoryReadingTripScheduleCreator;
+import com.publictransitanalytics.scoregenerator.schedule.InterpolationException;
 import com.publictransitanalytics.scoregenerator.schedule.LastTimeScheduleInterpolator;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolatorFactory;
+import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.LocalDateTime;
 import java.util.Set;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
-import com.publictransitanalytics.scoregenerator.schedule.TripCreatingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.TripProcessingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.TripSchedule;
 import com.publictransitanalytics.scoregenerator.schedule.patching.Patch;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCardFactory;
 import com.squareup.okhttp.OkHttpClient;
@@ -106,7 +110,7 @@ public class Calculation<S extends ScoreCard> {
                        final ScoreCardFactory<S> scoreCardFactory,
                        final LocalDateTime startTime,
                        final ServiceDataDirectory serviceDirectory,
-                       final List<Patch> patches, 
+                       final List<Patch> patches,
                        final Set<TransitStop> addedStops,
                        final Set<TransitStop> deletedStops,
                        final BiMap<String, TransitStop> stopIdMap)
@@ -128,7 +132,8 @@ public class Calculation<S extends ScoreCard> {
                 startTime, endTime, longestDuration, backward);
 
         final TransitNetwork baseTransitNetwork = buildTransitNetwork(
-                serviceDirectory, earliestTime, latestTime, stopIdMap);
+                serviceDirectory, earliestTime, latestTime, stopIdMap,
+                backward);
 
         pointSectorMap = buildPointSectorMap(grid, stopIdMap.values());
 
@@ -171,13 +176,12 @@ public class Calculation<S extends ScoreCard> {
 
         allowedModes = ImmutableSet.of(ModeType.TRANSIT, ModeType.WALKING);
 
-
         final Transformer transformer = new Transformer(
                 timeTracker, baseTransitNetwork, backward, longestDuration,
                 walkingMetersPerSecond, distanceClient, estimator,
                 basePointIdMap, baseReachabilityClient, storeManager,
                 baseRiderFactory);
-        
+
         for (final Patch patch : patches) {
             transformer.addTripPatch(patch);
         }
@@ -284,21 +288,35 @@ public class Calculation<S extends ScoreCard> {
     private static TransitNetwork buildTransitNetwork(
             final ServiceDataDirectory serviceData,
             final LocalDateTime earliestTime, final LocalDateTime latestTime,
-            final BiMap<String, TransitStop> stopIdMap)
+            final BiMap<String, TransitStop> stopIdMap,
+            final boolean backward)
             throws InterruptedException {
 
-        final ScheduleInterpolatorFactory interpolatorFactory = (baseTime)
-                -> new LastTimeScheduleInterpolator(baseTime);
-
-        final TransitNetwork transitNetwork = new TripCreatingTransitNetwork(
-                new DirectoryReadingTripCreator(
+        final DirectoryReadingTripScheduleCreator tripScheduleCreator
+                = new DirectoryReadingTripScheduleCreator(
                         earliestTime, latestTime,
                         serviceData.getStopTimesDirectory(),
                         serviceData.getRouteDetailsDirectory(),
                         serviceData.getTripDetailsDirectory(),
                         serviceData.getServiceTypeCalendar(),
-                        stopIdMap, interpolatorFactory));
-        return transitNetwork;
+                        stopIdMap);
+        final ScheduleInterpolator interpolator
+                = new LastTimeScheduleInterpolator();
+
+        final Set<TripSchedule> schedules = tripScheduleCreator.createTrips();
+        final ImmutableSet.Builder<Trip> builder = ImmutableSet.builder();
+        try {
+            for (final TripSchedule schedule : schedules) {
+                builder.add(interpolator.createTrip(schedule));
+            }
+            final Set<Trip> trips = builder.build();
+            final TransitNetwork transitNetwork
+                    = new TripProcessingTransitNetwork(trips, backward);
+            return transitNetwork;
+        } catch (final InterpolationException e) {
+            throw new ScoreGeneratorFatalException(e);
+        }
+
     }
 
     private static SetMultimap<PointLocation, Sector> buildPointSectorMap(
@@ -314,7 +332,7 @@ public class Calculation<S extends ScoreCard> {
                 final Set<Sector> sectors = grid.getSectors(stop);
                 if (sectors.isEmpty()) {
                     log.warn("{} ({}) is not within the bounds.",
-                             stop.getCommonName(), 
+                             stop.getCommonName(),
                              stop.getLocation().toDegreeString());
                 } else {
                     builder.putAll(stop, sectors);

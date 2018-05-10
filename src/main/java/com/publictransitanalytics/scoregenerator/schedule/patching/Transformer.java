@@ -34,7 +34,8 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import com.publictransitanalytics.scoregenerator.schedule.TransitNetwork;
-import com.publictransitanalytics.scoregenerator.schedule.TripCreatingTransitNetwork;
+import com.publictransitanalytics.scoregenerator.schedule.Trip;
+import com.publictransitanalytics.scoregenerator.schedule.TripProcessingTransitNetwork;
 import com.publictransitanalytics.scoregenerator.walking.TimeTracker;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -106,9 +107,11 @@ public class Transformer {
     }
 
     public TransitNetwork getTransitNetwork() throws InterruptedException {
+        final PatchingTripCreator creator = new PatchingTripCreator(
+                tripPatches, originalTransitNetwork);
+        final Set<Trip> trips = creator.createTrips();
 
-        return new TripCreatingTransitNetwork(new PatchingTripCreator(
-                tripPatches, originalTransitNetwork));
+        return new TripProcessingTransitNetwork(trips, backward);
     }
 
     public RiderFactory getRiderFactory() throws InterruptedException {

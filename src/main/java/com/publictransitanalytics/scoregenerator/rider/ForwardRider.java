@@ -45,7 +45,7 @@ public class ForwardRider implements Rider {
                 entryPoint.getSequence());
 
         this.initialPosition = event.getLocation();
-        this.entryTime = event.getScheduledTime();
+        this.entryTime = event.getArrivalTime();
         this.cutoffTime = cutoffTime;
     }
 
@@ -56,13 +56,13 @@ public class ForwardRider implements Rider {
         }
 
         final VehicleEvent continued = iterator.peek();
-        return !continued.getScheduledTime().isAfter(cutoffTime);
+        return !continued.getArrivalTime().isAfter(cutoffTime);
     }
 
     @Override
     public RiderStatus continueTrip() {
         final VehicleEvent event = iterator.next();
-        return new RiderStatus(event.getLocation(), event.getScheduledTime(),
+        return new RiderStatus(event.getLocation(), event.getArrivalTime(),
                                trip);
     }
 

@@ -38,6 +38,5 @@ public interface ServiceDataDirectory {
     
     public StoreBackedRangedKeyStore<LocationTimeKey> getWalkingTimeStore();
     
-    public Store<LocationKey, Integer> getMaxWalkingTimeStore();
-    
+    public Store<LocationKey, Integer> getMaxWalkingTimeStore();  
 }

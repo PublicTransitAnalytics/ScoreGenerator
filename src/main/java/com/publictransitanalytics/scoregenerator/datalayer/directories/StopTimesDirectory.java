@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 matt.
+ * Copyright 2016 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,7 @@
 package com.publictransitanalytics.scoregenerator.datalayer.directories;
 
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStop;
-import java.util.List;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStops;
 import java.util.Set;
 
 /**
@@ -28,48 +26,16 @@ import java.util.Set;
 public interface StopTimesDirectory {
 
     /**
-     * Gets the stops on a given transit trip between the two specified times.
+     * Gets the stops on a all transit trip in the given time range.
      *
-     * @param tripId The id of the trip.
      * @param startTime The beginning, inclusive, of the time range to search.
      * @param endTime The end, inclusive, of the time range to search.
-     * @return The TripStops making up the portion of the trip in the interval.
-     */
-    List<TripStop> getStopsOnTripInRange(
-            final TripId tripId, final TransitTime startTime,
-            final TransitTime endTime) throws InterruptedException;
-
-    /**
-     * Gets the stops on a given transit trip after a given time.
      *
-     * @param tripId The id of the trip.
-     * @param startTime The beginning, inclusive, of the time range to search.
      * @return The TripStops making up the portion of the trip in the interval.
+     * @throws java.lang.InterruptedException
      */
-    List<TripStop> getSubsequentStopsOnTrip(
-            final TripId tripId, final TransitTime startTime)
+    Set<TripStops> getAllTripStops(
+            final TransitTime startTime, final TransitTime endTime)
             throws InterruptedException;
-
-    /**
-     * The the transit trips passing through a stop between the two specified
-     * times.
-     *
-     * @param stopId The stop id at which to find trips.
-     * @param startTime The beginning, inclusive, of the time range to search.
-     * @param endTime The end, inclusive, of the time range to search.
-     * @return The TripStops indicating of the trips passing through.
-     */
-    List<TripStop> getStopsAtStopInRange(
-            final String stopId, final TransitTime startTime,
-            final TransitTime endTime) throws InterruptedException;
-
-    /**
-     * Get all the qualified trip ids. This is the only directory that deals
-     * with qualified trip ids, and should not be confused with the TripDetails,
-     * which are unqualified.
-     *
-     * @return A set of a all tripIds.
-     */
-    Set<TripId> getTripIds() throws InterruptedException;
 
 }

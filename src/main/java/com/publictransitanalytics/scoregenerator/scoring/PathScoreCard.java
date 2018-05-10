@@ -31,7 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Scorecard that keeps track of beth paths.
+ * Scorecard that keeps track of best paths.
  *
  * @author Public Transit Analytics
  */
@@ -84,7 +84,7 @@ public class PathScoreCard extends ScoreCard {
     }
 
     public synchronized MovementPath getBestPath(
-            final Sector location, final TaskIdentifier task) {
+            final Sector location, final LogicalTask task) {
         return bestPaths.get(location, task);
     }
 

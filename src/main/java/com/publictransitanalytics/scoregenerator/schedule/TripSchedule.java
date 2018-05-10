@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.datalayer.directories.types;
+package com.publictransitanalytics.scoregenerator.schedule;
 
+import java.util.Set;
 import lombok.Value;
 
 /**
- * The time a transit and place that a transit vehicle is scheduled to be.
- * 
+ * A schedule of a single transit trip. It may not contain full information of
+ * the exact times a vehicle reaches a stop.
+ *
  * @author Public Transit Analytics
  */
 @Value
-public class ScheduledLocation {
+public class TripSchedule {
 
-    TransitTime time;
-    String stopId;
+    private final TripId tripId;
+    private final String routeName;
+    private final String routeNumber;
+    private final Set<ScheduleEntry> scheduleEntries;
+
 }

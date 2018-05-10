@@ -15,32 +15,17 @@
  */
 package com.publictransitanalytics.scoregenerator.testhelpers;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
-import java.time.LocalDateTime;
-import lombok.RequiredArgsConstructor;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
+
+import lombok.Value;
 
 /**
  *
  * @author Public Transit Analytics
  */
-@RequiredArgsConstructor
-public class PreloadedScheduleInterpolator implements ScheduleInterpolator {
+@Value
+public class TimePair {
 
-    private final LocalDateTime time;
-
-    @Override
-    public LocalDateTime getInterpolatedTime(final TransitStop stop) {
-        return time;
-    }
-
-    @Override
-    public void setBaseTime(final LocalDateTime baseTime) {
-    }
-
-    @Override
-    public void setNextKnownEvent(final LocalDateTime time,
-                                  final TransitStop stop) {
-    }
-
+    private final TransitTime start;
+    private final TransitTime end;
 }

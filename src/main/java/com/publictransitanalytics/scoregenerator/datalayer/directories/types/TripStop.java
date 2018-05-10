@@ -26,9 +26,9 @@ import lombok.Value;
 @Value
 public class TripStop {
 
-    private final TransitTime time;
+    private final TransitTime arrivalTime;
+    private final TransitTime departureTime;
     private final String stopId;
-    private final TripId tripId;
     private final int sequence;
 
 }

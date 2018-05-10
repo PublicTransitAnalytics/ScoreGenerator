@@ -20,7 +20,8 @@ import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.Center;
-import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
+import com.publictransitanalytics.scoregenerator.location.Landmark;
+import com.publictransitanalytics.scoregenerator.scoring.LogicalTask;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -56,15 +57,15 @@ public class TimeQualifiedPointAccessibility {
 
     public TimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final Grid grid,
-            final Center center, final LocalDateTime time,
+            final Landmark centerPoint, final LocalDateTime time,
             final Duration tripDuration, final boolean backward,
             final Duration inServiceTime)
             throws InterruptedException {
         type = AccessibilityType.TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(grid.getBounds());
-        this.center = new Point(
-                center.getLogicalCenter().getPointRepresentation());
+        center = new Point(centerPoint);
+        
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
 
@@ -72,8 +73,8 @@ public class TimeQualifiedPointAccessibility {
                 tripDuration.toMillis(), true, true);
         final ImmutableMap.Builder<Bounds, FullSectorReachInformation> builder
                 = ImmutableMap.builder();
-
-        final TaskIdentifier task = new TaskIdentifier(time, center);
+        
+        final LogicalTask task = new LogicalTask(time, centerPoint);
 
         final Set<Sector> sectors = grid.getAllSectors();
         for (final Sector sector : sectors) {

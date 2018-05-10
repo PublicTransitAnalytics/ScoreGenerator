@@ -18,7 +18,7 @@ package com.publictransitanalytics.scoregenerator.datalayer.directories.types.ke
 import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.KeyMaterializer;
 import com.bitvantage.bitvantagecaching.RangedKey;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.NonNull;
@@ -31,30 +31,26 @@ import lombok.NonNull;
 public class TripSequenceKey extends RangedKey<TripSequenceKey> {
 
     @NonNull
-    private final TripIdKey tripIdKey;
-    private final TransitTime stopTime;
+    private final TripId tripId;
     private final int sequence;
 
     private final String keyString;
 
-    public TripSequenceKey(final TripIdKey tripIdKey,
-                           final TransitTime stopTime, final int sequence) {
-        this.tripIdKey = tripIdKey;
-        this.stopTime = stopTime;
+    public TripSequenceKey(final TripId tripId, final int sequence) {
+        this.tripId = tripId;
         this.sequence = sequence;
-        keyString = String.format("%s::%s::%010d", tripIdKey.getKeyString(),
-                                  stopTime.toString(), sequence);
+        keyString = String.format("%s_%s::%010d", tripId.getRawTripId(),
+                                  tripId.getQualifier(), sequence);
     }
 
     @Override
     public TripSequenceKey getRangeMin() {
-        return new TripSequenceKey(tripIdKey, TransitTime.MIN_TRANSIT_TIME, 0);
+        return new TripSequenceKey(tripId, 0);
     }
 
     @Override
     public TripSequenceKey getRangeMax() {
-        return new TripSequenceKey(tripIdKey, TransitTime.MAX_TRANSIT_TIME,
-                                   Integer.MAX_VALUE);
+        return new TripSequenceKey(tripId, Integer.MAX_VALUE);
     }
 
     @Override
@@ -65,18 +61,18 @@ public class TripSequenceKey extends RangedKey<TripSequenceKey> {
     public static class Materializer
             implements KeyMaterializer<TripSequenceKey> {
 
-        final Pattern pattern = Pattern.compile("(.+)::(.+)::(\\d{10})");
+        final Pattern pattern = Pattern.compile("(.+)_(.+)::(\\d{10})");
 
         @Override
         public TripSequenceKey materialize(final String keyString)
                 throws BitvantageStoreException {
             final Matcher matcher = pattern.matcher(keyString);
             if (matcher.matches()) {
-                final String tripIdString = matcher.group(1);
-                final String stopTimeString = matcher.group(2);
+                final String rawTripIdString = matcher.group(1);
+                final String tripIdQualifierString = matcher.group(2);
                 final String sequenceString = matcher.group(3);
-                return new TripSequenceKey(new TripIdKey(tripIdString),
-                                           TransitTime.parse(stopTimeString),
+                return new TripSequenceKey(new TripId(rawTripIdString,
+                                                      tripIdQualifierString),
                                            Integer.valueOf(sequenceString));
             }
             throw new BitvantageStoreException(String.format(

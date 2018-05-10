@@ -28,5 +28,6 @@ import lombok.Value;
 public class VehicleEvent {
 
     private final TransitStop location;
-    private final LocalDateTime scheduledTime;
+    private final LocalDateTime arrivalTime;
+    private final LocalDateTime departureTime;
 }

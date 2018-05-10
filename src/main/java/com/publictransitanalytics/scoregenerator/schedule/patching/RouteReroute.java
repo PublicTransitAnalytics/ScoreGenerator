@@ -78,29 +78,34 @@ public class RouteReroute implements Patch {
                 final ImmutableList.Builder<VehicleEvent> scheduleBuilder
                         = ImmutableList.builder();
                 if (type.equals(ReferenceDirection.AFTER_LAST)) {
-                    final int divergingIndex = getLocationIndex(
+                    final int divergingIndex = getFirstLocationIndex(
                             schedule, referenceStop);
 
                     if (divergingIndex == -1) {
                         newTrip = original;
                     } else {
+                        final List<VehicleEvent> beginning
+                                = schedule.subList(0, divergingIndex + 1);
 
-                        final LocalDateTime divergingTime
-                                = makeForwardPreDivergingPortion(
-                                        schedule, divergingIndex,
-                                        scheduleBuilder);
+                        scheduleBuilder.addAll(beginning);
 
-                        final LocalDateTime lastRerouteTime
-                                = makeForwardReroute(divergingTime,
-                                                     scheduleBuilder);
+                        final VehicleEvent lastLocation
+                                = beginning.get(beginning.size() - 1);
+                        final LocalDateTime divergingTime = lastLocation
+                                .getDepartureTime();
+
+                        final List<VehicleEvent> rereoute
+                                = makeForwardReroute(divergingTime);
+                        scheduleBuilder.addAll(rereoute);
+                        final LocalDateTime lastRerouteTimeDeparture
+                                = rereoute.get(rereoute.size() - 1)
+                                        .getDepartureTime();
 
                         if (returnStop != null) {
-                            final List<VehicleEvent> remainder
-                                    = schedule.subList(divergingIndex,
-                                                       schedule.size());
-                            makeForwardPostDivergingPortion(
-                                    remainder, lastRerouteTime,
-                                    scheduleBuilder);
+                            final List<VehicleEvent> end
+                                    = makeForwardPostDivergingPortion(
+                                            schedule, lastRerouteTimeDeparture);
+                            scheduleBuilder.addAll(end);
                         }
                         newTrip = Appending.makeReplacementTrip(
                                 original, scheduleBuilder.build());
@@ -112,26 +117,23 @@ public class RouteReroute implements Patch {
                     if (divergingIndex == -1) {
                         newTrip = original;
                     } else {
-
                         final List<VehicleEvent> end = schedule.subList(
                                 divergingIndex, schedule.size());
                         final LocalDateTime divergingTime
-                                = end.get(0).getScheduledTime();
+                                = end.get(0).getArrivalTime();
 
                         final List<VehicleEvent> reroute
                                 = makeBackwardReroute(divergingTime);
-                        final LocalDateTime lastRerouteTime
-                                = reroute.get(0).getScheduledTime();
+                        final LocalDateTime lastRerouteArrivalTime
+                                = reroute.get(0).getArrivalTime();
 
                         if (returnStop != null) {
-                            final List<VehicleEvent> remainder
-                                    = schedule.subList(0, divergingIndex + 1);
                             final List<VehicleEvent> beginning
                                     = makeBackwardPostDivergingPortion(
-                                            remainder, lastRerouteTime);
+                                            schedule, lastRerouteArrivalTime);
                             scheduleBuilder.addAll(beginning);
                         }
-                        
+
                         scheduleBuilder.addAll(reroute);
                         scheduleBuilder.addAll(end);
 
@@ -149,143 +151,124 @@ public class RouteReroute implements Patch {
         return Optional.of(newTrip);
     }
 
-    private void makeForwardPostDivergingPortion(
-            final List<VehicleEvent> remainder,
-            final LocalDateTime lastRerouteTime,
-            final ImmutableList.Builder<VehicleEvent> scheduleBuilder) {
+    private List<VehicleEvent> makeForwardPostDivergingPortion(
+            final List<VehicleEvent> schedule,
+            final LocalDateTime lastRerouteDepartureTime) {
 
-        final int returningIndex = getLocationIndex(
-                remainder, returnStop);
+        final ImmutableList.Builder<VehicleEvent> scheduleBuilder
+                = ImmutableList.builder();
+        final int returningIndex = getFirstLocationIndex(schedule, returnStop);
+
         if (returningIndex != -1) {
+            final List<VehicleEvent> remainder
+                    = schedule.subList(returningIndex, schedule.size());
+            
+            final VehicleEvent returningEvent = remainder.get(0);
 
-            final VehicleEvent returningScheduledLocation
-                    = remainder.get(returningIndex);
+            final LocalDateTime originalBase = returningEvent.getArrivalTime();
+            final LocalDateTime newBase
+                    = lastRerouteDepartureTime.plus(returnDelta);
 
-            final TransitStop returningLocation
-                    = returningScheduledLocation
-                            .getLocation();
-            final LocalDateTime originalReturnTime
-                    = returningScheduledLocation
-                            .getScheduledTime();
-            LocalDateTime referenceTime = lastRerouteTime.plus(returnDelta);
-
-            final VehicleEvent newReturnScheduledLocation
-                    = new VehicleEvent(returningLocation, referenceTime);
-
-            scheduleBuilder.add(newReturnScheduledLocation);
-
-            LocalDateTime priorTime = originalReturnTime;
-
-            for (int i = returningIndex + 1;
-                 i < remainder.size(); i++) {
-                final VehicleEvent scheduledLocation = remainder.get(i);
-
-                final TransitStop location = scheduledLocation.getLocation();
-                final LocalDateTime originalTime 
-                        = scheduledLocation.getScheduledTime();
-
-                final Duration delta = Duration.between(
-                        priorTime, originalTime);
-                final LocalDateTime newTime = referenceTime.plus(delta);
-                final VehicleEvent newScheduledLocation
-                        = new VehicleEvent(location, newTime);
-                referenceTime = newTime;
-                scheduleBuilder.add(newScheduledLocation);
+            for (final VehicleEvent event : remainder) {
+                final VehicleEvent newEvent = getAdjustedEvent(
+                        event, originalBase, newBase);
+                scheduleBuilder.add(newEvent);
             }
         }
+        return scheduleBuilder.build();
     }
 
     private List<VehicleEvent> makeBackwardPostDivergingPortion(
-            final List<VehicleEvent> remainder,
-            final LocalDateTime lastRerouteTime) {
+            final List<VehicleEvent> schedule,
+            final LocalDateTime lastRerouteArrivalTime) {
 
-        final ImmutableList.Builder<VehicleEvent> portionBuilder
+        final ImmutableList.Builder<VehicleEvent> scheduleBuilder
                 = ImmutableList.builder();
 
-        final int returningIndex = getLastLocationIndex(
-                remainder, returnStop);
+        final int returningIndex = getLastLocationIndex(schedule, returnStop);
+
         if (returningIndex != -1) {
+            final List<VehicleEvent> remainder
+                    = schedule.subList(0, returningIndex + 1);
 
-            final VehicleEvent returningScheduledLocation
-                    = remainder.get(returningIndex);
+            final VehicleEvent returningEvent 
+                    = remainder.get(remainder.size() - 1);
 
-            final TransitStop returningLocation
-                    = returningScheduledLocation.getLocation();
-            final LocalDateTime originalReturnTime
-                    = returningScheduledLocation.getScheduledTime();
-            LocalDateTime referenceTime = lastRerouteTime.minus(returnDelta);
+            final LocalDateTime originalBase
+                    = returningEvent.getDepartureTime();
+            final LocalDateTime newBase
+                    = lastRerouteArrivalTime.minus(returnDelta);
 
-            final VehicleEvent newReturnScheduledLocation
-                    = new VehicleEvent(returningLocation, referenceTime);
-
-            portionBuilder.add(newReturnScheduledLocation);
-
-            LocalDateTime priorTime = originalReturnTime;
-
-            for (int i = returningIndex - 1; i >= 0; i--) {
-                final VehicleEvent scheduledLocation= remainder.get(i);
-
-                final TransitStop location = scheduledLocation.getLocation();
-                final LocalDateTime originalTime
-                        = scheduledLocation.getScheduledTime();
-
-                final Duration delta = Duration.between(
-                        originalTime, priorTime);
-                final LocalDateTime newTime = referenceTime.minus(delta);
-                final VehicleEvent newScheduledLocation
-                        = new VehicleEvent(location, newTime);
-                referenceTime = newTime;
-                portionBuilder.add(newScheduledLocation);
+            for (final VehicleEvent event : remainder) {
+                final VehicleEvent newEvent = getAdjustedEvent(
+                        event, originalBase, newBase);
+                scheduleBuilder.add(newEvent);
             }
         }
-        return portionBuilder.build().reverse();
+        return scheduleBuilder.build();
     }
 
-    private static LocalDateTime makeForwardPreDivergingPortion(
-            final List<VehicleEvent> schedule, final int divergingIndex,
-            final ImmutableList.Builder<VehicleEvent> scheduleBuilder) {
-        final List<VehicleEvent> beginning
-                = schedule.subList(0, divergingIndex + 1);
+    private VehicleEvent getAdjustedEvent(final VehicleEvent event,
+                                          final LocalDateTime originalBase,
+                                          final LocalDateTime newBase) {
+        final TransitStop location = event.getLocation();
+        final LocalDateTime originalArrivalTime
+                = event.getArrivalTime();
+        final LocalDateTime originalDepartureTime
+                = event.getDepartureTime();
 
-        scheduleBuilder.addAll(beginning);
-
-        final VehicleEvent lastLocation
-                = beginning.get(beginning.size() - 1);
-        final LocalDateTime lastTime = lastLocation.getScheduledTime();
-        return lastTime;
+        final Duration arrivalDelta = Duration.between(
+                originalBase, originalArrivalTime);
+        final Duration departureDelta = Duration.between(
+                originalBase, originalDepartureTime);
+        final LocalDateTime newArrivalTime = newBase.plus(arrivalDelta);
+        final LocalDateTime newDepartureTime
+                = newBase.plus(departureDelta);
+        final VehicleEvent newEvent = new VehicleEvent(location, newArrivalTime,
+                                                       newDepartureTime);
+        return newEvent;
     }
 
-    private LocalDateTime makeForwardReroute(
-            final LocalDateTime priorTime,
-            final ImmutableList.Builder<VehicleEvent> scheduleBuilder) {
-        LocalDateTime referenceTime = priorTime;
+    private List<VehicleEvent> makeForwardReroute(
+            final LocalDateTime priorDepartureTime) {
+        final ImmutableList.Builder<VehicleEvent> scheduleBuilder
+                = ImmutableList.builder();
+        LocalDateTime referenceDepartureTime = priorDepartureTime;
         for (final RouteSequenceItem item : sequence) {
-            final LocalDateTime time = referenceTime.plus(item.getDelta());
+            final LocalDateTime arrivalTime
+                    = referenceDepartureTime.plus(item.getDelta());
+            // TODO: Allow dwell in reroutes.
+            final LocalDateTime departureTime = arrivalTime;
             final VehicleEvent scheduledLocation
-                    = new VehicleEvent(item.getStop(), time);
+                    = new VehicleEvent(item.getStop(), arrivalTime,
+                                       departureTime);
             scheduleBuilder.add(scheduledLocation);
-            referenceTime = time;
+            referenceDepartureTime = departureTime;
         }
-        return referenceTime;
+        return scheduleBuilder.build();
     }
 
     private List<VehicleEvent> makeBackwardReroute(
-            final LocalDateTime priorTime) {
+            final LocalDateTime priorArrivalTime) {
         final ImmutableList.Builder<VehicleEvent> rerouteBuilder
                 = ImmutableList.builder();
-        LocalDateTime referenceTime = priorTime;
+        LocalDateTime referenceArrivalTime = priorArrivalTime;
         for (final RouteSequenceItem item : sequence) {
-            final LocalDateTime time = referenceTime.minus(item.getDelta());
+            final LocalDateTime departureTime
+                    = referenceArrivalTime.minus(item.getDelta());
+            // TODO: Allow dwell in reroutes.
+            final LocalDateTime arrivalTime = departureTime;
             final VehicleEvent scheduledLocation
-                    = new VehicleEvent(item.getStop(), time);
+                    = new VehicleEvent(item.getStop(), arrivalTime,
+                                       departureTime);
             rerouteBuilder.add(scheduledLocation);
-            referenceTime = time;
+            referenceArrivalTime = arrivalTime;
         }
         return rerouteBuilder.build().reverse();
     }
 
-    private static int getLocationIndex(final List<VehicleEvent> schedule,
-                                        final TransitStop location) {
+    private static int getFirstLocationIndex(final List<VehicleEvent> schedule,
+                                             final TransitStop location) {
         int index = -1;
         for (int i = 0; i < schedule.size(); i++) {
             final VehicleEvent scheduledLocation

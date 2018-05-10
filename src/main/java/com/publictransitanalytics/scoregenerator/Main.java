@@ -807,7 +807,7 @@ public class Main {
             } else {
                 final TimeQualifiedPointAccessibility map
                         = new TimeQualifiedPointAccessibility(
-                                scoreCard, grid, center, startTime,
+                                scoreCard, grid, centerPoint, startTime,
                                 durations.last(), backward, inServiceTime);
                 publisher.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeRangeMap(grid, scoreCard,
@@ -847,7 +847,7 @@ public class Main {
                     final ComparativeTimeQualifiedPointAccessibility map
                             = new ComparativeTimeQualifiedPointAccessibility(
                                     scoreCard, trialScoreCard, grid,
-                                    center, startTime, trialStartTime,
+                                    centerPoint, startTime, trialStartTime,
                                     durations.last(), backward, name,
                                     trialName, inServiceTime,
                                     trialInServiceTime);

@@ -21,6 +21,7 @@ import com.publictransitanalytics.scoregenerator.location.Center;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.scoring.LogicalTask;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
 import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
@@ -65,7 +66,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
 
     public ComparativeTimeQualifiedPointAccessibility(
             final PathScoreCard scoreCard, final PathScoreCard trialScoreCard,
-            final Grid grid, final Center centerPoint,
+            final Grid grid, final Landmark centerPoint,
             final LocalDateTime time, LocalDateTime trialTime,
             final Duration tripDuration, final boolean backward,
             final String name, final String trialName,
@@ -75,8 +76,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
         type = AccessibilityType.COMPARATIVE_TIME_QUALIFIED_POINT_ACCESSIBILITY;
         direction = backward ? Direction.INBOUND : Direction.OUTBOUND;
         mapBounds = new Bounds(grid.getBounds());
-        center = new Point(
-                centerPoint.getLogicalCenter().getPointRepresentation());
+        center = new Point(centerPoint);
         this.time = time.format(DateTimeFormatter.ofPattern(
                 "YYYY-MM-dd HH:mm:ss"));
         this.trialTime = trialTime.format(DateTimeFormatter.ofPattern(
@@ -89,7 +89,7 @@ public class ComparativeTimeQualifiedPointAccessibility {
 
         final Set<Sector> sectors = grid.getAllSectors();
 
-        final TaskIdentifier task = new TaskIdentifier(time, centerPoint);
+        final LogicalTask task = new LogicalTask(time, centerPoint);
         for (final Sector sector : sectors) {
             final MovementPath sectorPath
                     = scoreCard.getBestPath(sector, task);

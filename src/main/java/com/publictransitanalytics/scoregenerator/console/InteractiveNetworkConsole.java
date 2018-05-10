@@ -75,8 +75,7 @@ public class InteractiveNetworkConsole implements NetworkConsole {
         scanner.close();
     }
 
-    private void showDeltas(final String route,
-                            final String beginningStopId,
+    private void showDeltas(final String route, final String beginningStopId,
                             final String endingStopId) {
         final TransitStop beginningStop
                 = stopIdMap.get(beginningStopId);
@@ -89,36 +88,44 @@ public class InteractiveNetworkConsole implements NetworkConsole {
             final Trip trip = entryPoint.getTrip();
             if (trip.getRouteNumber().equals(route)) {
                 final String tripId = trip.getTripId().toString();
-                final LocalDateTime beginningTime = entryPoint.getTime();
 
-                System.out.println(String.format("Trip %s %s", tripId,
-                                                 beginningTime));
-                TransitStop stop = beginningStop;
-                LocalDateTime time = beginningTime;
+                System.out.println(String.format("Trip %s", tripId));
 
                 final Iterator<VehicleEvent> iterator = trip.getForwardIterator(
                         entryPoint.getSequence());
-                while (iterator.hasNext() && !stop.equals(endingStop)) {
-                    final VehicleEvent nextScheduledLocation = iterator.next();
-                    final LocalDateTime nextTime
-                            = nextScheduledLocation.getScheduledTime();
-                    final TransitStop nextStop
-                            = nextScheduledLocation.getLocation();
-                    final Duration delta = Duration.between(time, nextTime);
-                    final Hop hop = new Hop(stop, nextStop);
-                    durationsBuilder.put(hop, delta);
-                    System.out.println(String.format(
-                            "%s -> %s: %s", stop.getStopId(),
-                            nextStop.getStopId(), delta));
-                    stop = nextStop;
-                    time = nextTime;
+                if (iterator.hasNext()) {
+                    VehicleEvent event = iterator.next();
+                    TransitStop stop = event.getLocation();
+                    LocalDateTime arrivalTime = event.getArrivalTime();
+                    LocalDateTime departureTime = event.getDepartureTime();
+
+                    while (iterator.hasNext() && !stop.equals(endingStop)) {
+                        final VehicleEvent nextScheduledLocation 
+                                = iterator.next();
+                        final LocalDateTime nextArrivalTime
+                                = nextScheduledLocation.getArrivalTime();
+                        final LocalDateTime nextDepartureTime
+                                = nextScheduledLocation.getDepartureTime();
+                        final TransitStop nextStop
+                                = nextScheduledLocation.getLocation();
+                        final Duration delta = Duration.between(
+                                departureTime, nextArrivalTime);
+                        final Hop hop = new Hop(stop, nextStop);
+                        durationsBuilder.put(hop, delta);
+                        System.out.println(String.format(
+                                "%s -> %s: %s", stop.getStopId(),
+                                nextStop.getStopId(), delta));
+                        stop = nextStop;
+                        arrivalTime = nextArrivalTime;
+                        departureTime = nextDepartureTime;
+                    }
                 }
                 System.out.println("---");
             }
         }
         final ImmutableListMultimap<Hop, Duration> hopDurations
                 = durationsBuilder.build();
-        
+
         for (final Hop hop : hopDurations.keySet()) {
             final ImmutableList<Duration> durations = hopDurations.get(hop);
             final Duration min = durations.stream().min(

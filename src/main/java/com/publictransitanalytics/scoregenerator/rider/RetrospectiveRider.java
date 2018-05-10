@@ -45,7 +45,7 @@ public class RetrospectiveRider implements Rider {
                 entryPoint.getSequence());
 
         this.initialPosition = event.getLocation();
-        this.initialTime = event.getScheduledTime();
+        this.initialTime = event.getDepartureTime();
         this.cutoffTime = cutoffTime;
     }
 
@@ -56,13 +56,13 @@ public class RetrospectiveRider implements Rider {
         }
 
         final VehicleEvent continued = iterator.peek();
-        return !continued.getScheduledTime().isBefore(cutoffTime);
+        return !continued.getDepartureTime().isBefore(cutoffTime);
     }
 
     @Override
     public RiderStatus continueTrip() {
         final VehicleEvent event = iterator.next();
-        return new RiderStatus(event.getLocation(), event.getScheduledTime(),
+        return new RiderStatus(event.getLocation(), event.getDepartureTime(),
                                trip);
     }
 

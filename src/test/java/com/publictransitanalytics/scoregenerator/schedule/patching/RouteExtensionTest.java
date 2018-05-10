@@ -16,26 +16,20 @@
 package com.publictransitanalytics.scoregenerator.schedule.patching;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.publictransitanalytics.scoregenerator.geography.GeoPoint;
 import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
 import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleEntry;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
-import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import junit.framework.Assert;
 import org.junit.Test;
 
@@ -55,21 +49,19 @@ public class RouteExtensionTest {
     private final static TransitStop STOP_3 = new TransitStop("stop3",
                                                               "stop3", POINT);
 
-    private static final ScheduleInterpolator INTERPOLATOR
-            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
-
     @Test
     public void testExtendsMultiStopTripEnd() throws Exception {
 
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(2, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_2));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time2 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_2, time2, time2));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_2, ReferenceDirection.AFTER_LAST,
@@ -83,19 +75,20 @@ public class RouteExtensionTest {
                 = newSchedule.get(newSchedule.size() - 1);
         Assert.assertEquals(STOP_3, lastStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 55),
-                            lastStop.getScheduledTime());
+                            lastStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 55),
+                            lastStop.getDepartureTime());
     }
 
     @Test
     public void testMultiStopExtensionToTripEnd() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.AFTER_LAST,
@@ -111,25 +104,28 @@ public class RouteExtensionTest {
         final VehicleEvent nextStop = newSchedule.get(1);
         Assert.assertEquals(STOP_3, nextStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
-                            nextStop.getScheduledTime());
+                            nextStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
+                            nextStop.getDepartureTime());
 
         final VehicleEvent lastStop
                 = newSchedule.get(2);
         Assert.assertEquals(STOP_2, lastStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 49),
-                            lastStop.getScheduledTime());
+                            lastStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 49),
+                            lastStop.getDepartureTime());
     }
 
     @Test
     public void testExtendsSingleStopTripEnd() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.AFTER_LAST,
@@ -144,18 +140,19 @@ public class RouteExtensionTest {
                 = newSchedule.get(newSchedule.size() - 1);
         Assert.assertEquals(STOP_3, lastStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
-                            lastStop.getScheduledTime());
+                            lastStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 45),
+                            lastStop.getDepartureTime());
     }
 
     @Test
     public void testDoesNotExtendMismatchedTrip() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_2, ReferenceDirection.AFTER_LAST,
@@ -169,16 +166,16 @@ public class RouteExtensionTest {
 
     @Test
     public void testExtendsMultiStopTripBeginning() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1),
-                new ScheduleEntry(2, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 50)), STOP_2));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final LocalDateTime time2 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 50);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1),
+                new VehicleEvent(STOP_2, time2, time2));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
@@ -191,19 +188,20 @@ public class RouteExtensionTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_3, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
+                            firstStop.getDepartureTime());
     }
 
     @Test
     public void testMultiStopExtensionToTripBeginning() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
@@ -219,24 +217,27 @@ public class RouteExtensionTest {
         final VehicleEvent previousStop = newSchedule.get(1);
         Assert.assertEquals(STOP_3, previousStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
-                            previousStop.getScheduledTime());
+                            previousStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
+                            previousStop.getDepartureTime());
 
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_2, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 31),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 31),
+                            firstStop.getDepartureTime());
     }
 
     @Test
     public void testExtendsSingleStopTripBeginning() throws Exception {
-
-        final Set<ScheduleEntry> route71Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route71Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", route71Schedule,
-                                      INTERPOLATOR);
+                                      "71", "71", route71Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
@@ -249,18 +250,19 @@ public class RouteExtensionTest {
         final VehicleEvent firstStop = newSchedule.get(0);
         Assert.assertEquals(STOP_3, firstStop.getLocation());
         Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
-                            firstStop.getScheduledTime());
+                            firstStop.getArrivalTime());
+        Assert.assertEquals(LocalDateTime.of(2017, Month.OCTOBER, 3, 9, 35),
+                            firstStop.getDepartureTime());
     }
 
     @Test
     public void testDoesNotChangeNonMatchingTrip() throws Exception {
-
-        final Set<ScheduleEntry> route70Schedule = ImmutableSet.of(
-                new ScheduleEntry(1, Optional.of(LocalDateTime.of(
-                                  2017, Month.OCTOBER, 3, 9, 40)), STOP_1));
+        final LocalDateTime time1 = LocalDateTime.of(
+                2017, Month.OCTOBER, 3, 9, 40);
+        final List<VehicleEvent> route70Schedule = ImmutableList.of(
+                new VehicleEvent(STOP_1, time1, time1));
         final Trip route70 = new Trip(new TripId("70_1", LocalDate.MIN),
-                                      "70", "70", route70Schedule,
-                                      INTERPOLATOR);
+                                      "70", "70", route70Schedule);
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,
@@ -274,8 +276,7 @@ public class RouteExtensionTest {
     public void testDoesNotChangeEmptyTrip() throws Exception {
 
         final Trip route71 = new Trip(new TripId("71_1", LocalDate.MIN),
-                                      "71", "71", Collections.emptySet(),
-                                      INTERPOLATOR);
+                                      "71", "71", Collections.emptyList());
 
         final RouteExtension extension = new RouteExtension(
                 "71", STOP_1, ReferenceDirection.BEFORE_FIRST,

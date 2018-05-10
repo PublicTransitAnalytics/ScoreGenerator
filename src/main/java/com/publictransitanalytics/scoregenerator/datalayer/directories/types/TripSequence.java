@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.publictransitanalytics.scoregenerator.schedule;
+package com.publictransitanalytics.scoregenerator.datalayer.directories.types;
 
-import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import java.time.LocalDateTime;
-import java.util.Optional;
 import lombok.Value;
 
 /**
@@ -25,9 +22,7 @@ import lombok.Value;
  * @author Public Transit Analytics
  */
 @Value
-public class ScheduleEntry {
+public class TripSequence {
     private final int sequence;
-    private final Optional<LocalDateTime> arrivalTime;
-    private final Optional<LocalDateTime> departureTime;
-    private final TransitStop stop;
+    private final TripId tripId;
 }

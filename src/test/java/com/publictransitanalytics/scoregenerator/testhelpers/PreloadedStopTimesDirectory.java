@@ -17,11 +17,8 @@ package com.publictransitanalytics.scoregenerator.testhelpers;
 
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopTimesDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TransitTime;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
-import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStop;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.TreeBasedTable;
-import java.util.List;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStops;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -30,58 +27,25 @@ import java.util.Set;
  */
 public class PreloadedStopTimesDirectory implements StopTimesDirectory {
 
-    private final TreeBasedTable<TripId, TransitTime, TripStop> tripTable;
-    private final TreeBasedTable<String, TransitTime, TripStop> stopTable;
-
-    public PreloadedStopTimesDirectory(final Set<TripStop> tripStops) {
-        tripTable = TreeBasedTable.create(
-                (TripId a, TripId b) -> a.toString().compareTo(b.toString()),
-                (TransitTime a, TransitTime b) -> a.compareTo(b));
-        stopTable = TreeBasedTable.create();
-        for (final TripStop tripStop : tripStops) {
-            tripTable.put(tripStop.getTripId(), tripStop.getTime(), tripStop);
-            stopTable.put(tripStop.getStopId(), tripStop.getTime(), tripStop);
-        }
+    private final Set<TripStops> tripStops;
+    private final Set<TimePair> timePairs;
+    
+    public PreloadedStopTimesDirectory(final Set<TripStops> tripStops) {
+        this.tripStops = tripStops;
+        timePairs = new HashSet<>();
     }
 
     @Override
-    public List<TripStop> getStopsOnTripInRange(final TripId tripId,
-                                                final TransitTime startTime,
-                                                final TransitTime endTime) {
-
-        final ImmutableList.Builder<TripStop> builder = ImmutableList.builder();
-        builder.addAll(tripTable.row(tripId).subMap(
-                startTime, endTime).values());
-        if (tripTable.contains(tripId, endTime)) {
-            builder.add(tripTable.get(tripId, endTime));
-        }
-        return builder.build();
+    public Set<TripStops> getAllTripStops(final TransitTime startTime,
+                                          final TransitTime endTime) 
+            throws InterruptedException {
+        timePairs.add(new TimePair(startTime, endTime));
+        return tripStops;
+    }
+    
+    public boolean verify(final Set<TimePair> expected) {
+        return expected.equals(timePairs);
     }
 
-    @Override
-    public List<TripStop> getSubsequentStopsOnTrip(
-            final TripId tripId, final TransitTime startTime) {
-        return ImmutableList.copyOf(
-                tripTable.row(tripId).tailMap(startTime).values());
-    }
-
-    @Override
-    public List<TripStop> getStopsAtStopInRange(final String stopId,
-                                                final TransitTime startTime,
-                                                final TransitTime endTime) {
-
-        final ImmutableList.Builder<TripStop> builder = ImmutableList.builder();
-        builder.addAll(stopTable.row(stopId).subMap(
-                startTime, endTime).values());
-        if (stopTable.contains(stopId, endTime)) {
-            builder.add(tripTable.get(stopId, endTime));
-        }
-        return builder.build();
-    }
-
-    @Override
-    public Set<TripId> getTripIds() {
-        return tripTable.rowKeySet();
-    }
 
 }

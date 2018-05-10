@@ -42,8 +42,8 @@ public class TransitTime implements Comparable<TransitTime> {
 
     public static final TransitTime MAX_TRANSIT_TIME
             = new TransitTime(47, 59, 59);
-    
-    private final String stringRepresentation; 
+
+    private final String stringRepresentation;
 
     /**
      * Create a transit time from an ordinary time.
@@ -123,15 +123,16 @@ public class TransitTime implements Comparable<TransitTime> {
      * @param second A TransitTime.
      * @return The duration.
      */
-    public static Duration durationBetween(TransitTime first, TransitTime second) {
+    public static Duration durationBetween(final TransitTime first,
+                                           final TransitTime second) {
         return Duration.ofSeconds(
-                (second.hours * 3600 + second.minutes * 60 + second.seconds)
-                        - (first.hours * 3600 + first.minutes * 60
-                           + first.seconds));
+                (second.hours * 3600 + second.minutes * 60 + second.seconds) -
+                 (first.hours * 3600 + first.minutes * 60 +
+                   first.seconds));
     }
 
     @Override
-    public int compareTo(TransitTime o) {
+    public int compareTo(final TransitTime o) {
         int hourDifference = hours - o.hours;
         if (hourDifference == 0) {
             int minuteDifference = minutes - o.minutes;
@@ -158,8 +159,8 @@ public class TransitTime implements Comparable<TransitTime> {
      * @return A new TransitTime.
      */
     public TransitTime plus(Duration duration) {
-        long newSeconds = duration.getSeconds() + (this.hours * 3600)
-                                  + (this.minutes * 60) + this.seconds;
+        long newSeconds = duration.getSeconds() + (this.hours * 3600) +
+                 (this.minutes * 60) + this.seconds;
         long justSeconds = (newSeconds % 60);
         long newMinutes = newSeconds / 60;
         long justMinutes = (newMinutes % 60);
@@ -179,6 +180,17 @@ public class TransitTime implements Comparable<TransitTime> {
     public TransitTime minus(Duration duration) {
         return plus(duration.negated());
     }
+    
+    /**
+     * Determines whether the time is standard representation of a time. This 
+     * means that it does not represent a quantity greater than 24 hours beyond 
+     * the beginning of a day.
+     * @return Whether the time is standard. 
+     */
+    public boolean isStandardTime() {
+        return hours < 24;
+    }
+    
 
     @Override
     public String toString() {

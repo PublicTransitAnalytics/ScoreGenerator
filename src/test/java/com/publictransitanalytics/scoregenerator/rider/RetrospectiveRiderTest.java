@@ -15,8 +15,9 @@
  */
 package com.publictransitanalytics.scoregenerator.rider;
 
+import com.google.common.collect.ImmutableList;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleEntry;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
 import com.google.common.collect.ImmutableSet;
@@ -25,8 +26,7 @@ import com.publictransitanalytics.scoregenerator.geography.AngleUnit;
 import com.publictransitanalytics.scoregenerator.geography.GeoLatitude;
 import com.publictransitanalytics.scoregenerator.geography.GeoLongitude;
 import com.publictransitanalytics.scoregenerator.schedule.EntryPoint;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
-import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
+import com.publictransitanalytics.scoregenerator.schedule.VehicleEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -61,19 +61,17 @@ public class RetrospectiveRiderTest {
     private static final String TRIP_BASE_ID = "trip1";
     private static final LocalDate TRIP_SERVICE_DAY
             = LocalDate.of(2017, Month.FEBRUARY, 12);
+    private static final TripId TRIP_ID
+            = new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY);
 
     private static final String ROUTE_NUMBER = "-1";
     private static final String ROUTE_NAME = "Somewhere via Elsewhere";
 
-    private static final ScheduleInterpolator INTERPOLATOR
-            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
     @Test
     public void testCannotContinueBeyondEnd() {
         final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, Optional.of(STOP_TIME),
-                                          STOP_ON_TRIP)), INTERPOLATOR);
+                TRIP_ID, ROUTE_NAME, ROUTE_NUMBER, ImmutableList.of(
+                        new VehicleEvent(STOP_ON_TRIP, STOP_TIME, STOP_TIME)));
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 15, 0);
@@ -86,12 +84,10 @@ public class RetrospectiveRiderTest {
     @Test
     public void testCannotContinuePastCutoff() {
         final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, Optional.of(EARLIER_STOP_TIME),
-                                          EARLIER_STOP_ON_TRIP),
-                        new ScheduleEntry(1, Optional.of(STOP_TIME),
-                                          STOP_ON_TRIP)), INTERPOLATOR);
+                TRIP_ID, ROUTE_NAME, ROUTE_NUMBER, ImmutableList.of(
+                        new VehicleEvent(EARLIER_STOP_ON_TRIP,
+                                         EARLIER_STOP_TIME, EARLIER_STOP_TIME),
+                        new VehicleEvent(STOP_ON_TRIP, STOP_TIME, STOP_TIME)));
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 15, 0);
@@ -104,12 +100,10 @@ public class RetrospectiveRiderTest {
     @Test
     public void testCanContinue() {
         final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, Optional.of(EARLIER_STOP_TIME),
-                                          EARLIER_STOP_ON_TRIP),
-                        new ScheduleEntry(1, Optional.of(STOP_TIME),
-                                          STOP_ON_TRIP)), INTERPOLATOR);
+                TRIP_ID, ROUTE_NAME, ROUTE_NUMBER, ImmutableList.of(
+                        new VehicleEvent(EARLIER_STOP_ON_TRIP,
+                                         EARLIER_STOP_TIME, EARLIER_STOP_TIME),
+                        new VehicleEvent(STOP_ON_TRIP, STOP_TIME, STOP_TIME)));
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 0, 0);
@@ -122,12 +116,10 @@ public class RetrospectiveRiderTest {
     @Test
     public void testCanContinueAtBoundary() {
         final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, Optional.of(EARLIER_STOP_TIME),
-                                          EARLIER_STOP_ON_TRIP),
-                        new ScheduleEntry(1, Optional.of(STOP_TIME),
-                                          STOP_ON_TRIP)), INTERPOLATOR);
+                TRIP_ID, ROUTE_NAME, ROUTE_NUMBER, ImmutableList.of(
+                        new VehicleEvent(EARLIER_STOP_ON_TRIP,
+                                         EARLIER_STOP_TIME, EARLIER_STOP_TIME),
+                        new VehicleEvent(STOP_ON_TRIP, STOP_TIME, STOP_TIME)));
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 5, 0);
@@ -140,12 +132,10 @@ public class RetrospectiveRiderTest {
     @Test
     public void testContinues() {
         final Trip trip = new Trip(
-                new TripId(TRIP_BASE_ID, TRIP_SERVICE_DAY), ROUTE_NAME,
-                ROUTE_NUMBER, ImmutableSet.of(
-                        new ScheduleEntry(0, Optional.of(EARLIER_STOP_TIME),
-                                          EARLIER_STOP_ON_TRIP),
-                        new ScheduleEntry(1, Optional.of(STOP_TIME),
-                                          STOP_ON_TRIP)), INTERPOLATOR);
+                TRIP_ID, ROUTE_NAME, ROUTE_NUMBER, ImmutableList.of(
+                        new VehicleEvent(EARLIER_STOP_ON_TRIP,
+                                         EARLIER_STOP_TIME, EARLIER_STOP_TIME),
+                        new VehicleEvent(STOP_ON_TRIP, STOP_TIME, STOP_TIME)));
 
         final LocalDateTime cutoffTime
                 = LocalDateTime.of(2017, Month.FEBRUARY, 12, 10, 0, 0);

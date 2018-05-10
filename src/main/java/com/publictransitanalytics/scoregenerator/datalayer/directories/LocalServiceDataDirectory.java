@@ -27,11 +27,13 @@ import com.publictransitanalytics.scoregenerator.datalayer.directories.types.Ser
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.StopDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripDetails;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripId;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripSequence;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.TripStop;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.DateKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.RouteIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.StopIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.StopTimeKey;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TimeKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripGroupKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripIdKey;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.keys.TripSequenceKey;
@@ -50,7 +52,6 @@ import lombok.Getter;
  * @author Public Transit Analytics
  */
 public class LocalServiceDataDirectory implements ServiceDataDirectory {
- 
 
     private static final String GTFS_DIRECTORY = "gtfs";
 
@@ -59,12 +60,12 @@ public class LocalServiceDataDirectory implements ServiceDataDirectory {
     private static final String WALKING_TIME_STORE = "walking_time_store";
     private static final String MAX_WALKING_TIME_STORE
             = "max_walking_time_store";
-    private static final String TRIP_SEQUENCE_STORE = "trip_sequence_store";
-    private static final String STOP_TIMES_STORE = "stop_times_store";
-    private static final String TRIPS_STORE = "trips_store";
     private static final String SERVICE_TYPES_STORE = "service_types_store";
     private static final String ROUTE_DETAILS_STORE = "route_details_store";
     private static final String TRIP_DETAILS_STORE = "trip_details_store";
+    private static final String ARRIVAL_TIMES_STORE = "arrival_times_store";
+    private static final String DEPARTURE_TIMES_STORE = "departure_times_store";
+    private static final String TRIP_STOP_STORE = "trip_stop_store";
 
     private static final String STOPS_FILE = "stops.txt";
     private static final String STOP_TIMES_FILE = "stop_times.txt";
@@ -90,7 +91,7 @@ public class LocalServiceDataDirectory implements ServiceDataDirectory {
     private final Store<LocationKey, Integer> maxWalkingTimeStore;
 
     public LocalServiceDataDirectory(final Path root, final String files,
-                                     final StoreFactory storeFactory) 
+                                     final StoreFactory storeFactory)
             throws InterruptedException, IOException {
         stopDetailsDirectory = buildStopDetailsDirectory(storeFactory, root,
                                                          files);
@@ -179,27 +180,32 @@ public class LocalServiceDataDirectory implements ServiceDataDirectory {
     private static StopTimesDirectory buildStopTimesDirectory(
             final StoreFactory storeFactory, final Path root,
             final String revision) throws IOException, InterruptedException {
-        final Path tripSequenceStorePath
-                = root.resolve(revision).resolve(TRIP_SEQUENCE_STORE);
+        final Path arrivalTimeStorePath
+                = root.resolve(revision).resolve(ARRIVAL_TIMES_STORE);
+        final Path departureTimeStorePath
+                = root.resolve(revision).resolve(DEPARTURE_TIMES_STORE);
+        final Serializer<TripSequence> tripSequenceSerializer
+                = new GsonSerializer<>(TripSequence.class);
+        final TimeKey.Materializer timeKeyMaterializer
+                = new TimeKey.Materializer();
+
+        final RangedStore<TimeKey, TripSequence> arrivalTimeStore
+                = storeFactory.<TimeKey, TripSequence>getRangedStore(
+                        arrivalTimeStorePath, timeKeyMaterializer,
+                        tripSequenceSerializer);
+        final RangedStore<TimeKey, TripSequence> departureTimeStore
+                = storeFactory.<TimeKey, TripSequence>getRangedStore(
+                        departureTimeStorePath, timeKeyMaterializer,
+                        tripSequenceSerializer);
+
+        final Path tripStopStorePath = root.resolve(revision)
+                .resolve(TRIP_STOP_STORE);
         final Serializer<TripStop> tripStopSerializer
                 = new GsonSerializer<>(TripStop.class);
-        final RangedStore<TripSequenceKey, TripStop> tripSequenceStore
+        final RangedStore<TripSequenceKey, TripStop> tripStopsStore
                 = storeFactory.<TripSequenceKey, TripStop>getRangedStore(
-                        tripSequenceStorePath,
-                        new TripSequenceKey.Materializer(), tripStopSerializer);
-
-        final Path stopTimesStorePath = root.resolve(revision)
-                .resolve(STOP_TIMES_STORE);
-        final RangedStore<StopTimeKey, TripStop> stopTimesStore
-                = storeFactory.<StopTimeKey, TripStop>getRangedStore(
-                        stopTimesStorePath, new StopTimeKey.Materializer(),
+                        tripStopStorePath, new TripSequenceKey.Materializer(),
                         tripStopSerializer);
-
-        final Serializer<TripId> tripIdSerializer
-                = new GsonSerializer<>(TripId.class);
-        final Store<TripIdKey, TripId> tripsStore = storeFactory
-                .<TripIdKey, TripId>getStore(root.resolve(revision).resolve(
-                        TRIPS_STORE), tripIdSerializer);
 
         final Path frequenciesPath = root.resolve(revision).resolve(
                 GTFS_DIRECTORY).resolve(FREQUENCIES_FILE);
@@ -214,7 +220,7 @@ public class LocalServiceDataDirectory implements ServiceDataDirectory {
 
         final GTFSReadingStopTimesDirectory stopTimesDirectory
                 = new GTFSReadingStopTimesDirectory(
-                        tripSequenceStore, stopTimesStore, tripsStore,
+                        arrivalTimeStore, departureTimeStore, tripStopsStore,
                         frequenciesReader, stopTimesReader);
         return stopTimesDirectory;
     }

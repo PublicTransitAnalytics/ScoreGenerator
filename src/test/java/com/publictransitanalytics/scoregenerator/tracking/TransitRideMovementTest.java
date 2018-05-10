@@ -16,10 +16,8 @@
 package com.publictransitanalytics.scoregenerator.tracking;
 
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
-import com.publictransitanalytics.scoregenerator.schedule.ScheduleInterpolator;
 import com.publictransitanalytics.scoregenerator.schedule.Trip;
 import com.publictransitanalytics.scoregenerator.schedule.TripId;
-import com.publictransitanalytics.scoregenerator.testhelpers.PreloadedScheduleInterpolator;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Collections;
@@ -31,13 +29,11 @@ import org.junit.Test;
  * @author Public Transit Analytics
  */
 public class TransitRideMovementTest {
-private static final ScheduleInterpolator INTERPOLATOR
-            = new PreloadedScheduleInterpolator(LocalDateTime.MIN);
     private static final String TRIP_ID = "tripId";
     private static final String ROUTE_NUMBER = "1";
     private static final Trip TRIP = new Trip(
             new TripId(TRIP_ID, null), "Somewhere via Elsewhere", ROUTE_NUMBER, 
-            Collections.emptySet(), INTERPOLATOR);
+            Collections.emptyList());
     private static final TransitStop BEGINNING_STOP 
             = new TransitStop("0", "Origin", null);
         private static final TransitStop END_STOP 
