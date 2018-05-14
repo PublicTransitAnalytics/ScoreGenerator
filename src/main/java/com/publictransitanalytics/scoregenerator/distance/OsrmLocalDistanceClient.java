@@ -88,16 +88,19 @@ public class OsrmLocalDistanceClient implements DistanceClient {
             final String status = json.read("$.code");
 
             if (status.equals(OK_STATUS)) {
-                final List durations = json.read("$.durations[*][*]");
+                final List<Object> durations = json.read("$.durations[*][*]");
 
                 final ImmutableMap.Builder<PointLocation, WalkingCosts> builder
                         = ImmutableMap.builder();
                 for (int i = 0; i < consideredPoints.size(); i++) {
                     final PointLocation location = sequence.get(i);
-                    final Double durationSeconds = Double.valueOf(
-                            durations.get(i).toString());
-
-                    if (durationSeconds != null) {
+                    final Object durationSecondsObject = durations.get(i);
+                    
+                    if (durationSecondsObject != null) {
+                        final String durationSecondsString 
+                            = durationSecondsObject.toString();
+                        final Double durationSeconds = Double.valueOf(
+                            durationSecondsString);
                         final Duration duration = Duration.ofSeconds(
                                 (long) Math.ceil(durationSeconds));
                         builder.put(location, new WalkingCosts(duration, -1));

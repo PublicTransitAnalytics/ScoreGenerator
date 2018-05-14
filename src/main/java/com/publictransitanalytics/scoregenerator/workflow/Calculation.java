@@ -338,7 +338,8 @@ public class Calculation<S extends ScoreCard> {
                 final Set<Sector> sectors = grid.getSectors(stop);
                 if (sectors.isEmpty()) {
                     log.warn("{} ({}) is not within the bounds.",
-                             stop.getCommonName(), stop.getLocation());
+                             stop.getCommonName(), 
+                             stop.getLocation().toDegreeString());
                 } else {
                     builder.putAll(stop, sectors);
                 }
