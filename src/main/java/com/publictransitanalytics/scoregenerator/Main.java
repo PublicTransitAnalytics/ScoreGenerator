@@ -35,7 +35,6 @@ import com.google.common.collect.BiMap;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -45,6 +44,9 @@ import com.publictransitanalytics.scoregenerator.comparison.Reroute;
 import com.publictransitanalytics.scoregenerator.comparison.SequenceItem;
 import com.publictransitanalytics.scoregenerator.comparison.Stop;
 import com.publictransitanalytics.scoregenerator.comparison.Truncation;
+import com.publictransitanalytics.scoregenerator.publishing.LocalFileManager;
+import com.publictransitanalytics.scoregenerator.publishing.DownloaderException;
+import com.publictransitanalytics.scoregenerator.publishing.RemoteFileManager;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -62,6 +64,7 @@ import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
+import com.publictransitanalytics.scoregenerator.datalayer.directories.LocalServiceDataDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.ServiceDataDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.StopDetailsDirectory;
 import com.publictransitanalytics.scoregenerator.datalayer.directories.types.StopDetails;
@@ -84,7 +87,6 @@ import com.publictransitanalytics.scoregenerator.output.MapGenerator;
 import com.publictransitanalytics.scoregenerator.output.NetworkAccessibility;
 import com.publictransitanalytics.scoregenerator.output.PointAccessibility;
 import com.publictransitanalytics.scoregenerator.output.TimeQualifiedPointAccessibility;
-import com.publictransitanalytics.scoregenerator.publishing.LocalFilePublisher;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import com.publictransitanalytics.scoregenerator.workflow.ProgressiveRangeExecutor;
 import java.util.ArrayList;
@@ -119,6 +121,9 @@ import com.publictransitanalytics.scoregenerator.schedule.patching.RouteTruncati
 import com.publictransitanalytics.scoregenerator.schedule.patching.StopDeletion;
 import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
 import java.util.function.Function;
+import com.publictransitanalytics.scoregenerator.publishing.FileManager;
+import com.publictransitanalytics.scoregenerator.publishing.S3Client;
+import com.publictransitanalytics.scoregenerator.publishing.TarGzCompressor;
 
 @Slf4j
 /**
@@ -154,13 +159,15 @@ public class Main {
         parser.addArgument("-l", "--tripLengths").action(Arguments.append());
         parser.addArgument("-i", "--samplingInterval");
         parser.addArgument("-s", "--span");
-        parser.addArgument("-d", "--baseDirectory");
+        parser.addArgument("-r", "--root");
+        parser.addArgument("-e", "--bucket");
+        parser.addArgument("-f", "--fileSet");
         parser.addArgument("-k", "--backward").action(Arguments.storeTrue());
         parser.addArgument("-n", "--inMemCache").action(Arguments.storeTrue());
         parser.addArgument("-t", "--interactive").action(Arguments.storeTrue());
-        parser.addArgument("-b", "--baseFile");
+        parser.addArgument("-b", "--baseParameters");
         parser.addArgument("-u", "--bounds");
-        parser.addArgument("-c", "--comparisonFile");
+        parser.addArgument("-c", "--comparisonParameters");
         parser.addArgument("-o", "--outputName");
 
         final Subparsers subparsers = parser.addSubparsers().dest("command");
@@ -186,15 +193,34 @@ public class Main {
             durations.add(duration);
         }
 
-        final String baseDirectoryString = namespace.get("baseDirectory");
-        final Path root = Paths.get(baseDirectoryString);
+        final String bucket = namespace.get("bucket");
+        final String rootDirectoryString = namespace.get("root");
+        final String fileSet = namespace.get("fileSet");
 
-        final String baseFile = namespace.get("baseFile");
+        final FileManager fileManager;
+        if (rootDirectoryString != null) {
+            fileManager = new LocalFileManager(rootDirectoryString,
+                                               fileSet);
+        } else if (bucket != null) {
+            final TarGzCompressor compressor = new TarGzCompressor();
+            try {
+                fileManager = new RemoteFileManager(
+                        new S3Client(compressor, bucket), fileSet);
+            } catch (DownloaderException e) {
+                throw new ScoreGeneratorFatalException(e);
+            }
+        } else {
+            throw new ScoreGeneratorFatalException(
+                    "Either --root or --bucket must be specified");
+        }
+        final Path root = fileManager.getRoot();
+
+        final String baseFile = namespace.get("baseParameters");
         final OperationDescription baseDescription = serializer.fromJson(
                 new String(Files.readAllBytes(Paths.get(baseFile)),
                            StandardCharsets.UTF_8), OperationDescription.class);
 
-        final String comparisonFile = namespace.get("comparisonFile");
+        final String comparisonFile = namespace.get("comparisonParameters");
         final OperationDescription comparisonDescription
                 = (comparisonFile == null) ? null : serializer.fromJson(
                                 new String(Files.readAllBytes(
@@ -232,8 +258,6 @@ public class Main {
 
         final String command = namespace.get("command");
 
-        final LocalFilePublisher publisher = new LocalFilePublisher();
-
         final ImmutableSet.Builder<String> fileNamesBuilder
                 = ImmutableSet.builder();
         fileNamesBuilder.add(baseDescription.getFiles());
@@ -252,8 +276,9 @@ public class Main {
                 = new HashMap<>();
         for (final String fileName : fileNames) {
             if (!serviceDirectoriesMap.containsKey(fileName)) {
-                final ServiceDataDirectory directory = new ServiceDataDirectory(
-                        root, fileName, storeFactory);
+                final ServiceDataDirectory directory
+                        = new LocalServiceDataDirectory(root, fileName,
+                                                        storeFactory);
                 serviceDirectoriesMap.put(fileName, directory);
             }
         }
@@ -262,7 +287,7 @@ public class Main {
         final GeoBounds bounds = parseBounds(boundsString);
         final Grid grid = getGrid(root, bounds, storeFactory);
 
-        final MapGenerator mapGenerator = new MapGenerator();
+        final MapGenerator mapGenerator = new MapGenerator(fileManager);
 
         final TimeTracker timeTracker;
         if (!backward) {
@@ -276,8 +301,8 @@ public class Main {
             generatePointAccessibility(
                     namespace, baseDescription, backward, samplingInterval,
                     span, durations, grid, serviceDirectoriesMap,
-                    comparisonDescription, publisher, serializer, mapGenerator,
-                    outputName, consoleFactory);
+                    comparisonDescription, fileManager, serializer,
+                    mapGenerator, outputName, consoleFactory);
         } else if ("generateNetworkAccessibility".equals(command)) {
             final ScoreCardFactory scoreCardFactory
                     = new CountScoreCardFactory();
@@ -294,7 +319,7 @@ public class Main {
             publishNetworkAccessibility(baseDescription, comparisonDescription,
                                         result, grid, sectors, false,
                                         durations, span, samplingInterval,
-                                        backward, publisher, serializer,
+                                        backward, fileManager, serializer,
                                         mapGenerator, outputName);
         } else if ("generateSampledNetworkAccessibility".equals(command)) {
 
@@ -320,10 +345,11 @@ public class Main {
             publishNetworkAccessibility(baseDescription, comparisonDescription,
                                         result, grid, sampleSectors, true,
                                         durations, span, samplingInterval,
-                                        backward, publisher, serializer,
+                                        backward, fileManager, serializer,
                                         mapGenerator, outputName);
         }
 
+        fileManager.uploadFileSet(fileSet);
     }
 
     private static Set<Center> getSampleCenters(
@@ -644,7 +670,7 @@ public class Main {
                         .putAll(baseOriginalStopIdMap).build();
         final List<Patch> basePatches = getTripPatches(description,
                                                        baseOriginalStopIdMap);
-        final Set<TransitStop> deletedStops 
+        final Set<TransitStop> deletedStops
                 = getDeletedStops(description, stopIdMap);
 
         final Calculation<S> calculation = new Calculation<>(
@@ -663,7 +689,7 @@ public class Main {
             final Grid grid, final Set<Sector> centerSectors,
             final boolean markCenters, final NavigableSet<Duration> durations,
             final Duration span, final Duration samplingInterval,
-            final boolean backward, final LocalFilePublisher publisher,
+            final boolean backward, final FileManager fileManager,
             final Gson serializer, final MapGenerator mapGenerator,
             final String outputName) throws InterruptedException, IOException {
         final Calculation baseCalculation = calculations.get(base);
@@ -681,7 +707,7 @@ public class Main {
                     taskCount, scoreCard, grid, centerSectors,
                     startTime, endTime, durations.last(), samplingInterval,
                     backward, inServiceTime);
-            publisher.publish(outputName, serializer.toJson(map));
+            fileManager.publish(outputName, serializer.toJson(map));
 
             mapGenerator.makeRangeMap(grid, scoreCard, Collections.emptySet(),
                                       0, 0.2, outputName);
@@ -709,7 +735,7 @@ public class Main {
                                 durations.last(), samplingInterval,
                                 backward, name, inServiceTime,
                                 trialInServiceTime);
-                publisher.publish(outputName, serializer.toJson(map));
+                fileManager.publish(outputName, serializer.toJson(map));
                 mapGenerator.makeComparativeMap(
                         grid, scoreCard, trialScoreCard, Collections.emptySet(),
                         0.2, outputName);
@@ -724,7 +750,7 @@ public class Main {
             final NavigableSet<Duration> durations, final Grid grid,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
             final OperationDescription comparison,
-            final LocalFilePublisher publisher, final Gson serializer,
+            final FileManager publisher, final Gson serializer,
             final MapGenerator mapGenerator, final String outputName,
             final NetworkConsoleFactory consoleFactory)
             throws IOException, InterruptedException, ExecutionException {
@@ -873,8 +899,7 @@ public class Main {
                 osmPath, bounds);
 
         final Serializer<GridInfo> gridInfoSerializer
-                = new GsonSerializer<>(GridInfo.class
-                );
+                = new GsonSerializer<>(GridInfo.class);
         final Store<GridIdKey, GridInfo> gridInfoStore = storeFactory.getStore(
                 root.resolve(GRID_INFO_STORE), gridInfoSerializer);
 

@@ -22,6 +22,7 @@ import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.environment.Segment;
 import com.publictransitanalytics.scoregenerator.location.Sector;
+import com.publictransitanalytics.scoregenerator.publishing.FileManager;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -29,22 +30,19 @@ import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.jfree.graphics2d.svg.SVGGraphics2D;
 
 /**
  *
  * @author Public Transit Analytics
  */
+@RequiredArgsConstructor
 public class MapGenerator {
 
     private final static Color[] ONE_GREEN_LEVEL = {
@@ -88,6 +86,8 @@ public class MapGenerator {
     private final static Color LOW_OUTLIER_COLOR = new Color(0xff, 0xff, 0xff);
 
     private final String OUTPUT_FILENAME_TEMPLATE = "%s.svg";
+    
+    private final FileManager fileManager;
 
     public void makeEmptyMap(final Grid grid,
                              final Set<? extends PointLocation> markedPoints,
@@ -181,10 +181,8 @@ public class MapGenerator {
             svgGenerator.draw(line);
         }
 
-        final Writer out = new FileWriter(new File(
-                String.format(OUTPUT_FILENAME_TEMPLATE, outputName)));
-        out.write(svgGenerator.getSVGDocument());
-        out.close();
+        fileManager.publish(String.format(OUTPUT_FILENAME_TEMPLATE, outputName),
+                            svgGenerator.getSVGDocument());
     }
 
     private static SVGGraphics2D createDocument(final GeoBounds bounds) {
@@ -204,8 +202,8 @@ public class MapGenerator {
 
     private static double getLonDelta(final GeoBounds bounds,
                                       final GeoPoint topCorner) {
-        return topCorner.getDistanceMeters(new GeoPoint(bounds.getWestLon(),
-                                                        topCorner.getLatitude()));
+        return topCorner.getDistanceMeters(new GeoPoint(
+                bounds.getWestLon(), topCorner.getLatitude()));
     }
 
     private static double getLatSize(final GeoBounds bounds) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Public Transit Analytics.
+ * Copyright 2018 Public Transit Analytics.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,30 @@ package com.publictransitanalytics.scoregenerator.publishing;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
- * Publisher that publishes scores to a randomly-named file.
- * 
+ * Gives a root path for a locally available set of files.
  * @author Public Transit Analytics
  */
-public class LocalFilePublisher {
 
+public class LocalFileManager implements FileManager {
+    
+    private final Path path;
+    public LocalFileManager(final String root,  final String fileSet) {
+        path = Paths.get(root).resolve(fileSet);
+    }
+
+    @Override
+    public Path getRoot() {
+        return path;
+    }
+
+    @Override
+    public void uploadFileSet(final String fileSet) {
+    }
+    
     public void publish(final String outputName, final String output) {
         FileWriter writer = null;
         try {
@@ -43,5 +59,5 @@ public class LocalFilePublisher {
             }
         }
     }
-
+    
 }
