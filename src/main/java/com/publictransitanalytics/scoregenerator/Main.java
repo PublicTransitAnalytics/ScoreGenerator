@@ -44,13 +44,12 @@ import com.publictransitanalytics.scoregenerator.comparison.Reroute;
 import com.publictransitanalytics.scoregenerator.comparison.SequenceItem;
 import com.publictransitanalytics.scoregenerator.comparison.Stop;
 import com.publictransitanalytics.scoregenerator.comparison.Truncation;
-import com.publictransitanalytics.scoregenerator.publishing.LocalFileManager;
+import com.publictransitanalytics.scoregenerator.publishing.LocalDataManager;
 import com.publictransitanalytics.scoregenerator.publishing.DownloaderException;
-import com.publictransitanalytics.scoregenerator.publishing.RemoteFileManager;
+import com.publictransitanalytics.scoregenerator.publishing.RemoteDataManager;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -107,7 +106,6 @@ import com.publictransitanalytics.scoregenerator.workflow.MovementAssembler;
 import com.publictransitanalytics.scoregenerator.workflow.ParallelTaskExecutor;
 import com.publictransitanalytics.scoregenerator.workflow.RetrospectiveMovementAssembler;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.HashMap;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.location.TransitStop;
@@ -121,9 +119,13 @@ import com.publictransitanalytics.scoregenerator.schedule.patching.RouteTruncati
 import com.publictransitanalytics.scoregenerator.schedule.patching.StopDeletion;
 import com.publictransitanalytics.scoregenerator.scoring.CountScoreCardFactory;
 import java.util.function.Function;
-import com.publictransitanalytics.scoregenerator.publishing.FileManager;
 import com.publictransitanalytics.scoregenerator.publishing.S3Client;
 import com.publictransitanalytics.scoregenerator.publishing.TarGzCompressor;
+import com.publictransitanalytics.scoregenerator.publishing.DataManager;
+import com.publictransitanalytics.scoregenerator.publishing.PublicationException;
+import java.io.InputStream;
+import java.util.Optional;
+import org.apache.commons.io.IOUtils;
 
 @Slf4j
 /**
@@ -149,7 +151,8 @@ public class Main {
 
     public static void main(String[] args) throws FileNotFoundException,
             IOException, ArgumentParserException, InterruptedException,
-            ExecutionException, InEnvironmentDetectorException {
+            ExecutionException, InEnvironmentDetectorException,
+            PublicationException {
         final Gson serializer = new GsonBuilder().setPrettyPrinting().create();
 
         final ArgumentParser parser = ArgumentParsers.newArgumentParser(
@@ -169,6 +172,7 @@ public class Main {
         parser.addArgument("-u", "--bounds");
         parser.addArgument("-c", "--comparisonParameters");
         parser.addArgument("-o", "--outputName");
+        parser.addArgument("-d", "--distanceEndpoint");
 
         final Subparsers subparsers = parser.addSubparsers().dest("command");
 
@@ -197,15 +201,29 @@ public class Main {
         final String rootDirectoryString = namespace.get("root");
         final String fileSet = namespace.get("fileSet");
 
-        final FileManager fileManager;
+        final String baseFile = namespace.get("baseParameters");
+        final String comparisonFile = namespace.get("comparisonParameters");
+
+        final DataManager dataManager;
         if (rootDirectoryString != null) {
-            fileManager = new LocalFileManager(rootDirectoryString,
-                                               fileSet);
+            if (comparisonFile == null) {
+                dataManager = new LocalDataManager(
+                        rootDirectoryString, fileSet, baseFile);
+            } else {
+                dataManager = new LocalDataManager(rootDirectoryString, fileSet,
+                                                   baseFile, comparisonFile);
+            }
         } else if (bucket != null) {
             final TarGzCompressor compressor = new TarGzCompressor();
             try {
-                fileManager = new RemoteFileManager(
-                        new S3Client(compressor, bucket), fileSet);
+                if (comparisonFile == null) {
+                    dataManager = new RemoteDataManager(new S3Client(
+                            compressor, bucket), fileSet, baseFile);
+                } else {
+                    dataManager = new RemoteDataManager(
+                            new S3Client(compressor, bucket), fileSet, baseFile,
+                            comparisonFile);
+                }
             } catch (DownloaderException e) {
                 throw new ScoreGeneratorFatalException(e);
             }
@@ -213,20 +231,25 @@ public class Main {
             throw new ScoreGeneratorFatalException(
                     "Either --root or --bucket must be specified");
         }
-        final Path root = fileManager.getRoot();
+        final Path root = dataManager.getFileRoot();
 
-        final String baseFile = namespace.get("baseParameters");
         final OperationDescription baseDescription = serializer.fromJson(
-                new String(Files.readAllBytes(Paths.get(baseFile)),
-                           StandardCharsets.UTF_8), OperationDescription.class);
+                IOUtils.toString(dataManager.getBaseConfiguration(),
+                                 StandardCharsets.UTF_8),
+                OperationDescription.class);
 
-        final String comparisonFile = namespace.get("comparisonParameters");
-        final OperationDescription comparisonDescription
-                = (comparisonFile == null) ? null : serializer.fromJson(
-                                new String(Files.readAllBytes(
-                                        Paths.get(comparisonFile)),
-                                           StandardCharsets.UTF_8),
-                                OperationDescription.class);
+        final Optional<InputStream> comparisonStream
+                = dataManager.getComparisonConfiguration();
+        final Optional<OperationDescription> comparisonDescription;
+        if (comparisonStream.isPresent()) {
+            comparisonDescription = Optional.of(serializer.fromJson(
+                    IOUtils.toString(
+                            dataManager.getComparisonConfiguration().get(),
+                            StandardCharsets.UTF_8),
+                    OperationDescription.class));
+        } else {
+            comparisonDescription = Optional.empty();
+        }
 
         final Boolean backwardObject = namespace.getBoolean("backward");
         final boolean backward
@@ -261,8 +284,8 @@ public class Main {
         final ImmutableSet.Builder<String> fileNamesBuilder
                 = ImmutableSet.builder();
         fileNamesBuilder.add(baseDescription.getFiles());
-        if (comparisonDescription != null) {
-            fileNamesBuilder.add(comparisonDescription.getFiles());
+        if (comparisonDescription.isPresent()) {
+            fileNamesBuilder.add(comparisonDescription.get().getFiles());
         }
         final Set<String> fileNames = fileNamesBuilder.build();
 
@@ -287,7 +310,9 @@ public class Main {
         final GeoBounds bounds = parseBounds(boundsString);
         final Grid grid = getGrid(root, bounds, storeFactory);
 
-        final MapGenerator mapGenerator = new MapGenerator(fileManager);
+        final String distanceEndpoint = namespace.get("distanceEndpoint");
+
+        final MapGenerator mapGenerator = new MapGenerator(dataManager);
 
         final TimeTracker timeTracker;
         if (!backward) {
@@ -298,11 +323,12 @@ public class Main {
 
         if ("generatePointAccessibility".equals(command)) {
 
-            generatePointAccessibility(
-                    namespace, baseDescription, backward, samplingInterval,
-                    span, durations, grid, serviceDirectoriesMap,
-                    comparisonDescription, fileManager, serializer,
-                    mapGenerator, outputName, consoleFactory);
+            generatePointAccessibility(namespace, baseDescription, backward,
+                                       samplingInterval, span, durations, grid,
+                                       serviceDirectoriesMap,
+                                       comparisonDescription, dataManager,
+                                       serializer, mapGenerator, outputName,
+                                       consoleFactory, distanceEndpoint);
         } else if ("generateNetworkAccessibility".equals(command)) {
             final ScoreCardFactory scoreCardFactory
                     = new CountScoreCardFactory();
@@ -313,13 +339,13 @@ public class Main {
                             baseDescription, scoreCardFactory, centers,
                             samplingInterval, span, backward, timeTracker,
                             grid, serviceDirectoriesMap, durations.last(),
-                            comparisonDescription, consoleFactory);
-
+                            comparisonDescription, consoleFactory,
+                            distanceEndpoint);
             final Set<Sector> sectors = grid.getReachableSectors();
             publishNetworkAccessibility(baseDescription, comparisonDescription,
                                         result, grid, sectors, false,
                                         durations, span, samplingInterval,
-                                        backward, fileManager, serializer,
+                                        backward, dataManager, serializer,
                                         mapGenerator, outputName);
         } else if ("generateSampledNetworkAccessibility".equals(command)) {
 
@@ -341,15 +367,16 @@ public class Main {
                             baseDescription, scoreCardFactory, centers,
                             samplingInterval, span, backward, timeTracker, grid,
                             serviceDirectoriesMap, durations.last(),
-                            comparisonDescription, consoleFactory);
+                            comparisonDescription, consoleFactory,
+                            distanceEndpoint);
             publishNetworkAccessibility(baseDescription, comparisonDescription,
                                         result, grid, sampleSectors, true,
                                         durations, span, samplingInterval,
-                                        backward, fileManager, serializer,
+                                        backward, dataManager, serializer,
                                         mapGenerator, outputName);
         }
 
-        fileManager.uploadFileSet(fileSet);
+        dataManager.uploadFileSet(fileSet);
     }
 
     private static Set<Center> getSampleCenters(
@@ -594,8 +621,9 @@ public class Main {
             final TimeTracker timeTracker, final Grid grid,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
             final Duration longestDuration,
-            final OperationDescription comparisonDescription,
-            final NetworkConsoleFactory consoleFactory)
+            final Optional<OperationDescription> comparisonDescription,
+            final NetworkConsoleFactory consoleFactory,
+            final String distanceEndpoint)
             throws InterruptedException, IOException, ExecutionException {
 
         final ImmutableBiMap.Builder<OperationDescription, Calculation<S>> resultBuilder
@@ -603,7 +631,7 @@ public class Main {
         final Calculation<S> calculation = buildCalculation(
                 baseDescription, serviceDirectoriesMap, grid, centers,
                 longestDuration, backward, span, samplingInterval, timeTracker,
-                scoreCardFactory);
+                scoreCardFactory, distanceEndpoint);
         final NetworkConsole console = consoleFactory.getConsole(
                 calculation.getTransitNetwork(),
                 calculation.getStopIdMap());
@@ -613,13 +641,12 @@ public class Main {
 
         final Environment environment = new Environment(grid, longestDuration);
 
-        if (comparisonDescription != null) {
+        if (comparisonDescription.isPresent()) {
 
             final Calculation trialCalculation = buildCalculation(
-                    comparisonDescription, serviceDirectoriesMap, grid, centers,
-                    longestDuration, backward, span, samplingInterval,
-                    timeTracker,
-                    scoreCardFactory);
+                    comparisonDescription.get(), serviceDirectoriesMap, grid,
+                    centers, longestDuration, backward, span, samplingInterval,
+                    timeTracker, scoreCardFactory, distanceEndpoint);
             final NetworkConsole trialConsole = consoleFactory.getConsole(
                     trialCalculation.getTransitNetwork(),
                     trialCalculation.getStopIdMap());
@@ -629,7 +656,7 @@ public class Main {
                     "Trial in service time = {}; original in service time = {}.",
                     trialCalculation.getTransitNetwork().getInServiceTime(),
                     calculation.getTransitNetwork().getInServiceTime());
-            resultBuilder.put(comparisonDescription, trialCalculation);
+            resultBuilder.put(comparisonDescription.get(), trialCalculation);
         }
 
         final BiMap<OperationDescription, Calculation<S>> calculations
@@ -651,8 +678,8 @@ public class Main {
             final Duration longestDuration, final boolean backward,
             final Duration span, final Duration samplingInterval,
             final TimeTracker timeTracker,
-            final ScoreCardFactory scoreCardFactory)
-            throws InterruptedException {
+            final ScoreCardFactory scoreCardFactory,
+            final String distanceEndpoint) throws InterruptedException {
         final LocalDateTime startTime
                 = LocalDateTime.parse(description.getStartTime());
         final ServiceDataDirectory serviceDirectory = getServiceData(
@@ -678,18 +705,18 @@ public class Main {
                 samplingInterval, ESTIMATE_WALK_METERS_PER_SECOND,
                 timeTracker, serviceDirectoriesMap, scoreCardFactory, startTime,
                 serviceDirectory, basePatches, addedStops, deletedStops,
-                stopIdMap);
+                stopIdMap, distanceEndpoint);
         return calculation;
     }
 
     private static void publishNetworkAccessibility(
             final OperationDescription base,
-            final OperationDescription comparison,
+            final Optional<OperationDescription> comparison,
             final BiMap<OperationDescription, Calculation<ScoreCard>> calculations,
             final Grid grid, final Set<Sector> centerSectors,
             final boolean markCenters, final NavigableSet<Duration> durations,
             final Duration span, final Duration samplingInterval,
-            final boolean backward, final FileManager fileManager,
+            final boolean backward, final DataManager fileManager,
             final Gson serializer, final MapGenerator mapGenerator,
             final String outputName) throws InterruptedException, IOException {
         final Calculation baseCalculation = calculations.get(base);
@@ -702,7 +729,7 @@ public class Main {
                 = LocalDateTime.parse(base.getStartTime());
         final LocalDateTime endTime = startTime.plus(span);
 
-        if (comparison == null) {
+        if (!comparison.isPresent()) {
             final NetworkAccessibility map = new NetworkAccessibility(
                     taskCount, scoreCard, grid, centerSectors,
                     startTime, endTime, durations.last(), samplingInterval,
@@ -712,19 +739,26 @@ public class Main {
             mapGenerator.makeRangeMap(grid, scoreCard, Collections.emptySet(),
                                       0, 0.2, outputName);
         } else {
-            for (final OperationDescription trialComparison
-                         : calculations.keySet()) {
+            final BiMap<OperationDescription, Calculation<ScoreCard>> trialCalculations
+                    = calculations.entrySet().stream()
+                            .filter(entry -> !entry.getKey().equals(base))
+                            .collect(ImmutableBiMap.toImmutableBiMap(
+                                    entry -> entry.getKey(),
+                                    entry -> entry.getValue()));
 
-                final String name = comparison.getName();
-                final Calculation trialCalculation
-                        = calculations.get(trialComparison);
+            for (final OperationDescription trialComparison
+                         : trialCalculations.keySet()) {
+                final Calculation trialCalculation = calculations.get(
+                        trialComparison);
+
+                final String name = trialComparison.getName();
                 final Duration trialInServiceTime = trialCalculation
                         .getTransitNetwork().getInServiceTime();
                 final ScoreCard trialScoreCard
                         = trialCalculation.getScoreCard();
                 final int trialTaskCount = trialScoreCard.getTaskCount();
                 final LocalDateTime trialStartTime
-                        = LocalDateTime.parse(comparison.getStartTime());
+                        = LocalDateTime.parse(trialComparison.getStartTime());
                 final LocalDateTime trialEndTime = startTime.plus(span);
 
                 final ComparativeNetworkAccessibility map
@@ -745,14 +779,15 @@ public class Main {
 
     private static void generatePointAccessibility(
             final Namespace namespace,
-            final OperationDescription baseDescription, final boolean backward,
+            final OperationDescription base, final boolean backward,
             final Duration samplingInterval, final Duration span,
             final NavigableSet<Duration> durations, final Grid grid,
             final Map<String, ServiceDataDirectory> serviceDirectoriesMap,
-            final OperationDescription comparison,
-            final FileManager publisher, final Gson serializer,
+            final Optional<OperationDescription> comparison,
+            final DataManager publisher, final Gson serializer,
             final MapGenerator mapGenerator, final String outputName,
-            final NetworkConsoleFactory consoleFactory)
+            final NetworkConsoleFactory consoleFactory,
+            final String distanceEndpoint)
             throws IOException, InterruptedException, ExecutionException {
 
         final String coordinateString = namespace.get("coordinate");
@@ -777,23 +812,23 @@ public class Main {
                 centerPoint, Collections.singleton(centerPoint));
 
         final Map<OperationDescription, Calculation<PathScoreCard>> calculations
-                = runComparison(baseDescription, scoreCardFactory,
+                = runComparison(base, scoreCardFactory,
                                 Collections.singleton(center),
                                 samplingInterval, span, backward, timeTracker,
                                 grid, serviceDirectoriesMap, durations.last(),
-                                comparison, consoleFactory);
+                                comparison, consoleFactory, distanceEndpoint);
         final Calculation<PathScoreCard> baseCalculation
-                = calculations.get(baseDescription);
+                = calculations.get(base);
         final PathScoreCard scoreCard = baseCalculation.getScoreCard();
         final int taskCount = scoreCard.getTaskCount();
 
         final LocalDateTime startTime
-                = LocalDateTime.parse(baseDescription.getStartTime());
-        final String name = baseDescription.getName();
+                = LocalDateTime.parse(base.getStartTime());
+        final String name = base.getName();
         final Duration inServiceTime = baseCalculation
                 .getTransitNetwork().getInServiceTime();
 
-        if (comparison == null) {
+        if (!comparison.isPresent()) {
             if (span != null) {
                 final LocalDateTime endTime = startTime.plus(span);
                 final PointAccessibility map = new PointAccessibility(
@@ -816,16 +851,22 @@ public class Main {
             }
 
         } else {
+            final BiMap<OperationDescription, Calculation<PathScoreCard>> trialCalculations
+                    = calculations.entrySet().stream()
+                            .filter(entry -> !entry.getKey().equals(base))
+                            .collect(ImmutableBiMap.toImmutableBiMap(
+                                    entry -> entry.getKey(),
+                                    entry -> entry.getValue()));
             for (final OperationDescription trialComparison
-                         : calculations.keySet()) {
-                final String trialName = comparison.getName();
+                         : trialCalculations.keySet()) {
+                final String trialName = trialComparison.getName();
                 final Calculation<PathScoreCard> trialCalculation
                         = calculations.get(trialComparison);
                 final PathScoreCard trialScoreCard
                         = trialCalculation.getScoreCard();
                 final int trialTaskCount = trialScoreCard.getTaskCount();
                 final LocalDateTime trialStartTime = LocalDateTime.parse(
-                        comparison.getStartTime());
+                        trialComparison.getStartTime());
                 final Duration trialInServiceTime = trialCalculation
                         .getTransitNetwork().getInServiceTime();
 

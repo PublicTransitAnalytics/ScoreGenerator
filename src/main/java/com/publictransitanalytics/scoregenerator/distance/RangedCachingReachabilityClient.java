@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -104,6 +103,7 @@ public class RangedCachingReachabilityClient implements ReachabilityClient {
         return distances.entrySet().stream()
                 .filter(entry -> entry.getValue().getDuration().compareTo(
                 duration) <= 0)
-                .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+                .collect(ImmutableMap.toImmutableMap(
+                        Entry::getKey, Entry::getValue));
     }
 }

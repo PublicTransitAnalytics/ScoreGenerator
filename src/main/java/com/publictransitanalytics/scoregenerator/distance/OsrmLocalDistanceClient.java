@@ -93,7 +93,7 @@ public class OsrmLocalDistanceClient implements DistanceClient {
                 final ImmutableMap.Builder<PointLocation, WalkingCosts> builder
                         = ImmutableMap.builder();
                 for (int i = 0; i < consideredPoints.size(); i++) {
-                    final PointLocation location = sequence.get(i);
+                    final PointLocation location = sequence.get(i);     
                     final Object durationSecondsObject = durations.get(i);
                     
                     if (durationSecondsObject != null) {

@@ -17,20 +17,23 @@ package com.publictransitanalytics.scoregenerator.publishing;
 
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  *
  * @author Public Transit Analytics
  */
-public interface RemoteClient {
+public interface DataManager {
 
-    Path downloadFileSet(String fileSet) throws DownloaderException;
-    
-    InputStream getConfiguration(String configurationName);
+    public Path getFileRoot();
 
-    void saveFileSet(String fileSet) throws DownloaderException;
-    
-    void uploadText(String name, String data)
-            throws DownloaderException;
+    public InputStream getBaseConfiguration() throws PublicationException;
+
+    public Optional<InputStream> getComparisonConfiguration()
+            throws PublicationException;
+
+    public void uploadFileSet(String fileSet);
+
+    public void publish(String outputName, String output);
 
 }

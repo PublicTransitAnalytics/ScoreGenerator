@@ -19,6 +19,7 @@ import com.bitvantage.bitvantagecaching.BitvantageStoreException;
 import com.bitvantage.bitvantagecaching.RangedKeyStore;
 import com.bitvantage.bitvantagecaching.Store;
 import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.ScoreGeneratorFatalException;
 import com.publictransitanalytics.scoregenerator.datalayer.distance.LocationKey;
 import com.publictransitanalytics.scoregenerator.datalayer.distance.LocationTimeKey;
@@ -97,7 +98,7 @@ public class StoreBackedDistanceStoreManager implements DistanceStoreManager {
 
     private Map<PointLocation, WalkingCosts> convertFromKeys(
             final Set<LocationTimeKey> keys) {
-        return keys.stream().collect(Collectors.toMap(
+        return keys.stream().collect(ImmutableMap.toImmutableMap(
                 key -> pointIdMap.get(key.getDestinationId()),
                 key -> new WalkingCosts(Duration.ofSeconds(
                         key.getTimeSeconds()), -1)));

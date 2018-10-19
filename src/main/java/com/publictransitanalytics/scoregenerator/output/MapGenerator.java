@@ -22,7 +22,6 @@ import com.publictransitanalytics.scoregenerator.environment.Grid;
 import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.environment.Segment;
 import com.publictransitanalytics.scoregenerator.location.Sector;
-import com.publictransitanalytics.scoregenerator.publishing.FileManager;
 import com.publictransitanalytics.scoregenerator.scoring.ScoreCard;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -37,6 +36,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.jfree.graphics2d.svg.SVGGraphics2D;
+import com.publictransitanalytics.scoregenerator.publishing.DataManager;
 
 /**
  *
@@ -87,7 +87,7 @@ public class MapGenerator {
 
     private final String OUTPUT_FILENAME_TEMPLATE = "%s.svg";
     
-    private final FileManager fileManager;
+    private final DataManager fileManager;
 
     public void makeEmptyMap(final Grid grid,
                              final Set<? extends PointLocation> markedPoints,

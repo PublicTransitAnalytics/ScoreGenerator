@@ -17,14 +17,11 @@ package com.publictransitanalytics.scoregenerator.output;
 
 import com.google.common.collect.ImmutableMap;
 import com.publictransitanalytics.scoregenerator.environment.Grid;
-import com.publictransitanalytics.scoregenerator.location.Center;
 import com.publictransitanalytics.scoregenerator.location.Landmark;
-import com.publictransitanalytics.scoregenerator.location.PointLocation;
 import com.publictransitanalytics.scoregenerator.location.Sector;
 import com.publictransitanalytics.scoregenerator.scoring.LogicalTask;
 import com.publictransitanalytics.scoregenerator.scoring.PathScoreCard;
 import com.publictransitanalytics.scoregenerator.tracking.MovementPath;
-import com.publictransitanalytics.scoregenerator.workflow.TaskIdentifier;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -89,23 +86,29 @@ public class ComparativeTimeQualifiedPointAccessibility {
 
         final Set<Sector> sectors = grid.getAllSectors();
 
-        final LogicalTask task = new LogicalTask(time, centerPoint);
         for (final Sector sector : sectors) {
-            final MovementPath sectorPath
-                    = scoreCard.getBestPath(sector, task);
-            final MovementPath trialSectorPath
-                    = trialScoreCard.getBestPath(sector, task);
-            if (sectorPath != null || trialSectorPath != null) {
-                final Bounds sectorBounds = new Bounds(sector);
+            final Map<LogicalTask, MovementPath> tasks
+                    = scoreCard.getBestPaths(sector);
+            final Map<LogicalTask, MovementPath> trialTasks
+                    = trialScoreCard.getBestPaths(sector);
+            final Bounds sectorBounds = new Bounds(sector);
+            if (!tasks.isEmpty() || !trialTasks.isEmpty()) {
+                final MovementPath sectorPath = tasks.isEmpty() ? null : tasks
+                        .values().iterator().next();
+                final MovementPath trialSectorPath = trialTasks.isEmpty() ? null
+                        : trialTasks.values().iterator().next();
 
                 builder.put(sectorBounds,
                             new ComparativeFullSectorReachInformation(
                                     sectorPath, trialSectorPath));
             }
         }
+
         sectorPaths = builder.build();
         totalSectors = grid.getReachableSectors().size();
+
         this.name = name;
+
         this.trialName = trialName;
         inServiceSeconds = inServiceTime.getSeconds();
         trialInServiceSeconds = trialInServiceTime.getSeconds();

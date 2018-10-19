@@ -15,7 +15,7 @@
  */
 package com.publictransitanalytics.scoregenerator.publishing;
 
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
@@ -25,6 +25,7 @@ import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -44,7 +45,8 @@ public class S3Client implements RemoteClient {
     public S3Client(final Compressor compressor, final String bucketName)
             throws DownloaderException {
         s3Client = AmazonS3ClientBuilder.standard().withRegion(REGION)
-                .withCredentials(new ProfileCredentialsProvider()).build();
+                .withCredentials(new EC2ContainerCredentialsProviderWrapper())
+                .build();
         this.compressor = compressor;
         this.bucketName = bucketName;
         try {
@@ -55,17 +57,22 @@ public class S3Client implements RemoteClient {
     }
 
     @Override
-    public Path downloadData(final String fileSet) throws DownloaderException {
+    public Path downloadFileSet(final String fileSet) 
+            throws DownloaderException {
         final String key = String.format("%s.tar.gz", fileSet);
+        final S3ObjectInputStream contentStream = getContentStream(key);
 
-        final S3Object object = s3Client.getObject(
-                new GetObjectRequest(bucketName, key));
-        final S3ObjectInputStream contentStream = object.getObjectContent();
+       
         try {
             return compressor.decompress(contentStream, tempDir);
         } catch (final CompressionException e) {
             throw new DownloaderException(e);
         }
+    }
+    
+    @Override
+    public InputStream getConfiguration(final String configurationName) {
+        return getContentStream(configurationName);
     }
 
     @Override
@@ -90,6 +97,12 @@ public class S3Client implements RemoteClient {
     public void uploadText(final String name, final String data)
             throws DownloaderException {
         s3Client.putObject(bucketName, name, data);
+    }
+    
+    private S3ObjectInputStream getContentStream(final String key) {
+         final S3Object object = s3Client.getObject(
+                new GetObjectRequest(bucketName, key));
+        return object.getObjectContent();
     }
 
 }

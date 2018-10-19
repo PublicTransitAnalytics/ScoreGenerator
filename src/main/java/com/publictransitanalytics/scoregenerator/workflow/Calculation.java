@@ -113,7 +113,8 @@ public class Calculation<S extends ScoreCard> {
                        final List<Patch> patches,
                        final Set<TransitStop> addedStops,
                        final Set<TransitStop> deletedStops,
-                       final BiMap<String, TransitStop> stopIdMap)
+                       final BiMap<String, TransitStop> stopIdMap,
+                       final String osrmEndpoint)
             throws InterruptedException {
 
         final LocalDateTime endTime = (span != null)
@@ -151,7 +152,7 @@ public class Calculation<S extends ScoreCard> {
         }
 
         final DistanceClient distanceClient = buildOsrmDistanceClient(
-                pointSequencerFactory, 1000);
+                osrmEndpoint, pointSequencerFactory, 1000);
         final Set<PointLocation> centerPoints = centers.stream()
                 .map(Center::getPhysicalCenters).flatMap(Collection::stream)
                 .collect(Collectors.toSet());
@@ -203,10 +204,11 @@ public class Calculation<S extends ScoreCard> {
     }
 
     private static DistanceClient buildOsrmDistanceClient(
+            final String osrmEndpoint, 
             final PointSequencerFactory pointSequencerFactory,
             final int maxConsidered) {
         final DistanceClient osrmDistanceClient = new OsrmLocalDistanceClient(
-                new OkHttpClient(), "localhost", 5000, pointSequencerFactory);
+                new OkHttpClient(), osrmEndpoint, 5000, pointSequencerFactory);
 
         return new SplitMergeDistanceClient(osrmDistanceClient, maxConsidered);
     }

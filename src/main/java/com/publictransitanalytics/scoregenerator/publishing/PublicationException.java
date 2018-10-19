@@ -15,18 +15,18 @@
  */
 package com.publictransitanalytics.scoregenerator.publishing;
 
-import java.nio.file.Path;
-
 /**
  *
  * @author Public Transit Analytics
  */
-public interface FileManager {
+public class PublicationException extends Exception {
 
-    public Path getRoot();
+    public PublicationException(final String message) {
+        super(message);
+    }
 
-    public void uploadFileSet(String fileSet);
-
-    public void publish(String outputName, String output);
+    public PublicationException(final Exception exception) {
+        super(exception);
+    }
 
 }
