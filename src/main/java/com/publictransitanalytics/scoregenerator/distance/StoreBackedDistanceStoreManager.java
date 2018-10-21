@@ -31,11 +31,13 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  *
  * @author Public Transit Analytics
  */
+@Slf4j
 @RequiredArgsConstructor
 public class StoreBackedDistanceStoreManager implements DistanceStoreManager {
 
@@ -98,10 +100,20 @@ public class StoreBackedDistanceStoreManager implements DistanceStoreManager {
 
     private Map<PointLocation, WalkingCosts> convertFromKeys(
             final Set<LocationTimeKey> keys) {
-        return keys.stream().collect(ImmutableMap.toImmutableMap(
-                key -> pointIdMap.get(key.getDestinationId()),
-                key -> new WalkingCosts(Duration.ofSeconds(
-                        key.getTimeSeconds()), -1)));
+        final ImmutableMap.Builder<PointLocation, WalkingCosts> builder
+                = ImmutableMap.builder();
+        for (final LocationTimeKey key : keys) {
+            final String destinationId = key.getDestinationId();
+            final PointLocation location = pointIdMap.get(destinationId);
+            if (location != null) {
+                builder.put(location, new WalkingCosts(Duration.ofSeconds(
+                        key.getTimeSeconds()), -1));
+            } else {
+                log.warn("Key refered to to non-existent location {}.",
+                         destinationId);
+            }
+        }
+        return builder.build();
     }
 
     private Set<LocationTimeKey> convertToKeys(
